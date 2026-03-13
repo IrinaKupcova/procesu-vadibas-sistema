@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+  <meta charset="UTF-8" />
+  <title>Integrētais procesu reģistrs</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background-color: #f5f7fb;
+    }
+    h1 {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+    .tagline {
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 16px;
+    }
+    .card {
+      background: #ffffff;
+      border-radius: 8px;
+      padding: 16px 20px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+      margin-bottom: 20px;
+    }
+    .form-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 10px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      flex: 1 1 180px;
+      min-width: 160px;
+    }
+    label {
+      font-size: 11px;
+      font-weight: bold;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: #555;
+    }
+    input, select, textarea {
+      padding: 6px 8px;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      font-size: 13px;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 50px;
+    }
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      background-color: #2563eb;
+      color: #fff;
+      font-size: 14px;
+      cursor: pointer;
+      margin-top: 6px;
+    }
+    button:hover {
+      background-color: #1d4ed8;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #ffffff;
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    th, td {
+      padding: 8px 10px;
+      font-size: 12px;
+      border-bottom: 1px solid #e5e7eb;
+      text-align: left;
+      vertical-align: top;
+    }
+    th {
+      background-color: #eff1f7;
+      font-weight: bold;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      font-size: 10px;
+    }
+    tr:nth-child(even) td {
+      background-color: #fafbff;
+    }
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      gap: 10px;
+    }
+    .toolbar input {
+      max-width: 260px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Integrētais procesu reģistrs</h1>
+  <div class="tagline">
+    Rinda = <strong>Apakšprocess</strong>, kas sasaista <strong>Stratēģisko mērķi → Uzdevumu → Procesu → Apakšprocesu → Pakalpojumu / Risku / KPI / Lomu</strong>.
+  </div>
+
+  <div class="card">
+    <h2>Pievienot ierakstu</h2>
+    <form id="recordForm">
+      <div class="form-row">
+        <div class="form-group">
+          <label for="goal">Stratēģiskais mērķis</label>
+          <input id="goal" name="goal" type="text" placeholder="Piem.: Palielināt klientu apmierinātību" />
+        </div>
+        <div class="form-group">
+          <label for="task">Uzdevums</label>
+          <input id="task" name="task" type="text" placeholder="Piem.: Klientu apkalpošana" />
+        </div>
+        <div class="form-group">
+          <label for="process">Process</label>
+          <input id="process" name="process" type="text" placeholder="Piem.: Iesniegumu apstrāde" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="subCode">Apakšprocesa kods</label>
+          <input id="subCode" name="subCode" type="text" placeholder="Piem.: AP-01" />
+        </div>
+        <div class="form-group">
+          <label for="subGroup">Apakšprocesu grupa</label>
+          <input id="subGroup" name="subGroup" type="text" placeholder="Piem.: Klientu apkalpošana" />
+        </div>
+        <div class="form-group">
+          <label for="subprocess">Apakšprocess</label>
+          <input id="subprocess" name="subprocess" type="text" placeholder="Piem.: Iesnieguma reģistrācija" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="service">Pakalpojums</label>
+          <input id="service" name="service" type="text" placeholder="Piem.: Klientu konsultācijas" />
+        </div>
+        <div class="form-group">
+          <label for="kpi">Galvenais KPI</label>
+          <input id="kpi" name="kpi" type="text" placeholder="Piem.: Apstrādes laiks, apmierinātība" />
+        </div>
+        <div class="form-group">
+          <label for="risk">Galvenais risks</label>
+          <input id="risk" name="risk" type="text" placeholder="Piem.: Kļūdaini lēmumi, termiņu kavēšana" />
+        </div>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="riskLevel">Riska līmenis</label>
+          <select id="riskLevel" name="riskLevel">
+            <option value="">– nav novērtēts –</option>
+            <option value="zems">Zems</option>
+            <option value="vidējs">Vidējs</option>
+            <option value="augsts">Augsts</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="role">Atbildīgā loma</label>
+          <input id="role" name="role" type="text" placeholder="Piem.: Procesa īpašnieks" />
+        </div>
+        <div class="form-group">
+          <label for="unit">Struktūrvienība</label>
+          <input id="unit" name="unit" type="text" placeholder="Piem.: Klientu apkalpošanas nodaļa" />
+        </div>
+      </div>
+
+      <button type="submit">Pievienot ierakstu</button>
+    </form>
+  </div>
+
+  <div class="card">
+    <div class="toolbar">
+      <h2>Reģistra saraksts</h2>
+      <input id="filterInput" type="text" placeholder="Filtrs (mērķis / uzdevums / process / pakalpojums / loma)" />
+    </div>
+
+    <table id="recordTable">
+      <thead>
+        <tr>
+          <th>Stratēģiskais mērķis</th>
+          <th>Uzdevums</th>
+          <th>Process</th>
+          <th>Apakšproc. kods</th>
+          <th>Apakšproc. grupa</th>
+          <th>Apakšprocess</th>
+          <th>Pakalpojums</th>
+          <th>KPI</th>
+          <th>Risks</th>
+          <th>Riska līmenis</th>
+          <th>Loma</th>
+          <th>Struktūrvienība</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- ieraksti tiks ielikti ar JS -->
+      </tbody>
+    </table>
+  </div>
+
+  <script>
+    const form = document.getElementById('recordForm');
+    const tableBody = document.querySelector('#recordTable tbody');
+    const filterInput = document.getElementById('filterInput');
+
+    let records = [];
+
+    function renderTable(filterText = '') {
+      tableBody.innerHTML = '';
+      const f = filterText.toLowerCase().trim();
+
+      records
+        .filter(r => {
+          if (!f) return true;
+          const composite = (
+            r.goal + ' ' + r.task + ' ' + r.process +
+            ' ' + r.subCode + ' ' + r.subGroup + ' ' + r.subprocess +
+            ' ' + r.service + ' ' + r.kpi + ' ' + r.risk +
+            ' ' + r.role + ' ' + r.unit
+          ).toLowerCase();
+          return composite.includes(f);
+        })
+        .forEach(r => {
+          const tr = document.createElement('tr');
+
+          function addCell(text) {
+            const td = document.createElement('td');
+            td.textContent = text || '';
+            tr.appendChild(td);
+          }
+
+          addCell(r.goal);
+          addCell(r.task);
+          addCell(r.process);
+          addCell(r.subCode);
+          addCell(r.subGroup);
+          addCell(r.subprocess);
+          addCell(r.service);
+          addCell(r.kpi);
+          addCell(r.risk);
+          addCell(r.riskLevel);
+          addCell(r.role);
+          addCell(r.unit);
+
+          tableBody.appendChild(tr);
+        });
+    }
+
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+
+      const newRecord = {
+        goal: form.goal.value.trim(),
+        task: form.task.value.trim(),
+        process: form.process.value.trim(),
+        subCode: form.subCode.value.trim(),
+        subGroup: form.subGroup.value.trim(),
+        subprocess: form.subprocess.value.trim(),
+        service: form.service.value.trim(),
+        kpi: form.kpi.value.trim(),
+        risk: form.risk.value.trim(),
+        riskLevel: form.riskLevel.value,
+        role: form.role.value.trim(),
+        unit: form.unit.value.trim()
+      };
+
+      if (!newRecord.process && !newRecord.subprocess) {
+        alert('Lūdzu aizpildiet vismaz lauku "Process" vai "Apakšprocess".');
+        return;
+      }
+
+      records.push(newRecord);
+      form.reset();
+      renderTable(filterInput.value);
+    });
+
+    filterInput.addEventListener('input', () => {
+      renderTable(filterInput.value);
+    });
+
+    renderTable();
+  </script>
+</body>
+</html>
