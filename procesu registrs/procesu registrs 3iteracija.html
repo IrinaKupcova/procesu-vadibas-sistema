@@ -300,6 +300,10 @@
       <div>Parastais: <code>?view=basic</code></div>
       <div>Paplašinātais: <code>?view=extended</code></div>
       <div>Administrators: <code>?view=admin</code></div>
+      <div style="margin-top:4px;">
+        <button type="button" id="copyLinkBtn">Kopēt pašreizējo saiti</button>
+        <button type="button" id="emailLinkBtn">Nosūtīt saiti ar e-pastu</button>
+      </div>
     </div>
 
     <table id="recordTable">
@@ -420,6 +424,8 @@
 
     const exportProcessCsvBtn = document.getElementById('exportProcessCsv');
     const exportSubprocessCsvBtn = document.getElementById('exportSubprocessCsv');
+    const copyLinkBtn = document.getElementById('copyLinkBtn');
+    const emailLinkBtn = document.getElementById('emailLinkBtn');
 
     const resetButton = document.getElementById('resetButton');
     const rebuildMatrixBtn = document.getElementById('rebuildMatrix');
@@ -742,6 +748,34 @@
         r.unit
       ]);
       exportCsv('apakšprocesu-katalogs.csv', headers, rows);
+    });
+
+    copyLinkBtn.addEventListener('click', async () => {
+      const url = window.location.href;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          await navigator.clipboard.writeText(url);
+          alert('Saite nokopēta starpliktuvē.');
+        } else {
+          // Rezerves variants – ievades lauks
+          const tmp = document.createElement('input');
+          tmp.value = url;
+          document.body.appendChild(tmp);
+          tmp.select();
+          document.execCommand('copy');
+          document.body.removeChild(tmp);
+          alert('Saite nokopēta starpliktuvē.');
+        }
+      } catch (e) {
+        alert('Neizdevās nokopēt saiti. Varat iezīmēt un kopēt adresi manuāli.');
+      }
+    });
+
+    emailLinkBtn.addEventListener('click', () => {
+      const url = window.location.href;
+      const subject = encodeURIComponent('Procesu reģistra saite');
+      const body = encodeURIComponent('Sveiki,\n\nlūk, saite uz procesu reģistru:\n' + url + '\n\nAr cieņu,');
+      window.location.href = 'mailto:?subject=' + subject + '&body=' + body;
     });
 
     function buildMatrixTable(headers, rows) {
