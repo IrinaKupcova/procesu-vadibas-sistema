@@ -1,43 +1,623 @@
-<<<<<<< HEAD
 <!DOCTYPE html>
 <html lang="lv">
-<head><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<head>
   <meta charset="UTF-8" />
   <title>Integrētais procesu reģistrs</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-      background-color: #f5f7fb;
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f7fb; }
+    h1 { font-size: 24px; margin-bottom: 8px; }
+    .tagline { font-size: 13px; color: #555; margin-bottom: 16px; }
+    .card { background: #fff; border-radius: 8px; padding: 16px 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 20px; }
+    .form-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; }
+    .form-group { display: flex; flex-direction: column; flex: 1 1 180px; min-width: 160px; }
+    label { font-size: 11px; font-weight: bold; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.04em; color: #555; }
+    input, select, textarea { padding: 6px 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 13px; }
+    textarea { resize: vertical; min-height: 50px; }
+    button { padding: 8px 16px; border: none; border-radius: 4px; background-color: #2563eb; color: #fff; font-size: 14px; cursor: pointer; margin-top: 6px; }
+    button:hover { background-color: #1d4ed8; }
+    table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 8px; overflow: hidden; }
+    th, td { padding: 8px 10px; font-size: 12px; border-bottom: 1px solid #e5e7eb; text-align: left; vertical-align: top; }
+    th { background-color: #eff1f7; font-weight: bold; text-transform: uppercase; letter-spacing: 0.04em; font-size: 10px; }
+    tr:nth-child(even) td { background-color: #fafbff; }
+    .toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; gap: 10px; }
+    .toolbar input { max-width: 260px; }
+    .view-switch { display: flex; gap: 12px; align-items: center; font-size: 12px; }
+    .col-basic { background-color: #e0e0e0; }
+    .col-extended { background-color: #cde4a1; }
+    .col-admin { background-color: #9fc5e8; }
+    .export-buttons { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+    .share-links { margin-top: 4px; font-size: 11px; color: #444; }
+    .share-links code { background: #f3f4f6; padding: 2px 4px; border-radius: 4px; }
+    .link-button { background: none; color: #2563eb; border: none; padding: 0; cursor: pointer; text-decoration: underline; font-size: 12px; }
+    .link-button:hover { color: #1d4ed8; }
+    .status { font-size: 12px; color: #334155; margin-top: 6px; }
+    .status.error { color: #b91c1c; }
+    .status.ok { color: #166534; }
+  </style>
+</head>
+<body>
+  <h1>Integrētais procesu reģistrs</h1>
+  <div class="tagline">
+    Skati: <strong>pamatreģistrs (pelēkie)</strong>, <strong>paplašinātais (pelēkie + zaļie)</strong>, <strong>administratora skats (arī zilie)</strong>.
+    Dati tiek glabāti Supabase datubāzē.
+  </div>
+
+  <!-- 1) Reģistrs sākumā -->
+  <div class="card">
+    <div class="toolbar">
+      <h2>Procesu reģistrs</h2>
+      <div class="view-switch">
+        <span>Skats:</span>
+        <label><input type="radio" name="viewMode" value="basic" checked> pamatreģistrs</label>
+        <label><input type="radio" name="viewMode" value="extended"> paplašinātais</label>
+        <label><input type="radio" name="viewMode" value="admin"> administrators</label>
+      </div>
+      <input id="filterInput" type="text" placeholder="Filtrs (procesu grupa / uzdevums / process)" />
+    </div>
+
+    <div class="export-buttons">
+      <button type="button" id="exportProcessCsv">Eksportēt procesu reģistru (CSV)</button>
+      <button type="button" id="exportSubprocessCsv">Eksportēt apakšprocesu katalogu (CSV)</button>
+      <button type="button" id="refreshBtn">Atsvaidzināt no DB</button>
+    </div>
+
+    <div class="share-links">
+      URL parametri skatiem:
+      <div>Parastais: <code>?view=basic</code></div>
+      <div>Paplašinātais: <code>?view=extended</code></div>
+      <div>Administrators: <code>?view=admin</code></div>
+      <div style="margin-top:4px;">
+        <button type="button" id="copyLinkBtn">Kopēt pašreizējo saiti</button>
+        <button type="button" id="emailLinkBtn">Nosūtīt saiti ar e-pastu</button>
+      </div>
+    </div>
+
+    <div id="dbStatus" class="status"></div>
+
+    <table id="recordTable">
+      <thead>
+        <tr>
+          <th class="col-basic">Procesu grupa</th>
+          <th class="col-basic">Uzdevuma Nr.</th>
+          <th class="col-basic">Procesa Nr.</th>
+          <th class="col-basic">Uzdevums</th>
+          <th class="col-basic">Procesi, kas nodrošina uzdevuma dzīves ciklu</th>
+          <th class="col-basic">Apakšprocesi</th>
+          <th class="col-basic">Procesa īpašnieks</th>
+
+          <th class="col-extended">Procesu reglamentējošie ārējie normatīvie akti</th>
+          <th class="col-extended">Procesa dokumentācija</th>
+          <th class="col-extended">Procesa iniciātors (input)</th>
+          <th class="col-extended">Procesa galaproduktu skaits</th>
+          <th class="col-extended">Procesa galaproduktu vidējais izpildes laiks</th>
+
+          <th class="col-admin">Citi rādītāji</th>
+          <th class="col-admin">Uzdevuma/ procesa KPI</th>
+          <th class="col-admin">Pakalpojumi</th>
+          <th class="col-admin">Plūsmas shēma</th>
+          <th class="col-admin">IT resursi</th>
+          <th class="col-admin">Riski</th>
+          <th class="col-admin">Optimizācija</th>
+          <th class="col-admin">Output</th>
+          <th class="col-admin">Saistītais process</th>
+
+          <th class="col-basic">Darbības</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- 2) Pievienot procesu -->
+  <div class="card">
+    <h2>Pievienot procesu</h2>
+    <form id="recordForm">
+      <div class="form-row">
+        <div class="form-group"><label for="procGroup">Procesu grupa</label><input id="procGroup" name="procGroup" type="text" /></div>
+        <div class="form-group"><label for="taskNo">Uzdevuma Nr.</label><input id="taskNo" name="taskNo" type="text" /></div>
+        <div class="form-group"><label for="processNo">Procesa Nr.</label><input id="processNo" name="processNo" type="text" /></div>
+        <div class="form-group"><label for="task">Uzdevums</label><input id="task" name="task" type="text" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label for="processLife">Procesi, kas nodrošina uzdevuma dzīves ciklu</label><input id="processLife" name="processLife" type="text" /></div>
+        <div class="form-group"><label for="processOwner">Procesa īpašnieks</label><input id="processOwner" name="processOwner" type="text" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label for="laws">Normatīvie akti</label><input id="laws" name="laws" type="text" /></div>
+        <div class="form-group"><label for="docs">Procesa dokumentācija</label><input id="docs" name="docs" type="text" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label for="input">Input</label><input id="input" name="input" type="text" /></div>
+        <div class="form-group"><label for="outputCount">Output skaits</label><input id="outputCount" name="outputCount" type="number" min="0" /></div>
+        <div class="form-group"><label for="outputAvgTime">Vid. izpildes laiks</label><input id="outputAvgTime" name="outputAvgTime" type="text" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label for="otherIndicators">Citi rādītāji</label><input id="otherIndicators" name="otherIndicators" type="text" /></div>
+        <div class="form-group"><label for="kpi">KPI</label><input id="kpi" name="kpi" type="text" /></div>
+        <div class="form-group"><label for="services">Pakalpojumi</label><input id="services" name="services" type="text" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label for="hasFlow">Plūsmas shēma</label>
+          <select id="hasFlow" name="hasFlow">
+            <option value="">– nav norādīts –</option>
+            <option value="jā">jā</option>
+            <option value="nē">nē</option>
+          </select>
+        </div>
+        <div class="form-group"><label for="itResources">IT resursi</label><input id="itResources" name="itResources" type="text" /></div>
+        <div class="form-group"><label for="riskInfo">Riski</label><input id="riskInfo" name="riskInfo" type="text" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label for="optInfo">Optimizācija</label><input id="optInfo" name="optInfo" type="text" /></div>
+        <div class="form-group"><label for="outputs">Output</label><input id="outputs" name="outputs" type="text" /></div>
+        <div class="form-group"><label for="linkedProcess">Saistītais process</label><input id="linkedProcess" name="linkedProcess" type="text" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><button type="submit" id="saveButton">Saglabāt</button></div>
+        <div class="form-group"><button type="button" id="resetButton">Atpakaļ</button></div>
+      </div>
+    </form>
+  </div>
+
+  <!-- 3) Apakšprocesi -->
+  <div class="card" id="subprocessCard">
+    <h2>Apakšprocesu katalogs</h2>
+    <form id="subprocessForm">
+      <div class="form-row">
+        <div class="form-group"><label for="spCode">Apakšprocesa kods</label><input id="spCode" name="spCode" type="text" /></div>
+        <div class="form-group"><label for="spGroup">Apakšprocesu grupa</label><input id="spGroup" name="spGroup" type="text" /></div>
+        <div class="form-group"><label for="spTaskNo">Uzdevuma Nr.</label><input id="spTaskNo" name="spTaskNo" type="text" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label for="spTask">Uzdevums</label><input id="spTask" name="spTask" type="text" /></div>
+        <div class="form-group"><label for="spProcess">Process</label><input id="spProcess" name="spProcess" type="text" /></div>
+        <div class="form-group"><label for="spName">Apakšprocess</label><input id="spName" name="spName" type="text" /></div>
+        <div class="form-group"><label for="spUnit">Struktūrvienība</label><input id="spUnit" name="spUnit" type="text" /></div>
+      </div>
+      <button type="submit">Saglabāt apakšprocesu</button>
+    </form>
+
+    <div class="toolbar" style="margin-top: 16px;">
+      <h3>Apakšprocesu saraksts</h3>
+      <input id="spFilterInput" type="text" placeholder="Filtrs (kods / grupa / process / apakšprocess)" />
+    </div>
+
+    <table id="subprocessTable">
+      <thead>
+        <tr>
+          <th>Kods</th>
+          <th>Apakšprocesu grupa</th>
+          <th>Uzdevuma Nr.</th>
+          <th>Uzdevums</th>
+          <th>Process</th>
+          <th>Apakšprocess</th>
+          <th>Struktūrvienība</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <!-- 4) Matrica -->
+  <div class="card">
+    <h2>Matrica: Uzdevumi ↔ Procesi un Procesi ↔ Apakšprocesi</h2>
+    <button type="button" id="rebuildMatrix">Pārrēķināt matricu</button>
+    <h3>Uzdevumi ↔ Procesi</h3>
+    <div id="taskProcessMatrix"></div>
+    <h3>Procesi ↔ Apakšprocesi</h3>
+    <div id="processSubprocessMatrix"></div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://ettesmdcpizztgwewhpx.supabase.co";
+    const SUPABASE_ANON_KEY = "sb_publishable_FwFOqhTwn6LYQvFd2z0cPA_fCf3H_8-";
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    const TABLE_PROCESSES = "procesu_registrs";
+    const TABLE_SUBPROCESSES = "apakšprocesu_katalogs";
+
+    const form = document.getElementById('recordForm');
+    const tableBody = document.querySelector('#recordTable tbody');
+    const filterInput = document.getElementById('filterInput');
+    const viewRadios = document.querySelectorAll('input[name="viewMode"]');
+    const refreshBtn = document.getElementById('refreshBtn');
+    const dbStatus = document.getElementById('dbStatus');
+
+    const spForm = document.getElementById('subprocessForm');
+    const spTableBody = document.querySelector('#subprocessTable tbody');
+    const spFilterInput = document.getElementById('spFilterInput');
+    const subprocessCard = document.getElementById('subprocessCard');
+
+    const exportProcessCsvBtn = document.getElementById('exportProcessCsv');
+    const exportSubprocessCsvBtn = document.getElementById('exportSubprocessCsv');
+    const copyLinkBtn = document.getElementById('copyLinkBtn');
+    const emailLinkBtn = document.getElementById('emailLinkBtn');
+    const resetButton = document.getElementById('resetButton');
+    const rebuildMatrixBtn = document.getElementById('rebuildMatrix');
+    const taskProcessMatrixDiv = document.getElementById('taskProcessMatrix');
+    const processSubprocessMatrixDiv = document.getElementById('processSubprocessMatrix');
+
+    let records = [];
+    let spRecords = [];
+    let currentViewMode = 'basic';
+
+    function setStatus(text, kind) {
+      dbStatus.textContent = text || '';
+      dbStatus.classList.remove('error', 'ok');
+      if (kind) dbStatus.classList.add(kind);
     }
-    h1 {
-      font-size: 24px;
-      margin-bottom: 8px;
+
+    function applyViewMode() {
+      const showBasic = currentViewMode === 'basic' || currentViewMode === 'extended' || currentViewMode === 'admin';
+      const showExtended = currentViewMode === 'extended' || currentViewMode === 'admin';
+      const showAdmin = currentViewMode === 'admin';
+      document.querySelectorAll('th.col-basic, td.col-basic').forEach(el => el.style.display = showBasic ? '' : 'none');
+      document.querySelectorAll('th.col-extended, td.col-extended').forEach(el => el.style.display = showExtended ? '' : 'none');
+      document.querySelectorAll('th.col-admin, td.col-admin').forEach(el => el.style.display = showAdmin ? '' : 'none');
     }
-    .tagline {
-      font-size: 13px;
-      color: #555;
-      margin-bottom: 16px;
+
+    function renderTable(filterText = '') {
+      tableBody.innerHTML = '';
+      const f = filterText.toLowerCase().trim();
+
+      records
+        .filter(r => {
+          if (!f) return true;
+          const composite = (
+            (r.procesu_grupa || '') + ' ' + (r.uzdevuma_nr || '') + ' ' + (r.procesa_nr || '') + ' ' +
+            (r.uzdevums || '') + ' ' + (r.procesi_dzives_ciklam || '') + ' ' + (r.procesa_ipasnieks || '') + ' ' +
+            (r.normativie_akti || '') + ' ' + (r.procesa_dokumentacija || '') + ' ' + (r.procesa_iniciators || '') + ' ' +
+            (r.galaproduktu_skaits || '') + ' ' + (r.videjais_izpildes_laiks || '') + ' ' +
+            (r.citi_raditaji || '') + ' ' + (r.kpi || '') + ' ' + (r.pakalpojumi || '') + ' ' +
+            (r.plusmas_shema || '') + ' ' + (r.it_resursi || '') + ' ' + (r.riski || '') + ' ' +
+            (r.optimizacija || '') + ' ' + (r.output || '') + ' ' + (r.saistitais_process || '')
+          ).toLowerCase();
+          return composite.includes(f);
+        })
+        .forEach(r => {
+          const tr = document.createElement('tr');
+
+          function addCell(text, cls) {
+            const td = document.createElement('td');
+            if (cls) td.classList.add(cls);
+            td.textContent = text || '';
+            tr.appendChild(td);
+          }
+
+          addCell(r.procesu_grupa, 'col-basic');
+          addCell(r.uzdevuma_nr, 'col-basic');
+          addCell(r.procesa_nr, 'col-basic');
+          addCell(r.uzdevums, 'col-basic');
+          addCell(r.procesi_dzives_ciklam, 'col-basic');
+
+          const tdSub = document.createElement('td');
+          tdSub.classList.add('col-basic');
+          const btn = document.createElement('button');
+          btn.type = 'button';
+          btn.className = 'link-button';
+          btn.textContent = 'Skatīt apakšprocesus';
+          btn.addEventListener('click', () => {
+            spFilterInput.value = r.procesi_dzives_ciklam || r.uzdevums || '';
+            renderSubprocessTable(spFilterInput.value);
+            subprocessCard.scrollIntoView({ behavior: 'smooth' });
+          });
+          tdSub.appendChild(btn);
+          tr.appendChild(tdSub);
+
+          addCell(r.procesa_ipasnieks, 'col-basic');
+
+          addCell(r.normativie_akti, 'col-extended');
+          addCell(r.procesa_dokumentacija, 'col-extended');
+          addCell(r.procesa_iniciators, 'col-extended');
+          addCell(r.galaproduktu_skaits, 'col-extended');
+          addCell(r.videjais_izpildes_laiks, 'col-extended');
+
+          addCell(r.citi_raditaji, 'col-admin');
+          addCell(r.kpi, 'col-admin');
+          addCell(r.pakalpojumi, 'col-admin');
+          addCell(r.plusmas_shema, 'col-admin');
+          addCell(r.it_resursi, 'col-admin');
+          addCell(r.riski, 'col-admin');
+          addCell(r.optimizacija, 'col-admin');
+          addCell(r.output, 'col-admin');
+          addCell(r.saistitais_process, 'col-admin');
+
+          const tdActions = document.createElement('td');
+          tdActions.classList.add('col-basic');
+          const copyBtn = document.createElement('button');
+          copyBtn.type = 'button';
+          copyBtn.className = 'link-button';
+          copyBtn.textContent = 'Kopēt uz formu';
+          copyBtn.addEventListener('click', () => {
+            form.procGroup.value = r.procesu_grupa || '';
+            form.taskNo.value = r.uzdevuma_nr || '';
+            form.processNo.value = r.procesa_nr || '';
+            form.task.value = r.uzdevums || '';
+            form.processLife.value = r.procesi_dzives_ciklam || '';
+            form.processOwner.value = r.procesa_ipasnieks || '';
+            form.laws.value = r.normativie_akti || '';
+            form.docs.value = r.procesa_dokumentacija || '';
+            form.input.value = r.procesa_iniciators || '';
+            form.outputCount.value = r.galaproduktu_skaits || '';
+            form.outputAvgTime.value = r.videjais_izpildes_laiks || '';
+            form.otherIndicators.value = r.citi_raditaji || '';
+            form.kpi.value = r.kpi || '';
+            form.services.value = r.pakalpojumi || '';
+            form.hasFlow.value = r.plusmas_shema || '';
+            form.itResources.value = r.it_resursi || '';
+            form.riskInfo.value = r.riski || '';
+            form.optInfo.value = r.optimizacija || '';
+            form.outputs.value = r.output || '';
+            form.linkedProcess.value = r.saistitais_process || '';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          });
+          tdActions.appendChild(copyBtn);
+          tr.appendChild(tdActions);
+
+          tableBody.appendChild(tr);
+        });
+
+      applyViewMode();
     }
-    .card {
-      background: #ffffff;
-      border-radius: 8px;
-      padding: 16px 20px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.08);
-      margin-bottom: 20px;
+
+    function renderSubprocessTable(filterText = '') {
+      spTableBody.innerHTML = '';
+      const f = filterText.toLowerCase().trim();
+
+      spRecords
+        .filter(r => {
+          if (!f) return true;
+          const composite = (
+            (r.kods || '') + ' ' + (r.apaksprocesu_grupa || '') + ' ' + (r.uzdevuma_nr || '') + ' ' +
+            (r.uzdevums || '') + ' ' + (r.process_kuru_nodrosina || '') + ' ' + (r.apaksprocess || '') + ' ' + (r.strukturvieniba || '')
+          ).toLowerCase();
+          return composite.includes(f);
+        })
+        .forEach(r => {
+          const tr = document.createElement('tr');
+          function addCell(text) {
+            const td = document.createElement('td');
+            td.textContent = text || '';
+            tr.appendChild(td);
+          }
+          addCell(r.kods);
+          addCell(r.apaksprocesu_grupa);
+          addCell(r.uzdevuma_nr);
+          addCell(r.uzdevums);
+          addCell(r.process_kuru_nodrosina);
+          addCell(r.apaksprocess);
+          addCell(r.strukturvieniba);
+          spTableBody.appendChild(tr);
+        });
     }
-    .form-row {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-      margin-bottom: 10px;
+
+    async function loadAllFromDb() {
+      setStatus('Ielādē datus no datubāzes…', '');
+
+      const { data: procData, error: procErr } = await supabase.from(TABLE_PROCESSES).select('*').order('id', { ascending: true });
+      if (procErr) { setStatus('DB kļūda (procesi): ' + procErr.message, 'error'); return; }
+
+      const { data: spData, error: spErr } = await supabase.from(TABLE_SUBPROCESSES).select('*').order('id', { ascending: true });
+      if (spErr) { setStatus('DB kļūda (apakšprocesi): ' + spErr.message, 'error'); return; }
+
+      records = procData || [];
+      spRecords = spData || [];
+      renderTable(filterInput.value);
+      renderSubprocessTable(spFilterInput.value);
+      rebuildMatrix();
+      setStatus('Dati ielādēti. Procesi: ' + records.length + ', apakšprocesi: ' + spRecords.length, 'ok');
     }
-    .form-group {
-      display: flex;
-      flex-direction: column;
-      flex: 1 1 180px;
-      min-width: 160px;
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      const payload = {
+        procesu_grupa: form.procGroup.value.trim(),
+        uzdevuma_nr: form.taskNo.value.trim(),
+        procesa_nr: form.processNo.value.trim(),
+        uzdevums: form.task.value.trim(),
+        procesi_dzives_ciklam: form.processLife.value.trim(),
+        procesa_ipasnieks: form.processOwner.value.trim(),
+        normativie_akti: form.laws.value.trim(),
+        procesa_dokumentacija: form.docs.value.trim(),
+        procesa_iniciators: form.input.value.trim(),
+        galaproduktu_skaits: String(form.outputCount.value || '').trim(),
+        videjais_izpildes_laiks: form.outputAvgTime.value.trim(),
+        citi_raditaji: form.otherIndicators.value.trim(),
+        kpi: form.kpi.value.trim(),
+        pakalpojumi: form.services.value.trim(),
+        plusmas_shema: form.hasFlow.value,
+        it_resursi: form.itResources.value.trim(),
+        riski: form.riskInfo.value.trim(),
+        optimizacija: form.optInfo.value.trim(),
+        output: form.outputs.value.trim(),
+        saistitais_process: form.linkedProcess.value.trim()
+      };
+      if (!payload.procesu_grupa && !payload.uzdevums && !payload.procesi_dzives_ciklam) {
+        alert('Lūdzu aizpildiet vismaz “Procesu grupa” vai “Uzdevums” vai “Procesi, kas nodrošina uzdevuma dzīves ciklu”.');
+        return;
+      }
+
+      setStatus('Saglabā procesu datubāzē…', '');
+      const { data, error } = await supabase.from(TABLE_PROCESSES).insert(payload).select('*').single();
+      if (error) { setStatus('DB saglabāšanas kļūda: ' + error.message, 'error'); return; }
+
+      records.push(data);
+      form.reset();
+      renderTable(filterInput.value);
+      rebuildMatrix();
+      setStatus('Saglabāts.', 'ok');
+    });
+
+    spForm.addEventListener('submit', async e => {
+      e.preventDefault();
+      const payload = {
+        kods: spForm.spCode.value.trim(),
+        apaksprocesu_grupa: spForm.spGroup.value.trim(),
+        uzdevuma_nr: spForm.spTaskNo.value.trim(),
+        uzdevums: spForm.spTask.value.trim(),
+        process_kuru_nodrosina: spForm.spProcess.value.trim(),
+        apaksprocess: spForm.spName.value.trim(),
+        strukturvieniba: spForm.spUnit.value.trim()
+      };
+      if (!payload.kods && !payload.apaksprocess) { alert('Lūdzu aizpildiet vismaz “Apakšprocesa kods” vai “Apakšprocess”.'); return; }
+
+      setStatus('Saglabā apakšprocesu datubāzē…', '');
+      const { data, error } = await supabase.from(TABLE_SUBPROCESSES).insert(payload).select('*').single();
+      if (error) { setStatus('DB saglabāšanas kļūda (apakšprocess): ' + error.message, 'error'); return; }
+
+      spRecords.push(data);
+      spForm.reset();
+      renderSubprocessTable(spFilterInput.value);
+      rebuildMatrix();
+      setStatus('Saglabāts apakšprocess.', 'ok');
+    });
+
+    resetButton.addEventListener('click', () => form.reset());
+    filterInput.addEventListener('input', () => renderTable(filterInput.value));
+    spFilterInput.addEventListener('input', () => renderSubprocessTable(spFilterInput.value));
+    viewRadios.forEach(radio => radio.addEventListener('change', () => { currentViewMode = radio.value; applyViewMode(); }));
+    refreshBtn.addEventListener('click', loadAllFromDb);
+
+    function exportCsv(filename, headers, rows) {
+      const sep = ';';
+      const headerLine = headers.join(sep);
+      const dataLines = rows.map(r =>
+        r.map(v => {
+          const value = (v ?? '').toString().replace(/"/g, '""');
+          return `"${value}"`;
+        }).join(sep)
+      );
+      const csvContent = [headerLine, ...dataLines].join('\r\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
     }
+
+    exportProcessCsvBtn.addEventListener('click', () => {
+      const headers = [
+        'Procesu grupa','Uzdevuma Nr.','Procesa Nr.','Uzdevums','Procesi, kas nodrošina uzdevuma dzīves ciklu','Procesa īpašnieks',
+        'Normatīvie akti','Procesa dokumentācija','Input','Output skaits','Vid. izpildes laiks',
+        'Citi rādītāji','KPI','Pakalpojumi','Plūsmas shēma','IT resursi','Riski','Optimizācija','Output','Saistītais process'
+      ];
+      const rows = records.map(r => [
+        r.procesu_grupa, r.uzdevuma_nr, r.procesa_nr, r.uzdevums, r.procesi_dzives_ciklam, r.procesa_ipasnieks,
+        r.normativie_akti, r.procesa_dokumentacija, r.procesa_iniciators, r.galaproduktu_skaits, r.videjais_izpildes_laiks,
+        r.citi_raditaji, r.kpi, r.pakalpojumi, r.plusmas_shema, r.it_resursi, r.riski, r.optimizacija, r.output, r.saistitais_process
+      ]);
+      exportCsv('procesu-registrs.csv', headers, rows);
+    });
+
+    exportSubprocessCsvBtn.addEventListener('click', () => {
+      const headers = ['Kods','Apakšprocesu grupa','Uzdevuma Nr.','Uzdevums','Process','Apakšprocess','Struktūrvienība'];
+      const rows = spRecords.map(r => [r.kods, r.apaksprocesu_grupa, r.uzdevuma_nr, r.uzdevums, r.process_kuru_nodrosina, r.apaksprocess, r.strukturvieniba]);
+      exportCsv('apakšprocesu-katalogs.csv', headers, rows);
+    });
+
+    copyLinkBtn.addEventListener('click', async () => {
+      const url = window.location.href;
+      try {
+        if (navigator.clipboard && navigator.clipboard.writeText) { await navigator.clipboard.writeText(url); alert('Saite nokopēta.'); return; }
+      } catch {}
+      alert('Neizdevās nokopēt automātiski. Nokopē adresi no pārlūka.');
+    });
+
+    emailLinkBtn.addEventListener('click', () => {
+      const url = window.location.href;
+      const subject = encodeURIComponent('Procesu reģistra saite');
+      const body = encodeURIComponent('Sveiki,\\n\\nlūk, saite uz procesu reģistru:\\n' + url + '\\n\\nAr cieņu,');
+      window.location.href = 'mailto:?subject=' + subject + '&body=' + body;
+    });
+
+    function buildMatrixTable(headers, rows) {
+      if (!headers.length || !rows.length) return '<p style="font-size:12px;color:#666;">Nav datu matricai.</p>';
+      let html = '<table><thead><tr><th></th>';
+      headers.forEach(h => { html += '<th>' + h + '</th>'; });
+      html += '</tr></thead><tbody>';
+      rows.forEach(row => {
+        html += '<tr><th>' + row.label + '</th>';
+        headers.forEach(h => { html += '<td>' + (row.map.has(h) ? 'X' : '') + '</td>'; });
+        html += '</tr>';
+      });
+      html += '</tbody></table>';
+      return html;
+    }
+
+    function rebuildMatrix() {
+      const taskKeys = new Map();
+      const processKeys = new Map();
+      const taskToProcess = new Map();
+
+      records.forEach(r => {
+        const taskKey = ((r.uzdevuma_nr || '') + ' ' + (r.uzdevums || '')).trim() || '(nav uzdevuma)';
+        const procLabel = (r.procesi_dzives_ciklam || '').trim() || '(nav procesa)';
+        if (!taskKeys.has(taskKey)) taskKeys.set(taskKey, taskKey);
+        if (!processKeys.has(procLabel)) processKeys.set(procLabel, procLabel);
+        if (!taskToProcess.has(taskKey)) taskToProcess.set(taskKey, new Set());
+        taskToProcess.get(taskKey).add(procLabel);
+      });
+
+      const procHeaders = Array.from(processKeys.values());
+      const taskRows = Array.from(taskKeys.keys()).map(label => ({ label, map: taskToProcess.get(label) || new Set() }));
+      taskProcessMatrixDiv.innerHTML = buildMatrixTable(procHeaders, taskRows);
+
+      const procKeys2 = new Map();
+      const subKeys = new Map();
+      const procToSub = new Map();
+
+      spRecords.forEach(r => {
+        const pLabel = (r.process_kuru_nodrosina || '').trim() || '(nav procesa)';
+        const sLabel = (r.apaksprocess || '').trim() || '(nav apakšprocesa)';
+        if (!procKeys2.has(pLabel)) procKeys2.set(pLabel, pLabel);
+        if (!subKeys.has(sLabel)) subKeys.set(sLabel, sLabel);
+        if (!procToSub.has(pLabel)) procToSub.set(pLabel, new Set());
+        procToSub.get(pLabel).add(sLabel);
+      });
+
+      const subHeaders = Array.from(subKeys.values());
+      const procRows = Array.from(procKeys2.values()).map(label => ({ label, map: procToSub.get(label) || new Set() }));
+      processSubprocessMatrixDiv.innerHTML = buildMatrixTable(subHeaders, procRows);
+    }
+
+    rebuildMatrixBtn.addEventListener('click', rebuildMatrix);
+
+    function initViewFromQuery() {
+      const params = new URLSearchParams(window.location.search);
+      const view = params.get('view');
+      if (!view) return;
+      const radio = Array.from(viewRadios).find(r => r.value === view);
+      if (radio) {
+        radio.checked = true;
+        currentViewMode = view;
+        applyViewMode();
+      }
+    }
+
+    initViewFromQuery();
+    loadAllFromDb();
+  </script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+  <meta charset="UTF-8" />
+  <title>Integrētais procesu reģistrs</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f5f7fb; }
+    h1 { font-size: 24px; margin-bottom: 8px; }
+    .tagline { font-size: 13px; color: #555; margin-bottom: 16px; }
+    .card { background: #fff; border-radius: 8px; padding: 16px 20px; box-shadow: 0 2px 6px rgba(0,0,0,0.08); margin-bottom: 20px; }
+    .form-row { display: flex; gap: 16px; flex-wrap: wrap; margin-bottom: 10px; }
+    .form-group { display: flex; flex-direction: column; flex: 1 1 180px; min-width: 160px; }
     label {
       font-size: 11px;
       font-weight: bold;
@@ -1747,3 +2327,25 @@ loadData();
 </body>
 </html>
 >>>>>>> 46fce49a262f241862c03bf50a80885a2486157f
+const fieldMap = {
+  procGroup: "procesu_grupa",
+  taskNo: "uzdevuma_nr",
+  processNo: "procesa_nr",
+  task: "uzdevums",
+  processLife: "procesi_dzives_ciklam",
+  processOwner: "procesa_ipasnieks",
+  laws: "normativie_akti",
+  docs: "procesa_dokumentacija",
+  input: "procesa_iniciators",
+  outputCount: "galaproduktu_skaits",
+  outputAvgTime: "videjais_izpildes_laiks",
+  otherIndicators: "citi_raditaji",
+  kpi: "kpi",
+  services: "pakalpojumi",
+  hasFlow: "plusmas_shema",
+  itResources: "it_resursi",
+  riskInfo: "riski",
+  optInfo: "optimizacija",
+  outputs: "output",
+  linkedProcess: "saistitais_process"
+};
