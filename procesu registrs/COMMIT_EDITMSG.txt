@@ -1,0 +1,19 @@
+
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+#
+# On branch main
+# Your branch is up to date with 'origin/main'.
+#
+# Changes to be committed:
+#	deleted:    procesu registrs/Arhivs/procesu-registrs.html
+#	deleted:    procesu registrs/procesu registrs 3iteracija.html
+#	modified:   procesu registrs/procesu-registrs 4iteracija.html
+#	new file:   procesu registrs/procesu-registrs.html
+#	deleted:    procesu registrs/procesu-registrs1iteracija.html
+#	deleted:    procesu registrs/procesu-registrs2iteracija.html
+#
+# Changes not staged for commit:
+#	deleted:    procesu registrs/procesu-registrs 4iteracija.html
+#	deleted:    procesu registrs/procesu-registrs.html
+#
