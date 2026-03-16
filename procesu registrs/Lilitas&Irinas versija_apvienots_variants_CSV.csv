@@ -1,0 +1,78 @@
+Procesu_grupa,Uzdevuma_Nr,Uzdevums,Procesa_numurs,Process,Procesa_galaprodukti,Apaksprocesi,Procesa_ipasnieks,Procesu_reglamentejosie_arejie_normativie_akti,Procesa_dokumentacija,Procesa_iniciators,Procesa_galaproduktu_skaits,Procesa_galaproduktu videjais_izpildes_laiks,Citi_raditaji,Uzdevuma_procesa_KPI,Pakalpojumi,Plusma_shema,IT_resursi,Risku_vadiba,Optimizacija,Saistitie_procesi
+Pamatdarbība – Nodokļu administrēšana_Serviss,P1,Nodokļu saistību dzīves cikla nodrosināšana,P1.1. ,Reģistrācija,"Reģistrēts NM NM reģistrā/ atteikums:
+P.1.1.1. SD veicējs
+P1.1.2. PSD veicējs
+P1.1.3. patentmaksātajs
+P1.1.4. pašnodarbinātājs
+P1.1.5. autoratlīdzības veicējs
+P1.1.6. struktūrvienība (jo piešķir NMR kodu, bet pēc loģikas būtu P1.2. procesā)
+P1.1.7.pārstāvniecības u.c....",Apakšprocesu katalogs'!A1,,,,Klienta pieprasījums ,"P.1.1.1. - reģistrēts xx / atteikts xx
+P1.1.2.  - reģistrēts xx / atteikts xx
+…..........","P.1.1.1. - reģistrēts vid_laiks / atteikts vid_laiks
+P1.1.2.  - reģistrēts vid_laiks / atteikts vid_laiks
+…..........",,Vidēja laika samazināšana,,,,,,
+Pamatdarbība – Nodokļu administrēšana_Serviss,P1,Nodokļu saistību dzīves cikla nodrosināšana,P1.2.,NM statusa un datu pārvaldība,"Aktualizēts/ nav aktualizēts statuss/ dati:
+P1.2.1. NACE
+P1.2.1. norēķinu konti/ maksājumu sistēmas
+P1.2.2. pilnvaras
+P1.2.3. labuma guvējie
+P1.2.4. MUN statuss
+P1.2.5. PVN statuss
+P1.2.6. SD konts u.c
+P.1.2.7. azartspeļu liegums u.c…....
+
+",Apakšprocesu katalogs'!A1,,,,"Kienta iesniegtā informācija/ fakts, kas iniciē klienta datu aktualizēšanu ","P1.2.1. aktualizēts/ nav aktualizēts 
+…....................","P1.2.1. aktualizēts izpildes vid_laiks/ nav aktualizēts izpildes vid_laiks 
+…....................",,Vidēja laika samazināšana,,,,,,
+Pamatdarbība – Nodokļu administrēšana_Serviss,P1,Nodokļu saistību dzīves cikla nodrosināšana,P1.3. ,Deklarēšana,"Pieņemta un reģistrēta deklarācija:
+P1.3.1. GID
+P1.3.2. IIN
+P1.3.3. PVN
+P1.3.4. Akcīzes u.c.
+….................",Apakšprocesu katalogs'!A1,,,,Klienta iesniegta deklarācija vai deklarēšanai sagatavoti dati,"P.1.3.1. - pieņemta un reģistrēta xx
+…..........",P1.3.1. izpildes vid_laiks/ nav aktualizēts izpildes vid_laiks ,,"Vidēja laika samazināšana, aprēķināts/ iekasēts nodokis ",,,,,,
+Pamatdarbība – Nodokļu administrēšana_Serviss,P1,Nodokļu saistību dzīves cikla nodrosināšana,P1.4. ,Aprēķins,"Aprēķināts maksājamais / atmaksājamais nodokļa apjoms:
+….......",Apakšprocesu katalogs'!A1,,,,Apstiprināta deklarācija un aktuāli klienta dati,,,,,,,,,,
+Pamatdarbība – Nodokļu administrēšana_Serviss,P1,Nodokļu saistību dzīves cikla nodrosināšana,P1.5. ,Maksājumu uzskaite,Reģistrēts maksājums vai fiksēta nesamaksāta summa,Apakšprocesu katalogs'!A1,,,,Aprēķina rezultāts un saņemta maksājuma informācija,,,,,,,,,,
+Pamatdarbība – Nodokļu administrēšana_Serviss,P1,Nodokļu saistību dzīves cikla nodrosināšana,P1.6. ,Parādu uzraudzība,"Veikti pasākumi:
+P1.6.1. parāda dzēšana, pārvirzīšana u.t.t.
+…..",Apakšprocesu katalogs'!A1,,,,Nesamaksāta vai daļēji apmaksāta saistība noteiktajā termiņā,,,,,,,,,,
+Pamatdarbība – Nodokļu administrēšana_Kontrole un piedziņa,P2,Nodokļu kontrole un audits ,P2.1.,Riska atlase,Atlasīti riska gadījumi / nodokļu maksātāji turpmākai pārbaudei,Apakšprocesu katalogs'!A1,,,,"Informācija par nodokļu maksātāju darbību, uzvedību vai datu neatbilstībām (riska indikatori, analītikas rezultāti)",,,,,,,,,,
+Pamatdarbība – Nodokļu administrēšana_Kontrole un piedziņa,P2,Nodokļu kontrole un audits ,P2.2. , Pārbaude,Pārbaudes rezultāti (konstatētas vai nekonstatētas neatbilstības),Apakšprocesu katalogs'!A1,,,,Atlasīts riska gadījums vai nodokļu maksātājs pārbaudei,,,,,,,,,,
+Pamatdarbība – Nodokļu administrēšana_Kontrole un piedziņa,P2,Nodokļu kontrole un audits ,P.2.3. ,Lēmums,"Veikti pasākumi riska novēršanai vai mazināšanai: 
+P2.4.1. Veikts preventīvais pasākums
+P2.4.2. Lēmums par sankciju piemēŗošanu u.c
+…................",Apakšprocesu katalogs'!A1,,,,Pārbaudes rezultāti,,,,,,,,,,
+Pamatdarbība – Nodokļu administrēšana_Kontrole un piedziņa,P2,Nodokļu kontrole un audits ,P.2.4. ,Sankciju piemērošana,"Piemērota sankcija (naudas sods, ierobežojums, cits normatīvajos aktos noteikts pasākums)",Apakšprocesu katalogs'!A1,,,,Pieņemts lēmums par sankciju piemērošanu,,,,,,,,,,
+Pamatdarbība – Muitas administrēšana,P3,Muitošanas un preču kontroles process ,P3.1. ,Muitas deklarācija,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Pamatdarbība – Muitas administrēšana,P3,Muitošanas un preču kontroles process ,P3.2. ,Riska izvērtējums,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Pamatdarbība – Muitas administrēšana,P3,Muitošanas un preču kontroles process ,P3.3. ,Kontrole,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Pamatdarbība – Muitas administrēšana,P3,Muitošanas un preču kontroles process ,P3.4. ,Lēmums,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Pamatdarbība – Muitas administrēšana,P3,Muitošanas un preču kontroles process ,P3.5. ,Uzskaite,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Pamatdarbība – Konsultācijas un informēšana,P4,Klientu iesniegumu un konsultāciju pārvaldība ,P4.1. ,Iesniegums/jautājums,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Pamatdarbība – Konsultācijas un informēšana,P4,Klientu iesniegumu un konsultāciju pārvaldība ,P4.2. ,Izvērtēšana,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Pamatdarbība – Konsultācijas un informēšana,P4,Klientu iesniegumu un konsultāciju pārvaldība ,P4.3. ,Atbilde,"P4.3.1. Sniegta vispārīga informācija (KD)
+P4.3.2. Sniegta informācija par maksājuma statusu un parādiem (MUD)
+P4.3.3. ….",Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Pamatdarbība – Konsultācijas un informēšana,P4,Klientu iesniegumu un konsultāciju pārvaldība ,P4.4. ,Informēšana,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi – Stratēģiskā vadība,A1,Stratēģijas un procesu/pakalpojumu vadība,A.1.1. ,Stratēģijas izstrāde ,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi – Stratēģiskā vadība,A1,Stratēģijas un procesu/pakalpojumu vadība,A1.2. ,KPI noteikšana,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi – Stratēģiskā vadība,A1,Stratēģijas un procesu/pakalpojumu vadība,A1.3. ,Uzraudzība,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi – Stratēģiskā vadība,A1,Stratēģijas un procesu/pakalpojumu vadība,A1.4. ,Uzlabošana,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi – Resursu vadība,A2,Personāla un finanšu resursu vadība ,A2.1. ,Plānošana,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi – Resursu vadība,A2,Personāla un finanšu resursu vadība ,A2.2. ,Uzskaite,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi – Resursu vadība,A2,Personāla un finanšu resursu vadība ,A2.3. ,Attīstība,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi – Resursu vadība,A2,Personāla un finanšu resursu vadība ,A.2.4. ,Kontrole,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi – IT un datu pārvaldība,A3,"IT attīstība, uzturēšana un datu pārvaldība ",A3.1. ,Prasību analīze,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi – IT un datu pārvaldība,A3,"IT attīstība, uzturēšana un datu pārvaldība ",A3.2.,Izstrāde,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi – IT un datu pārvaldība,A3,"IT attīstība, uzturēšana un datu pārvaldība ",A3.3.,Uzturēšana,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi – IT un datu pārvaldība,A3,"IT attīstība, uzturēšana un datu pārvaldība ",A3.4. ,Datu kvalitāte,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi – Pārvaldība un atbilstība,A4,"Risku, kvalitātes un atbilstības vadība",A3.1. ,Prasību analīze,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi – Pārvaldība un atbilstība,A4,"Risku, kvalitātes un atbilstības vadība",A3.2. ,Izstrāde,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi – Pārvaldība un atbilstība,A4,"Risku, kvalitātes un atbilstības vadība",A3.3.,Uzturēšana,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi – Pārvaldība un atbilstība,A4,"Risku, kvalitātes un atbilstības vadība",A3.4. ,Datu kvalitāte,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi  – Normatīvo aktu un dokumentu vadība,A5,"Normatīvo aktu, dokumentu un izmaiņu vadība ",A5.1. ,Izstrāde ,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi  – Normatīvo aktu un dokumentu vadība,A5,"Normatīvo aktu, dokumentu un izmaiņu vadība ",A5.2. ,Saskaņošana,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi  – Normatīvo aktu un dokumentu vadība,A5,"Normatīvo aktu, dokumentu un izmaiņu vadība ",A5.3. ,Apstiprināšana,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi  – Normatīvo aktu un dokumentu vadība,A5,"Normatīvo aktu, dokumentu un izmaiņu vadība ",A5.4. ,Publicēšana,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,
+Atbalsta procesi  – Normatīvo aktu un dokumentu vadība,A5,"Normatīvo aktu, dokumentu un izmaiņu vadība ",A5.5.,Aktualizācija,,Apakšprocesu katalogs'!A1,,,,,,,,,,,,,,

@@ -1,0 +1,274 @@
+Apakšprocesu katalogs,"Šī apakšprocesu koncepcija nav teorētiska. Tā ir izveidota, lai:
+*sasaistītu procesus ar reālu darbu un atbildību,
+*nodrošinātu pārskatāmu atbildības sadalījumu,
+*samazinātu riskus (t.sk. korupcijas un interešu konfliktu),
+*dotu vadībai instrumentu mērķtiecīgai procesu un funkciju pilnveidošanai.",,,,
+Kods ,Apakšprocesu grupa,Kuru uzdevumu nodrošinā,Kuru procesu nodrošinā,Apakšprocesi,"Struktūrvienība-izpildītājs (t.sk. atbildīgais par sava apaksprocesa izpildi un pilnveidošanu)
+Novērš situācijas, kur:
+visi dara,
+bet neviens neatbild."
+A-P1,Nodokļu maksātāju reģistrācija,P1,P1.1.,"A-P1.1. Nodokļu maksātāju (fizisko un juridisko personu) reģistrācija
+A-P1.2. Nodokļu maksātāja statusa piešķiršana, maiņa un izbeigšana
+A-P1.3. PVN maksātāju reģistrācija, izslēgšana un datu uzturēšana
+A-P1.4. EORI numuru piešķiršana un uzturēšana
+A-P1.5. Reģistrācijas datu aktualizēšana un precizēšana
+A-P1.6. Reģistrācijas datu pārbaude un validācija
+A-P1.7. Reģistrācijas datu sinhronizācija ar citiem reģistriem (UR, PMLP u.c.)
+A-P1.8. Speciālo reģistru uzturēšana (ja piemērojams)
+A-P1.9. Nodokļu maksātāju izslēgšana no reģistra
+A-P1.10. Reģistrācijas datu kļūdu labošana
+A-P1.11. Reģistrācijas pamatdatu nodrošināšana citiem procesiem","A-P1.1. NP RD
+A-P1.2. NP RD, NP PVND…
+A-P1.3. ….
+A-P1.4. ….
+A-P1.5. ….
+A-P1.6. ....
+A-P1.7. ...
+A-P1.8. ....
+A-P1.9. ...
+A-P1.10. ....
+A-P1.11....."
+A-P2,Deklarāciju administrēšana un datu kvalitāte,P1,P1.3. ,"A-P2.1. Nodokļu deklarāciju pieņemšana (elektroniski / citos kanālos)
+A-P2.2. Deklarāciju reģistrācija un uzskaite
+A-P2.3. Deklarāciju formālā pārbaude (pilnīgums, termiņi, formāts)
+A-P2.4. Deklarāciju datu loģiskā un matemātiskā validācija
+A-P2.5. Kļūdu, neatbilstību un pretrunu identificēšana
+A-P2.6. Precizējumu pieprasīšana un saziņa ar nodokļu maksātāju
+A-P2.7. Precizēto deklarāciju pieņemšana un apstrāde
+A-P2.8. Informatīvo deklarāciju administrēšana
+A-P2.9. Deklarāciju datu kvalitātes uzraudzība
+A-P2.10. Datu nodošana maksājumu uzskaitei, analīzei un kontrolei
+A-P2.11. Deklarāciju datu koriģēšana normatīvajos gadījumos
+A-P2.12. Deklarāciju datu pieejamības nodrošināšana citām kompetencēm",…......
+A-P3,Nodokļu maksājumu uzskaite un pārmaksu administrēšana,P1,…,"A-P3.1. Nodokļu maksājumu uzskaite un iegrāmatošana
+A-P3.2. Maksājumu attiecināšana uz nodokļu saistībām
+A-P3.3. Maksājumu savlaicīguma un pilnīguma uzraudzība
+A-P3.4. Pārmaksu identificēšana
+A-P3.5. Pārmaksu administrēšana (novirzīšana, ieskaitīšana, atmaksa)
+A-P3.6. Nodokļu parādu uzskaites nodrošināšana
+A-P3.7. Maksājumu datu saskaņošana ar deklarāciju datiem
+A-P3.8. Maksājumu datu koriģēšana normatīvajos gadījumos
+A-P3.9. Informācijas nodrošināšana:
+kontrolei
+analīzei
+klientu apkalpošanai
+A-P3.10. Maksājumu uzskaites datu kvalitātes nodrošināšana",
+A-P4,Datu analīze un risku novērtēšana,"P1, P2, P3",…,"A-P4.1. Nodokļu un muitas datu apkopošana, apstrāde un savietošana
+A-P4.2. Datu salīdzināšana starp deklarācijām, maksājumiem un citiem avotiem
+A-P4.3. Noviržu, neatbilstību un tendenču identificēšana
+A-P4.4. Riska kritēriju izstrāde, uzturēšana un aktualizēšana
+A-P4.5. Nodokļu maksātāju, darījumu un darbību riskuma novērtēšana
+A-P4.6. Atlases veikšana kontroles un uzraudzības vajadzībām
+A-P4.7.Analītisko indikatoru, profilu un reitingu veidošana
+A-P4.8. Analītisko pārskatu un kopsavilkumu sagatavošana
+A-P4.9. Analītisko rezultātu nodošana kontrolei, administrēšanai un vadībai
+A-P4.10. Datu kvalitātes novērtēšana no analītiskā skatpunkta
+A-P4.11. Analītisko pieeju un rīku pilnveidošanas atbalsts",
+A-P5,Juridiskais atbalsts,"P1, P2, P3, P4",…,"A-P5.1. Normatīvo aktu piemērošanas izvērtēšana nodokļu un muitas jomā
+A-P5.2. Juridisko atzinumu un skaidrojumu sagatavošana
+A-P5.3. Lēmumu tiesiskuma izvērtēšana pirms to pieņemšanas
+A-P5.4.  Nodokļu maksātāju iebildumu, sūdzību un pārsūdzību juridiskā izskatīšana
+A-P5.5. Strīdu risināšana administratīvajā procesā
+A-P5.6. VID pārstāvība tiesā
+A-P5.7. Juridiskais atbalsts kontroles, audita un izmeklēšanas darbībām
+A-P5.8. Līgumu, vienošanos un citu juridisku dokumentu izvērtēšana
+A-P5.9. Normatīvo aktu izmaiņu ietekmes analīze uz procesiem
+A-P5.10. Juridisko risku identificēšana un novērtēšana
+A-P5.11. Juridiskās prakses un judikatūras uzraudzība
+A-P5.12. Konsultatīvs juridiskais atbalsts citām kompetencēm",
+A-P6,Informācijas tehnoloģiju un datu pārvaldība ,"P1, P2, P3, P4",…,"A-P6.1. Nodokļu un muitas informācijas sistēmu uzturēšana un darbības nodrošināšana
+A-P6.2. Informācijas sistēmu pieejamības, veiktspējas un nepārtrauktības nodrošināšana
+A-P6.3. Datu ievades, glabāšanas un apmaiņas tehniskā nodrošināšana
+A-P6.4. Datu integrācija un apmaiņa ar citām valsts informācijas sistēmām
+A-P6.5. Lietotāju piekļuves tiesību pārvaldība
+A-P6.6. Informācijas drošības un datu aizsardzības nodrošināšana
+A-P6.7. Sistēmu atbalsts deklarēšanai, uzskaitei, analīzei un kontrolei
+A-P6.8. Datu kvalitātes tehniskais nodrošinājums (validācijas, loģiskās kontroles)
+A-P6.9. Informācijas sistēmu izmaiņu un uzlabojumu ieviešanas atbalsts
+A-P6.10. Tehniskais atbalsts elektroniskajiem pakalpojumiem (t. sk. EDS)
+A-P6.11. Datu pieejamības nodrošināšana citām kompetencēm",
+A-P7,Dokumentu un lietvedības pārvaldība,"P1, P4",…,"A-P7.1. Iesniegumu, dokumentu un lietu reģistrēšana
+A-P7.2. Dokumentu klasificēšana un sasaistīšana ar lietām/procesiem
+A-P7.3. Dokumentu aprites nodrošināšana (saņemšana, nosūtīšana, pārsūtīšana)
+A-P7.4. Lietu veidošana, uzturēšana un slēgšana
+A-P7.5. Dokumentu noformējuma un atbilstības pārbaude
+A-P7.6. Dokumentu glabāšanas termiņu uzraudzība
+A-P7.7. Dokumentu arhivēšana un nodošana arhīvā
+A-P7.8. Dokumentu meklējamības un pieejamības nodrošināšana
+A-P7.9. Dokumentu aprites procesu atbalsts citām kompetencēm
+A-P7.10. Dokumentu aprites datu kvalitātes nodrošināšana",
+A-P8,Riska analīze un nodokļu kontroles noteikšana,P2,…,"A-P8.1. Nodokļu maksātāju, darījumu un darbību riskuma analīze
+A-P8.2. Riska kritēriju izstrāde, uzturēšana un aktualizēšana nodokļu kontrolei
+A-P8.3. Riska indikatoru un atlases parametru piemērošana
+A-P8.4. Nodokļu maksātāju un darījumu segmentēšana pēc riska līmeņa
+A-P8.5. Atlases veikšana nodokļu kontroles, audita un pārbaudes pasākumiem
+A-P8.6. Riska analīzes rezultātu prioritizēšana
+A-P8.7. Atlases rezultātu nodošana kontroles un audita kompetencēm
+A-P8.8. Riska modeļu un atlases pieeju pilnveidošana
+A-P8.9. Riska analīzes rezultātu pārskatīšana, balstoties uz kontroles iznākumiem
+A-P8.10. Sadarbība ar datu analīzes kompetenci risku novērtēšanas uzlabošanai",
+A-P9,Nodokļu kontrole un audits,P2,…,"A-P9.1. Nodokļu maksātāju un darījumu pārbaudes veikšana
+A-P9.2. Nodokļu auditu plānošana un veikšana
+A-P9.3. A-Paktisko apstākļu noskaidrošana un pierādījumu iegūšana
+A-P9.4. Deklarāciju, maksājumu un uzskaites datu padziļināta pārbaude
+A-P9.5. Normatīvo aktu ievērošanas izvērtēšana
+A-P9.6. Kontroles un audita rezultātu dokumentēšana
+A-P9.7. Lēmumu projektu sagatavošana kontroles un audita ietvaros
+A-P9.8. Aprēķināto nodokļu, soda naudu un nokavējuma naudu noteikšana
+A-P9.9. Sadarbība ar juridiskā atbalsta kompetenci lēmumu tiesiskuma nodrošināšanai
+A-P9.10. Kontroles un audita rezultātu nodošana turpmākām darbībām (piedziņai, pārsūdzībai u.c.)",
+A-P10,Administratīvie pārkāpumi un kriminālprocesi,P2,…,"A-P10.1. Administratīvo pārkāpumu procesu uzsākšana un organizēšana
+A-P10.2. Administratīvo pārkāpumu lietu izmeklēšana un izskatīšana
+A-P10.3. Kriminālprocesu uzsākšana un veikšana normatīvajos aktos noteiktajā kārtībā
+A-P10.4. Pierādījumu iegūšana, fiksēšana un izvērtēšana
+A-P10.5. Procesuālo lēmumu sagatavošana un pieņemšana
+A-P10.6. Sadarbība ar izmeklēšanas, prokuratūras un citām tiesībsargājošām iestādēm
+A-P10.7. Procesuālo termiņu un darbību atbilstības nodrošināšana
+A-P10.8. Procesu dokumentēšana un lietu noformēšana
+A-P10.9. Administratīvo un kriminālprocesu rezultātu nodošana turpmākām darbībām (piedziņai, pārsūdzībai u. c.)
+A-P10.10. Sadarbība ar juridiskā atbalsta kompetenci procesu tiesiskuma nodrošināšanai",
+A-P11,Muitošanas procedūru piemērošana,P3,…,"A-P11.1. Muitošanas procedūru piemērošana preču muitošanā
+A-P11.2. Muitas deklarāciju pieņemšana, pārbaude un apstrāde
+A-P11.3.Preču klasifikācijas, izcelsmes un muitas vērtības izvērtēšana
+A-P11.4. Muitas maksājumu, nodokļu un citu maksājumu aprēķināšana
+A-P11.5. Muitas procedūru atbilstības normatīvajiem aktiem nodrošināšana
+A-P11.6. Preču aprites uzraudzība muitas procedūru ietvaros
+A-P11.7. Sadarbība ar riska analīzes un kontroles kompetencēm
+A-P11.8. Lēmumu sagatavošana un pieņemšana muitošanas procesā
+A-P11.9. Muitošanas rezultātu dokumentēšana un datu nodošana citām kompetencēm
+A-P11.10. Sadarbība ar juridiskā atbalsta kompetenci tiesiskuma nodrošināšanai",
+A-P12,Nodokļu un muitas nodrošinājumu administrēšana,P3,…,"A-P12.1. Nodokļu un muitas nodrošinājumu piemērošanas izvērtēšana
+A-P12.2. Nodrošinājumu veidu noteikšana atbilstoši normatīvajiem aktiem
+A-P12.3. Nodrošinājumu aprēķināšana un apmēra noteikšana
+A-P12.4. Nodrošinājumu pieņemšana, reģistrēšana un uzskaite
+A-P12.5. Nodrošinājumu izmaiņu izvērtēšana un administrēšana
+A-P12.6. Nodrošinājumu derīguma uzraudzība
+A-P12.7. Nodrošinājumu izmantošana nodokļu un muitas saistību segšanai
+A-P12.8. Nodrošinājumu atbrīvošanas vai izbeigšanas administrēšana
+A-P12.9. Sadarbība ar muitošanas, kontroles un juridiskā atbalsta kompetencēm
+A-P12.10. Nodrošinājumu administrēšanas dokumentēšana un datu nodošana citām kompetencēm",
+A-P13,Starptautiskās sadarbības un statistikas nodrošināšana,P3,…,"A-P13.1. Starptautiskās sadarbības nodrošināšana un koordinēšana ar ārvalstu nodokļu un muitas administrācijām
+A-P13.2. Informācijas apmaiņas nodrošināšana ar ārvalstu iestādēm un starptautiskajām organizācijām normatīvajos aktos noteiktajā kārtībā 
+A-P13.3. Starptautisko vienošanos, sadarbības līgumu un to grozījumu sagatavošanas atbalsts atbilstoši kompetencei 
+A-P13.4. Starptautisko saistību izpildes koordinēšana nodokļu un muitas jomā
+A-P13.5. Datu sagatavošana un nodošana oficiālās statistikas vajadzībām saskaņā ar normatīvajiem aktiem
+A-P13.6. Statistikas datu kvalitātes un atbilstības nodrošināšana pirms to nodošanas
+A-P13.7. Starptautisko statistikas prasību un metodiku ievērošana un ieviešana
+A-P13.8. Starptautiskās prakses un rekomendāciju izvērtēšana nodokļu un muitas jomā
+A-P13.9. Sadarbība ar citām kompetencēm starptautisko pienākumu un statistikas prasību izpildē
+A-P13.10. Starptautiskās sadarbības un statistikas procesu dokumentēšana un pārskatāmības nodrošināšana",
+A-P14,Nodokļu un muitas konsultēšana un informēšana,P4,…,"A-P14.1. Nodokļu un muitas jautājumu skaidrošana nodokļu maksātājiem
+A-P14.2. Konsultāciju sniegšana par nodokļu un muitas normatīvo aktu piemērošanu
+A-P14.3. Informācijas sniegšana par nodokļu saistību izpildi un pienākumiem, t.sk. piec pieprasījuma šādu dokuementu izsniegšana:
+izziņas,
+atļaujas, licenzes, 
+sertifikāti, apliecības. 
+A-P14.4. Uzziņu un skaidrojumu sagatavošana nodokļu maksātājiem normatīvajos aktos noteiktajā kārtībā
+A-P14.5. Atbilžu sniegšana uz nodokļu maksātāju jautājumiem dažādos saziņas kanālos
+A-P14.6. Metodisko un informatīvo materiālu sagatavošanas atbalsts
+A-P14.7. Nodokļu maksātāju informēšana par normatīvo aktu izmaiņām
+A-P14.8. Sadarbība ar citām kompetencēm precīzas informācijas nodrošināšanai
+A-P14.9. Konsultāciju satura kvalitātes un vienotības nodrošināšana
+A-P14.10. Informācijas nodošana citām kompetencēm, ja konsultāciju laikā konstatētas problēmas vai riski",
+A-P15,Iesniegumu un pieprasījumu izskatīšana,P4,…,"A-P15.1. Nodokļu maksātāju iesniegumu un pieprasījumu pieņemšana un reģistrēšana
+A-P15.2. Iesniegumu un pieprasījumu satura izvērtēšana un klasificēšana
+A-P15.3. Iesniegumu izskatīšana normatīvajos aktos noteiktajos termiņos
+A-P15.4. Informācijas pieprasīšana no citām kompetencēm iesniegumu izskatīšanai
+A-P15.5. Atbilžu projektu sagatavošana iesniegumu un pieprasījumu ietvaros
+A-P15.6. Lēmumu vai atbilžu tiesiskuma un pamatotības nodrošināšana
+A-P15.7. Atbilžu sniegšana nodokļu maksātājiem normatīvajā kārtībā
+A-P15.8. Iesniegumu izskatīšanas procesa dokumentēšana un lietu noformēšana
+A-P15.9. Iesniegumu izskatīšanas rezultātu nodošana citām kompetencēm, ja nepieciešamas turpmākas darbības
+A-P15.10. Iesniegumu izskatīšanas prakses uzraudzība un vienotības nodrošināšana",
+A-P16,Elektronisko pakalpojumu (EDS) atbalsts,P4,…,"A-P16.1. Atbalsta sniegšana nodokļu maksātājiem EDS lietošanā
+A-P16.2. EDS funkcionalitātes skaidrošana nodokļu maksātājiem
+A-P16.3. EDS lietošanas problēmu pieņemšana un reģistrēšana
+A-P16.4. EDS lietošanas kļūdu un traucējumu sākotnējā izvērtēšana
+A-P16.5. Sadarbība ar informācijas tehnoloģiju un datu pārvaldības kompetenci EDS problēmu novēršanai
+A-P16.6. Informācijas sniegšana par EDS pieejamību, darbības pārtraukumiem un izmaiņām
+A-P16.7. EDS lietotāju piekļuves un pilnvaru jautājumu atbalsts normatīvajā ietvarā
+A-P16.8. EDS lietošanas statistikas un problēmu tendenču apkopošana
+A-P16.9. Priekšlikumu sniegšana EDS funkcionalitātes pilnveidošanai, balstoties uz lietotāju pieredzi
+A-P16.10. Sadarbība ar konsultēšanas un informēšanas kompetenci vienotas informācijas nodrošināšanai",
+A-P17,Personāla un resursu nodrošinājums,"P1, P2, P3, P4",…,"A-P17.1. Personāla kapacitātes plānošana procesu un kompetenču nodrošināšanai
+A-P17.2. Cilvēkresursu nodrošināšana atbilstoši procesu un kompetenču vajadzībām
+A-P17.3. Amata vietu un slodzes sadalījuma plānošanas atbalsts
+A-P17.4. Personāla kvalifikācijas un kompetenču attīstības nodrošināšana
+A-P17.5. Apmācību un zināšanu pārneses organizēšanas atbalsts
+A-P17.6. Darba organizācijas un resursu izmantošanas optimizācijas atbalsts
+A-P17.7. Procesu izpildei nepieciešamo resursu pieejamības nodrošināšana
+A-P17.8. Personāla noslodzes un risku uzraudzība
+A-P17.9. Sadarbība ar procesu īpašniekiem resursu jautājumu risināšanai
+A-P17.10. Personāla un resursu nodrošinājuma informācijas apkopošana un nodošana vadībai",
+A-P18,Finanšu un budžeta pārvaldība,"P1, P2, P3, P4",…,"A-P18.1. Budžeta plānošanas un izpildes nodrošināšana atbilstoši iestādes uzdevumiem
+A-P18.2. Finanšu līdzekļu izlietojuma uzraudzība un kontrole
+A-P18.3. Finanšu prognožu un aprēķinu sagatavošana procesu nodrošināšanai
+A-P18.4. Budžeta izmaiņu izvērtēšana un saskaņošanas atbalsts
+A-P18.5. Finanšu informācijas apkopošana un analīze vadības vajadzībām
+A-P18.6. Izdevumu pamatotības un efektivitātes izvērtēšana
+A-P18.7. Sadarbība ar procesu īpašniekiem finanšu un budžeta jautājumu risināšanā
+A-P18.8. Finanšu pārskatu un atskaišu sagatavošanas atbalsts
+A-P18.9. Finanšu risku identificēšana un uzraudzība
+A-P18.10. Budžeta un finanšu informācijas nodošana citām kompetencēm procesu nodrošināšanai",
+A-P19,Iekšējās kontroles un kvalitātes nodrošināšana,"P1, P2, P3, P4",…,"A-P19.1. Iekšējās kontroles pasākumu izstrāde, ieviešana un uzturēšana procesu ietvaros
+A-P19.2. Procesu atbilstības uzraudzība normatīvajiem aktiem un iekšējām prasībām
+A-P19.3. Kvalitātes kritēriju un rādītāju noteikšana procesu izpildes izvērtēšanai
+A-P19.4. Iekšējo kontroles un uzraudzības pasākumu veikšana atbilstoši plāniem un grafikam
+A-P19.5. Procesu nepilnību, kļūdu un risku identificēšana
+A-P19.6. Priekšlikumu izstrāde procesu uzlabošanai un risku mazināšanai
+A-P19.7. Iekšējās kontroles rezultātu dokumentēšana un apkopošana
+A-P19.8. Sadarbība ar procesu īpašniekiem korektīvo pasākumu ieviešanai
+A-P19.9. Kvalitātes uzraudzības prakses vienotības nodrošināšana
+A-P19.10. Iekšējās kontroles un kvalitātes informācijas nodošana vadībai un citām kompetencēm",
+A-P20,Risku vadības metodiskā funkcija," P1, P2, P3",…,"A-P20.1. Risku vadības politikas un metodikas izstrāde un aktualizēšana
+A-P20.2. Vienotas risku vadības pieejas nodrošināšana nodokļu un muitas administrēšanā
+A-P20.3. Risku kategoriju, līmeņu un novērtēšanas principu noteikšana
+A-P20.4. Risku identificēšanas, novērtēšanas un uzraudzības metodiskā koordinēšana
+A-P20.5. Riska apetītes un tolerances līmeņu noteikšanas atbalsts
+A-P20.6. Risku vadības procesu ieviešanas uzraudzība procesos un kompetencēs
+A-P20.7. Risku vadības rezultātu izvērtēšana un metodisko uzlabojumu izstrāde
+A-P20.8. Sadarbība ar datu analīzes un operatīvās riska analīzes kompetencēm
+A-P20.9. Risku vadības prakses vienotības nodrošināšana organizācijā
+A-P20.10. Risku vadības informācijas apkopošana un nodošana vadībai",
+A-P21,Administratīvo pārkāpumu procesa atbalsts,P2,…,"A-P21.1. Administratīvo pārkāpumu procesu nodrošināšana atbilstoši normatīvajiem aktiem
+A-P21.2. Procesuālo darbību organizatoriskais un metodiskais atbalsts administratīvo pārkāpumu lietās
+A-P21.3. Procesuālo termiņu ievērošanas uzraudzība administratīvo pārkāpumu procesos
+A-P21.4. Procesu dokumentu sagatavošanas un noformēšanas atbalsts
+A-P21.5. Administratīvo pārkāpumu lietu virzības koordinēšana
+A-P21.6. Informācijas apkopošana un nodošana administratīvo pārkāpumu procesa veicējiem
+A-P21.7. Sadarbība ar juridiskā atbalsta kompetenci procesu tiesiskuma nodrošināšanai
+A-P21.8. Administratīvo pārkāpumu procesa rezultātu apkopošana
+A-P21.9. Administratīvo pārkāpumu procesa atbalsta prakses vienotības nodrošināšana
+A-P21.10. Administratīvo pārkāpumu procesa atbalsta informācijas nodošana citām kompetencēm",
+A-P22,Procesu pārvaldībs un metodiskā attīstība,"P1, P2, P3, P4",…,"A-P22.1. Procesu arhitektūras izstrāde un uzturēšana
+A-P22.2. Procesu reģistru un to struktūras izveide un aktualizēšana
+A-P22.3. Procesu definīciju, robežu un savstarpējo sasaistes principu noteikšana
+A-P22.4. Vienotas procesu pārvaldības metodikas izstrāde un uzturēšana
+A-P22.5. Procesu izpildes efektivitātes un brieduma izvērtēšana
+A-P22.6. Procesu uzlabošanas un optimizācijas iniciatīvu koordinēšana
+A-P22.7. Procesu izmaiņu ietekmes izvērtēšana uz citiem procesiem un kompetencēm
+A-P22.8. Sadarbība ar procesu īpašniekiem procesu attīstības jautājumos
+A-P22.9. Procesu pārvaldības prakses vienotības nodrošināšana organizācijā
+A-P22.10. Metodiskā atbalsta sniegšana citu kompetenču un procesu attīstībai",
+A-P23,"Pārskatu, statistikas un vadības informācijas funkcijas","P1, P2, P3, P4",…,"A-P23.1. Vadības, operatīvo un statistisko pārskatu sagatavošana nodokļu un muitas jomā
+A-P23.2. Statistikas datu apkopošana, strukturēšana un uzturēšana
+A-P23.3. Vadības informācijas nodrošināšana lēmumu pieņemšanai
+A-P23.4. Regulāro un ad‑hoc pārskatu sagatavošana atbilstoši vadības un institucionālajām vajadzībām
+A-P23.5. Datu avotu saskaņošana un pārskatu datu savstarpējās atbilstības nodrošināšana
+A-P23.6. Pārskatu un statistikas datu kvalitātes uzraudzība
+A-P23.7. Pārskatu interpretācijas un skaidrojumu sniegšana vadībai un citām kompetencēm
+A-P23.8. Sadarbība ar datu analīzes un IT kompetencēm pārskatu automatizācijai un pilnveidošanai
+A-P23.9. Statistikas un vadības informācijas sagatavošana ārējām institūcijām normatīvajos aktos noteiktajā kārtībā
+A-P23.10. Pārskatu un statistikas prakses vienotības nodrošināšana organizācijā",
+A-P24,Vadības funkcija,"P1, P2, P3, P4",…,"V24.1. Iestādes un procesu darbības stratēģiskā vadība un virzība
+V24.2.Mērķu, prioritāšu un darbības virzienu noteikšana nodokļu un muitas administrēšanā
+V24.3.Lēmumu pieņemšana, balstoties uz vadības informāciju, analīzi un riskiem
+V24.4. Procesu un kompetenču darbības uzraudzība un rezultātu izvērtēšana
+V24.5. Resursu piešķiršanas un pārdales lēmumu pieņemšana
+V24.6. Atbildības un pilnvaru sadales noteikšana
+V24.7. Darbības rezultātu, snieguma un risku pārskatu izskatīšana
+V24.8. Izmaiņu un attīstības iniciatīvu apstiprināšana
+V24.9. Iestādes darbības pārstāvība sadarbībā ar citām institūcijām
+V24.10. Vadības uzdevumu nodošana un izpildes uzraudzība",
+K…,Vēl - ?,,,,
+K…,Cits,,,,
