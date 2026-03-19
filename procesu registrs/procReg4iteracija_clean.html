@@ -26,7 +26,7 @@
 </head>
 <body>
   <h1>Procesu vadības bloks</h1>
-  <p class="tagline">4 līmeņi: L1 pelēks, L2 zaļš, L3 zils, L4 matrica. Redz visi; labo tikai administrators (labot).</p>
+  <p class="tagline">Pamatskats (pelēks), Pilnais skats (pelēks+zaļš), Papildu/datu sasaiste (pelēks+zaļš+zils). Matrica vienmēr redzama apakšējā joslā. Redz visi; labo tikai administrators (labot).</p>
 
   <div class="card">
     <div class="toolbar">
@@ -47,10 +47,7 @@
       </label>
       <button type="button" id="saveRoleBtn" class="secondary">Saglabāt manu lomu</button>
       <label>Līmenis
-        <select id="levelSelect"><option value="1">L1</option><option value="2" selected>L2</option><option value="3">L3</option><option value="4">L4</option></select>
-      </label>
-      <label>Procesu grupa
-        <select id="groupFilter"><option value="">Visas</option><option>pamatdarbības procesi</option><option>atbalsta procesi</option><option>vadības procesi</option><option>citi procesi</option></select>
+        <select id="levelSelect"><option value="1">Pamatskats</option><option value="2" selected>Pilnais skats</option><option value="3">Papildu/datu sasaiste</option></select>
       </label>
       <input id="searchInput" placeholder="Meklēt..." />
       <button type="button" id="refreshBtn" class="secondary">Atsvaidzināt</button>
@@ -63,8 +60,8 @@
     <table id="processTable"><thead><tr>
       <th class="col-gray">Procesu grupa</th><th class="col-gray">Uzdevuma Nr.</th><th class="col-gray">Uzdevums</th><th class="col-gray">Procesa Nr.</th>
       <th class="col-gray">Process</th><th class="col-gray">Procesa īpašnieks</th>
-      <th class="col-green">Normatīvie akti</th><th class="col-green">Dokumentācija</th><th class="col-green">Input</th><th class="col-green">Galaproduktu skaits</th><th class="col-green">Vid. izpildes laiks</th>
-      <th class="col-blue">KPI</th><th class="col-blue">Riski</th><th class="col-blue">Saistītie galaproduktu veidi</th><th>Kartiņa</th>
+      <th class="col-green">Procesa iniciātors (input)</th><th class="col-green">Galaprodukti</th><th class="col-green">Galaproduktu veidi</th>
+      <th class="col-blue">Saistītie procesi</th><th class="col-blue">Pakalpojumi</th><th class="col-blue">Plūsmas shēmas</th><th class="col-blue">IT resursi</th><th class="col-blue">Optimizācija</th><th class="col-blue">Citi rādītāji</th><th>Kartiņa</th>
     </tr></thead><tbody></tbody></table>
   </div>
 
@@ -81,16 +78,20 @@
       <div class="form-row">
         <div class="form-group"><label>Process</label><input id="eProcess" /></div>
         <div class="form-group"><label>Procesa īpašnieks</label><input id="eOwner" /></div>
-        <div class="form-group"><label>Normatīvie akti</label><input id="eLaws" /></div>
-        <div class="form-group"><label>Dokumentācija</label><input id="eDocs" /></div>
+        <div class="form-group"><label>Galaprodukti</label><input id="eLaws" /></div>
+        <div class="form-group"><label>Galaproduktu veidi</label><input id="eDocs" /></div>
       </div>
       <div class="form-row">
-        <div class="form-group"><label>Input</label><input id="eInput" /></div>
-        <div class="form-group"><label>Galaproduktu skaits</label><input id="eOutCount" /></div>
-        <div class="form-group"><label>Vid. izpildes laiks</label><input id="eAvg" /></div>
-        <div class="form-group"><label>KPI</label><input id="eKpi" /></div>
+        <div class="form-group"><label>Procesa iniciātors (input)</label><input id="eInput" /></div>
+        <div class="form-group"><label>Saistītie procesi</label><input id="eOutCount" /></div>
+        <div class="form-group"><label>Pakalpojumi</label><input id="eAvg" /></div>
+        <div class="form-group"><label>Plūsmas shēmas</label><input id="eKpi" /></div>
       </div>
-      <div class="form-row"><div class="form-group"><label>Riski</label><input id="eRisk" /></div></div>
+      <div class="form-row">
+        <div class="form-group"><label>IT resursi</label><input id="eRisk" /></div>
+        <div class="form-group"><label>Optimizācija</label><input id="eOpt" /></div>
+        <div class="form-group"><label>Citi rādītāji</label><input id="eOther" /></div>
+      </div>
       <div class="row">
         <button type="submit">Saglabāt</button>
         <button type="button" id="deleteBtn" class="danger hidden">Dzēst</button>
@@ -100,7 +101,7 @@
   </div>
 
   <div class="card">
-    <h2>Galaproduktu veidu katalogs (CSV)</h2>
+    <h2>Galaproduktu veidu katalogs</h2>
     <table id="catalogTable"><thead><tr>
       <th>Pamata galaprodukts</th><th>Galaproduktu veidi</th><th>Struktūrvienība-izpildītājs, kas rada galaprodukta veidu</th><th>Uzdevuma Nr.</th><th>Procesa Nr.</th>
     </tr></thead><tbody></tbody></table>
@@ -167,10 +168,16 @@
         group:normGroup(gv(d,["procesu_grupa","Procesu grupa","group","procGroup"])),
         taskNo:gv(d,["uzdevuma_nr","Uzdevuma Nr.","taskNo"]), task:gv(d,["uzdevums","Uzdevums","task"]),
         processNo:gv(d,["procesa_nr","Procesa Nr.","processNo"]), process:gv(d,["procesi_dzives_ciklam","Procesi, kas nodrošina uzdevuma dzīves ciklu","processLife"]),
-        owner:gv(d,["procesa_ipasnieks","Procesa īpašnieks","processOwner"]), laws:gv(d,["normativie_akti","Normatīvie akti","laws"]),
-        docs:gv(d,["procesa_dokumentacija","Procesa dokumentācija","docs"]), input:gv(d,["procesa_iniciators","input"]),
-        outCount:gv(d,["galaproduktu_skaits","outputCount"]), avg:gv(d,["videjais_izpildes_laiks","outputAvgTime"]),
-        kpi:gv(d,["kpi"]), risk:gv(d,["riski","riskInfo"])
+        owner:gv(d,["procesa_ipasnieks","Procesa īpašnieks","processOwner"]),
+        input:gv(d,["procesa_iniciators","input"]),
+        products:gv(d,["galaprodukti","outputProducts","normativie_akti","Normatīvie akti","laws"]),
+        productTypes:gv(d,["galaproduktu_veidi","outputTypes","procesa_dokumentacija","Procesa dokumentācija","docs"]) || linkedOut({ taskNo:gv(d,["uzdevuma_nr","Uzdevuma Nr.","taskNo"]), processNo:gv(d,["procesa_nr","Procesa Nr.","processNo"]) }),
+        relatedProcesses:gv(d,["saistitie_procesi","relatedProcesses","galaproduktu_skaits","outputCount"]),
+        services:gv(d,["pakalpojumi","services","videjais_izpildes_laiks","outputAvgTime"]),
+        flowcharts:gv(d,["plusmas_shemas","plūsmas_shēmas","flowcharts","kpi"]),
+        itResources:gv(d,["it_resursi","itResources","riski","riskInfo"]),
+        optimization:gv(d,["optimizacija","optimization"]),
+        otherMetrics:gv(d,["citi_raditaji","otherMetrics"])
       }));
       dbCols=new Set(); processRows.forEach(r=>Object.keys(r.raw||{}).forEach(k=>dbCols.add(k)));
       status("Ielādēts: "+processRows.length,"ok");
@@ -180,18 +187,18 @@
       const l=Number($("levelSelect").value), g=l>=2, b=l>=3;
       document.querySelectorAll("th.col-green,td.col-green").forEach(e=>e.style.display=g?"":"none");
       document.querySelectorAll("th.col-blue,td.col-blue").forEach(e=>e.style.display=b?"":"none");
-      $("matrixCard").classList.toggle("hidden", l<4);
+      $("matrixCard").classList.remove("hidden");
     }
 
     function renderTable(){
-      const q=$("searchInput").value.trim().toLowerCase(), gf=$("groupFilter").value;
+      const q=$("searchInput").value.trim().toLowerCase(), gf=($("groupFilter")?$("groupFilter").value:"");
       const tb=$("processTable").querySelector("tbody"); tb.innerHTML="";
-      processRows.filter(r=>(!gf||r.group===gf)&&(!q||[r.group,r.taskNo,r.task,r.processNo,r.process,r.owner,r.kpi,r.risk].join(" ").toLowerCase().includes(q)))
+      processRows.filter(r=>(!gf||r.group===gf)&&(!q||[r.group,r.taskNo,r.task,r.processNo,r.process,r.owner,r.products,r.productTypes,r.relatedProcesses,r.services,r.flowcharts,r.itResources,r.optimization,r.otherMetrics].join(" ").toLowerCase().includes(q)))
       .forEach(r=>{
         const tr=document.createElement("tr"); const c=(t,cls)=>{const td=document.createElement("td"); if(cls) td.classList.add(cls); td.textContent=t||""; tr.appendChild(td);};
         c(r.group,"col-gray"); c(r.taskNo,"col-gray"); c(r.task,"col-gray"); c(r.processNo,"col-gray"); c(r.process,"col-gray"); c(r.owner,"col-gray");
-        c(r.laws,"col-green"); c(r.docs,"col-green"); c(r.input,"col-green"); c(r.outCount,"col-green"); c(r.avg,"col-green");
-        c(r.kpi,"col-blue"); c(r.risk,"col-blue"); c(linkedOut(r),"col-blue");
+        c(r.input,"col-green"); c(r.products,"col-green"); c(r.productTypes,"col-green");
+        c(r.relatedProcesses,"col-blue"); c(r.services,"col-blue"); c(r.flowcharts,"col-blue"); c(r.itResources,"col-blue"); c(r.optimization,"col-blue"); c(r.otherMetrics,"col-blue");
         const td=document.createElement("td"), b=document.createElement("button"); b.type="button"; b.className="secondary"; b.textContent="Atvērt kartiņu"; b.onclick=()=>openEditor(r); td.appendChild(b); tr.appendChild(td);
         tb.appendChild(tr);
       });
@@ -213,18 +220,18 @@
 
     function fillForm(r){
       $("eId").value=r?String(r.id||""):""; $("eGroup").value=r?r.group:"pamatdarbības procesi"; $("eTaskNo").value=r?r.taskNo:""; $("eTask").value=r?r.task:"";
-      $("eProcNo").value=r?r.processNo:""; $("eProcess").value=r?r.process:""; $("eOwner").value=r?r.owner:""; $("eLaws").value=r?r.laws:""; $("eDocs").value=r?r.docs:"";
-      $("eInput").value=r?r.input:""; $("eOutCount").value=r?r.outCount:""; $("eAvg").value=r?r.avg:""; $("eKpi").value=r?r.kpi:""; $("eRisk").value=r?r.risk:"";
+      $("eProcNo").value=r?r.processNo:""; $("eProcess").value=r?r.process:""; $("eOwner").value=r?r.owner:""; $("eLaws").value=r?r.products:""; $("eDocs").value=r?r.productTypes:"";
+      $("eInput").value=r?r.input:""; $("eOutCount").value=r?r.relatedProcesses:""; $("eAvg").value=r?r.services:""; $("eKpi").value=r?r.flowcharts:""; $("eRisk").value=r?r.itResources:""; $("eOpt").value=r?r.optimization:""; $("eOther").value=r?r.otherMetrics:"";
     }
     function formVals(){ return {group:$("eGroup").value.trim(),taskNo:$("eTaskNo").value.trim(),task:$("eTask").value.trim(),processNo:$("eProcNo").value.trim(),process:$("eProcess").value.trim(),
-      owner:$("eOwner").value.trim(),laws:$("eLaws").value.trim(),docs:$("eDocs").value.trim(),input:$("eInput").value.trim(),outCount:$("eOutCount").value.trim(),
-      avg:$("eAvg").value.trim(),kpi:$("eKpi").value.trim(),risk:$("eRisk").value.trim()};}
+      owner:$("eOwner").value.trim(),products:$("eLaws").value.trim(),productTypes:$("eDocs").value.trim(),input:$("eInput").value.trim(),relatedProcesses:$("eOutCount").value.trim(),
+      services:$("eAvg").value.trim(),flowcharts:$("eKpi").value.trim(),itResources:$("eRisk").value.trim(),optimization:$("eOpt").value.trim(),otherMetrics:$("eOther").value.trim()};}
     function pickKey(raw, choices){ const k=raw?fk(raw,choices):null; if(k) return k; return choices.find(c=>dbCols.has(c))||null; }
     function toPayload(f,row){
       const raw=row?row.raw:null, map={group:["procesu_grupa","Procesu grupa","group","procGroup"],taskNo:["uzdevuma_nr","Uzdevuma Nr.","taskNo"],task:["uzdevums","Uzdevums","task"],
         processNo:["procesa_nr","Procesa Nr.","processNo"],process:["procesi_dzives_ciklam","Procesi, kas nodrošina uzdevuma dzīves ciklu","processLife"],owner:["procesa_ipasnieks","Procesa īpašnieks","processOwner"],
-        laws:["normativie_akti","Normatīvie akti","laws"],docs:["procesa_dokumentacija","Procesa dokumentācija","docs"],input:["procesa_iniciators","input"],
-        outCount:["galaproduktu_skaits","outputCount"],avg:["videjais_izpildes_laiks","outputAvgTime"],kpi:["kpi"],risk:["riski","riskInfo"]};
+        products:["galaprodukti","outputProducts","normativie_akti","Normatīvie akti","laws"],productTypes:["galaproduktu_veidi","outputTypes","procesa_dokumentacija","Procesa dokumentācija","docs"],input:["procesa_iniciators","input"],
+        relatedProcesses:["saistitie_procesi","relatedProcesses","galaproduktu_skaits","outputCount"],services:["pakalpojumi","services","videjais_izpildes_laiks","outputAvgTime"],flowcharts:["plusmas_shemas","plūsmas_shēmas","flowcharts","kpi"],itResources:["it_resursi","itResources","riski","riskInfo"],optimization:["optimizacija","optimization"],otherMetrics:["citi_raditaji","otherMetrics"]};
       const p={}; Object.keys(map).forEach(k=>{ const key=pickKey(raw,map[k]); if(key) p[key]=f[k]||""; }); return p;
     }
     function openEditor(r){
@@ -245,7 +252,7 @@
 
     // events
     $("refreshBtn").onclick=async()=>{ await loadCsv(); await loadDb(); renderTable(); rebuildMx(); };
-    $("searchInput").oninput=renderTable; $("groupFilter").onchange=renderTable; $("levelSelect").onchange=()=>{applyLevel(); rebuildMx();};
+    $("searchInput").oninput=renderTable; if($("groupFilter")) $("groupFilter").onchange=renderTable; $("levelSelect").onchange=()=>{applyLevel(); rebuildMx();};
     $("newBtn").onclick=()=>openEditor(null); $("closeBtn").onclick=()=>$("editorCard").classList.add("hidden");
     $("editorForm").onsubmit=async(e)=>{ e.preventDefault(); if(!canEdit()){alert("Labošana pieejama tikai admin (labot)."); return;}
       const f=formVals(), id=$("eId").value;
@@ -268,7 +275,7 @@
     $("roleTable").onclick=(e)=>{ const b=e.target.closest("button[data-u]"); if(!b) return; const u=b.getAttribute("data-u"); if(u==="daina"){alert("Primāro admin lietotāju nedzēšam.");return;} delete roles[u]; saveRoles(); };
 
     (async function init(){
-      const p=new URLSearchParams(location.search); if(p.get("user")) user=p.get("user"); if(["1","2","3","4"].includes(p.get("level"))) $("levelSelect").value=p.get("level");
+      const p=new URLSearchParams(location.search); if(p.get("user")) user=p.get("user"); if(["1","2","3"].includes(p.get("level"))) $("levelSelect").value=p.get("level");
       loadRoles(); await loadCsv(); await loadDb(); renderTable(); rebuildMx();
     })();
   </script>

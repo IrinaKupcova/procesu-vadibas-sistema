@@ -16,52 +16,73 @@
     return norm(text).includes(norm(term));
   }
 
+  function injectFilterStyles() {
+    if (document.getElementById("filtersCss")) return;
+    const s = document.createElement("style");
+    s.id = "filtersCss";
+    s.textContent = `
+      .main-filter-wrap{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+      .main-filter-wrap select,.main-filter-wrap input{font-size:12px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:4px}
+      .th-filter-wrap{display:flex;align-items:center;gap:4px;justify-content:space-between}
+      .th-filter-btn{font-size:10px;padding:2px 5px;border:1px solid #94a3b8;border-radius:999px;background:#fff;color:#334155;cursor:pointer;line-height:1}
+      .th-filter-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
+      .th-filter-box{display:none;margin-top:4px}
+      .th-filter-box.open{display:block}
+      .th-filter-box input{width:100%;font-size:11px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px}
+    `;
+    document.head.appendChild(s);
+  }
+
   function ensureQuickFilters() {
     const searchInput = document.getElementById("searchInput");
-    if (!searchInput || document.getElementById("filterProcess")) return;
+    if (!searchInput || document.getElementById("mainFilterField")) return;
 
     const host = searchInput.parentElement;
     if (!host) return;
 
-    const mk = (id, placeholder) => {
-      const el = document.createElement("input");
-      el.id = id;
-      el.placeholder = placeholder;
-      el.className = "secondary";
-      el.style.minWidth = "170px";
-      el.style.maxWidth = "220px";
-      return el;
+    const wrap = document.createElement("div");
+    wrap.className = "main-filter-wrap";
+    wrap.id = "mainFilterWrap";
+
+    const field = document.createElement("select");
+    field.id = "mainFilterField";
+    field.innerHTML = [
+      '<option value="process">Process</option>',
+      '<option value="task">Uzdevums</option>',
+      '<option value="owner">Izpildītājs</option>',
+      '<option value="output">Galaprodukta veids</option>'
+    ].join("");
+
+    const input = document.createElement("input");
+    input.id = "mainFilterValue";
+    input.placeholder = "Filtrēšanas vērtība...";
+    input.style.minWidth = "220px";
+
+    const clearBtn = document.createElement("button");
+    clearBtn.type = "button";
+    clearBtn.className = "secondary";
+    clearBtn.textContent = "Notīrīt filtru";
+
+    wrap.appendChild(field);
+    wrap.appendChild(input);
+    wrap.appendChild(clearBtn);
+    host.appendChild(wrap);
+
+    const syncMain = () => {
+      state.quick.process = "";
+      state.quick.task = "";
+      state.quick.owner = "";
+      state.quick.output = "";
+      state.quick[field.value] = input.value;
+      selectBestLevel();
+      rerender();
     };
 
-    const processEl = mk("filterProcess", "Filtrs: process");
-    const taskEl = mk("filterTask", "Filtrs: uzdevums");
-    const ownerEl = mk("filterOwner", "Filtrs: izpildītājs");
-    const outputEl = mk("filterOutput", "Filtrs: galaprodukta veids");
-
-    host.appendChild(processEl);
-    host.appendChild(taskEl);
-    host.appendChild(ownerEl);
-    host.appendChild(outputEl);
-
-    processEl.addEventListener("input", () => {
-      state.quick.process = processEl.value;
-      selectBestLevel();
-      rerender();
-    });
-    taskEl.addEventListener("input", () => {
-      state.quick.task = taskEl.value;
-      selectBestLevel();
-      rerender();
-    });
-    ownerEl.addEventListener("input", () => {
-      state.quick.owner = ownerEl.value;
-      selectBestLevel();
-      rerender();
-    });
-    outputEl.addEventListener("input", () => {
-      state.quick.output = outputEl.value;
-      selectBestLevel();
-      rerender();
+    field.addEventListener("change", syncMain);
+    input.addEventListener("input", syncMain);
+    clearBtn.addEventListener("click", () => {
+      input.value = "";
+      syncMain();
     });
   }
 
@@ -70,43 +91,64 @@
     if (!table) return;
     const headRow = table.querySelector("thead tr");
     if (!headRow) return;
-    if (table.querySelector("thead tr.header-filter-row")) return;
+    if (headRow.dataset.filtersReady === "1") return;
 
     const sourceHeaders = Array.from(headRow.children);
-    const filterRow = document.createElement("tr");
-    filterRow.className = "header-filter-row";
-
     sourceHeaders.forEach((th, idx) => {
-      const fth = document.createElement("th");
       const isLast = idx === sourceHeaders.length - 1;
-      if (skipLast && isLast) {
-        fth.textContent = "";
-      } else {
-        const input = document.createElement("input");
-        input.type = "text";
-        input.placeholder = "Filtrēt...";
-        input.style.width = "100%";
-        input.style.fontSize = "11px";
-        input.style.padding = "4px 6px";
-        input.dataset.colIndex = String(idx);
-        input.addEventListener("input", (e) => {
-          const col = e.target.dataset.colIndex;
-          state[key][col] = e.target.value;
-          selectBestLevel();
-          applyAllFilters();
-        });
-        fth.appendChild(input);
-      }
-      filterRow.appendChild(fth);
+      if (skipLast && isLast) return;
+
+      const title = th.textContent || "";
+      th.textContent = "";
+
+      const wrap = document.createElement("div");
+      wrap.className = "th-filter-wrap";
+
+      const label = document.createElement("span");
+      label.textContent = title;
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "th-filter-btn";
+      btn.textContent = "Filtrs";
+      btn.title = "Filtrēt kolonnu";
+
+      const box = document.createElement("div");
+      box.className = "th-filter-box";
+
+      const input = document.createElement("input");
+      input.type = "text";
+      input.placeholder = "Filtrēt...";
+      input.dataset.colIndex = String(idx);
+
+      input.addEventListener("input", (e) => {
+        const col = e.target.dataset.colIndex;
+        state[key][col] = e.target.value;
+        btn.classList.toggle("active", norm(e.target.value) !== "");
+        selectBestLevel();
+        applyAllFilters();
+      });
+
+      btn.addEventListener("click", () => {
+        box.classList.toggle("open");
+        if (box.classList.contains("open")) input.focus();
+      });
+
+      box.appendChild(input);
+      wrap.appendChild(label);
+      wrap.appendChild(btn);
+      th.appendChild(wrap);
+      th.appendChild(box);
     });
-    table.querySelector("thead").appendChild(filterRow);
+
+    headRow.dataset.filtersReady = "1";
   }
 
   function selectBestLevel() {
     const level = document.getElementById("levelSelect");
     if (!level) return;
 
-    const hasOutput = norm(state.quick.output) !== "" || Object.keys(state.processHeader).some((k) => Number(k) >= 13 && norm(state.processHeader[k]) !== "");
+    const hasOutput = norm(state.quick.output) !== "" || Object.keys(state.processHeader).some((k) => Number(k) >= 9 && norm(state.processHeader[k]) !== "");
     const hasMain = norm(state.quick.process) !== "" || norm(state.quick.task) !== "" || norm(state.quick.owner) !== "";
 
     let target = null;
@@ -130,7 +172,7 @@
       const taskText = `${tds[1]?.textContent || ""} ${tds[2]?.textContent || ""}`;
       const processText = `${tds[3]?.textContent || ""} ${tds[4]?.textContent || ""}`;
       const ownerText = tds[5]?.textContent || "";
-      const outputText = tds[13]?.textContent || "";
+      const outputText = tds[8]?.textContent || "";
 
       let show =
         contains(processText, state.quick.process) &&
@@ -191,6 +233,7 @@
   }
 
   function init() {
+    injectFilterStyles();
     ensureQuickFilters();
     ensureHeaderFilters("processTable", "processHeader", true);
     ensureHeaderFilters("catalogTable", "catalogHeader", false);
