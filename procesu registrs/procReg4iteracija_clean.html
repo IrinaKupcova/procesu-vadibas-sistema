@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Procesu vadības bloks - 4. iterācija (clean)</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 16px; background: #f5f7fb; color: #111827; }
+    h1 { margin: 0 0 6px; font-size: 24px; } h2 { margin: 0 0 8px; font-size: 18px; } h3 { margin: 12px 0 6px; font-size: 15px; }
+    .tagline { margin: 0 0 14px; font-size: 12px; color: #475569; }
+    .card { background:#fff; border-radius:8px; padding:14px 16px; box-shadow:0 2px 6px rgba(0,0,0,.08); margin-bottom:14px; }
+    .toolbar,.row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+    .left,.right { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+    table { width:100%; border-collapse:collapse; margin-top:8px; } th,td { border-bottom:1px solid #e5e7eb; padding:7px 8px; text-align:left; font-size:12px; vertical-align:top; }
+    th { background:#eef2ff; font-size:10px; text-transform:uppercase; letter-spacing:.04em; }
+    .col-gray{background:#eee}.col-green{background:#d9f99d}.col-blue{background:#bfdbfe}
+    .form-row { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:8px; } .form-group{display:flex;flex-direction:column;flex:1 1 220px;min-width:200px}
+    label{font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;color:#4b5563}
+    input,select{font-size:13px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:4px}
+    button{font-size:13px;padding:8px 12px;border:0;border-radius:4px;background:#2563eb;color:#fff;cursor:pointer}
+    button:hover{background:#1d4ed8}button.secondary{background:#e5e7eb;color:#111827}button.secondary:hover{background:#d1d5db}
+    button.danger{background:#dc2626}button.danger:hover{background:#b91c1c}
+    .hidden{display:none!important}.status{font-size:12px}.status.info{color:#334155}.status.ok{color:#166534}.status.error{color:#b91c1c}
+  </style>
+</head>
+<body>
+  <h1>Procesu vadības bloks</h1>
+  <p class="tagline">4 līmeņi: L1 pelēks, L2 zaļš, L3 zils, L4 matrica. Redz visi; labo tikai administrators (labot).</p>
+
+  <div class="card">
+    <div class="toolbar">
+      <div class="left"><strong>Procesu reģistrs</strong> <span id="dbStatus" class="status info"></span></div>
+      <div class="right">
+        <button type="button" id="shareBtn" class="secondary">Šērot</button>
+        <button type="button" id="emailBtn" class="secondary">Sūtīt e-pastā</button>
+      </div>
+    </div>
+    <div class="row">
+      <label>Lietotājs <select id="userSelect"></select></label>
+      <label>Loma
+        <select id="roleSelect">
+          <option value="viewer">skatītājs</option>
+          <option value="admin_view">administrators (skatīt)</option>
+          <option value="admin_edit">administrators (labot)</option>
+        </select>
+      </label>
+      <button type="button" id="saveRoleBtn" class="secondary">Saglabāt manu lomu</button>
+      <label>Līmenis
+        <select id="levelSelect"><option value="1">L1</option><option value="2" selected>L2</option><option value="3">L3</option><option value="4">L4</option></select>
+      </label>
+      <label>Procesu grupa
+        <select id="groupFilter"><option value="">Visas</option><option>pamatdarbības procesi</option><option>atbalsta procesi</option><option>vadības procesi</option><option>citi procesi</option></select>
+      </label>
+      <input id="searchInput" placeholder="Meklēt..." />
+      <button type="button" id="refreshBtn" class="secondary">Atsvaidzināt</button>
+      <button type="button" id="newBtn">Pievienot jaunu procesu</button>
+      <span id="modeHint"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <table id="processTable"><thead><tr>
+      <th class="col-gray">Procesu grupa</th><th class="col-gray">Uzdevuma Nr.</th><th class="col-gray">Uzdevums</th><th class="col-gray">Procesa Nr.</th>
+      <th class="col-gray">Process</th><th class="col-gray">Procesa īpašnieks</th>
+      <th class="col-green">Normatīvie akti</th><th class="col-green">Dokumentācija</th><th class="col-green">Input</th><th class="col-green">Galaproduktu skaits</th><th class="col-green">Vid. izpildes laiks</th>
+      <th class="col-blue">KPI</th><th class="col-blue">Riski</th><th class="col-blue">Saistītie galaproduktu veidi</th><th>Kartiņa</th>
+    </tr></thead><tbody></tbody></table>
+  </div>
+
+  <div class="card hidden" id="editorCard">
+    <h2 id="editorTitle">Procesa kartiņa</h2>
+    <form id="editorForm">
+      <input id="eId" type="hidden" />
+      <div class="form-row">
+        <div class="form-group"><label>Procesu grupa</label><select id="eGroup"><option>pamatdarbības procesi</option><option>atbalsta procesi</option><option>vadības procesi</option><option>citi procesi</option></select></div>
+        <div class="form-group"><label>Uzdevuma Nr.</label><input id="eTaskNo" /></div>
+        <div class="form-group"><label>Uzdevums</label><input id="eTask" /></div>
+        <div class="form-group"><label>Procesa Nr.</label><input id="eProcNo" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Process</label><input id="eProcess" /></div>
+        <div class="form-group"><label>Procesa īpašnieks</label><input id="eOwner" /></div>
+        <div class="form-group"><label>Normatīvie akti</label><input id="eLaws" /></div>
+        <div class="form-group"><label>Dokumentācija</label><input id="eDocs" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Input</label><input id="eInput" /></div>
+        <div class="form-group"><label>Galaproduktu skaits</label><input id="eOutCount" /></div>
+        <div class="form-group"><label>Vid. izpildes laiks</label><input id="eAvg" /></div>
+        <div class="form-group"><label>KPI</label><input id="eKpi" /></div>
+      </div>
+      <div class="form-row"><div class="form-group"><label>Riski</label><input id="eRisk" /></div></div>
+      <div class="row">
+        <button type="submit">Saglabāt</button>
+        <button type="button" id="deleteBtn" class="danger hidden">Dzēst</button>
+        <button type="button" id="closeBtn" class="secondary">Aizvērt</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="card">
+    <h2>Galaproduktu veidu katalogs (CSV)</h2>
+    <table id="catalogTable"><thead><tr>
+      <th>Pamata galaprodukts</th><th>Galaproduktu veidi</th><th>Struktūrvienība-izpildītājs, kas rada galaprodukta veidu</th><th>Uzdevuma Nr.</th><th>Procesa Nr.</th>
+    </tr></thead><tbody></tbody></table>
+  </div>
+
+  <div class="card" id="matrixCard">
+    <h2>Matrica: Uzdevumi ↔ Procesi ↔ Galaproduktu veidi</h2>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div><h3>Uzdevumi ↔ Procesi</h3><div id="m1"></div></div>
+      <div><h3>Procesi ↔ Galaproduktu veidi</h3><div id="m2"></div></div>
+    </div>
+  </div>
+
+  <script>
+    const supabaseClient = window.supabase.createClient("https://ettesmdcpizztgwewhpx.supabase.co","sb_publishable_FwFOqhTwn6LYQvFd2z0cPA_fCf3H_8-");
+    const TABLE = "procesu_registrs";
+    const CSV = "Lilitas&Irinas versija_apvienots_variants2.csv";
+    const GROUPS = new Set(["pamatdarbības procesi","atbalsta procesi","vadības procesi","citi procesi"]);
+
+    let processRows = [], csvRows = [], dbCols = new Set(), user = "daina", roles = {};
+    const $ = id => document.getElementById(id);
+    const status = (t,k="info") => { $("dbStatus").textContent=t; $("dbStatus").className="status "+k; };
+    const role = () => roles[user] || "viewer";
+    const canEdit = () => role()==="admin_edit";
+    const fk = (o,a)=>a.find(k=>Object.prototype.hasOwnProperty.call(o,k));
+    const gv = (o,a)=>{ const k=fk(o,a); return k?o[k]:""; };
+    const gid = o => fk(o,["id","ID","Id"]) || null;
+    const normGroup = g => { const t=String(g||"").trim().toLowerCase(); return GROUPS.has(t)?t:"citi procesi"; };
+
+    function parseCSV(t){ const out=[]; let r=[],c="",i=0,q=false; while(i<t.length){ const ch=t[i];
+      if(ch=='"'){ if(q&&t[i+1]=='"'){c+='"';i+=2;continue;} q=!q;i++;continue; }
+      if(!q&&ch==","){r.push(c);c="";i++;continue;}
+      if(!q&&(ch=="\n"||ch=="\r")){ if(ch=="\r"&&t[i+1]=="\n")i++; r.push(c); out.push(r); r=[]; c=""; i++; continue; }
+      c+=ch; i++;
+    } if(c.length||r.length){r.push(c); out.push(r);} return out; }
+
+    async function loadCsv(){
+      const resp=await fetch(encodeURI(CSV)); if(!resp.ok) throw new Error("CSV nav pieejams");
+      const arr=parseCSV(await resp.text()); if(arr.length<3) return;
+      const h=arr[1].map(x=>String(x||"").trim().toLowerCase());
+      const iBase=h.findIndex(x=>x.includes("pamata galaprodukts"));
+      const iType=h.findIndex(x=>x.includes("galaproduktu veidi"));
+      const iUnit=h.findIndex(x=>x.includes("struktūrvienība"));
+      const iTask=h.findIndex(x=>x.includes("uzdevuma nr"));
+      const iProc=h.findIndex(x=>x.includes("procesa nr"));
+      csvRows=arr.slice(2).map(r=>({base:r[iBase]||"",type:r[iType]||"",unit:r[iUnit]||"",taskNo:r[iTask]||"",procNo:r[iProc]||""}))
+      .filter(x=>x.base||x.type||x.unit||x.taskNo||x.procNo);
+      const tbody=$("catalogTable").querySelector("tbody"); tbody.innerHTML="";
+      csvRows.forEach(x=>{ const tr=document.createElement("tr"); [x.base,x.type,x.unit,x.taskNo,x.procNo].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td);}); tbody.appendChild(tr);});
+    }
+
+    function linkedOut(r){
+      const t=String(r.taskNo||"").trim(), p=String(r.processNo||"").trim();
+      const m=csvRows.filter(x=>(x.taskNo===t||x.procNo===p)&&x.type).map(x=>x.type.trim()).filter(Boolean);
+      return Array.from(new Set(m)).join("; ");
+    }
+
+    async function loadDb(){
+      status("Ielādē no DB...","info");
+      const {data,error}=await supabaseClient.from(TABLE).select("*");
+      if(error){ status("DB kļūda (procesi): "+error.message,"error"); return; }
+      processRows=(data||[]).map(d=>({
+        id:gv(d,["id","ID","Id"]), idKey:gid(d), raw:d,
+        group:normGroup(gv(d,["procesu_grupa","Procesu grupa","group","procGroup"])),
+        taskNo:gv(d,["uzdevuma_nr","Uzdevuma Nr.","taskNo"]), task:gv(d,["uzdevums","Uzdevums","task"]),
+        processNo:gv(d,["procesa_nr","Procesa Nr.","processNo"]), process:gv(d,["procesi_dzives_ciklam","Procesi, kas nodrošina uzdevuma dzīves ciklu","processLife"]),
+        owner:gv(d,["procesa_ipasnieks","Procesa īpašnieks","processOwner"]), laws:gv(d,["normativie_akti","Normatīvie akti","laws"]),
+        docs:gv(d,["procesa_dokumentacija","Procesa dokumentācija","docs"]), input:gv(d,["procesa_iniciators","input"]),
+        outCount:gv(d,["galaproduktu_skaits","outputCount"]), avg:gv(d,["videjais_izpildes_laiks","outputAvgTime"]),
+        kpi:gv(d,["kpi"]), risk:gv(d,["riski","riskInfo"])
+      }));
+      dbCols=new Set(); processRows.forEach(r=>Object.keys(r.raw||{}).forEach(k=>dbCols.add(k)));
+      status("Ielādēts: "+processRows.length,"ok");
+    }
+
+    function applyLevel(){
+      const l=Number($("levelSelect").value), g=l>=2, b=l>=3;
+      document.querySelectorAll("th.col-green,td.col-green").forEach(e=>e.style.display=g?"":"none");
+      document.querySelectorAll("th.col-blue,td.col-blue").forEach(e=>e.style.display=b?"":"none");
+      $("matrixCard").classList.toggle("hidden", l<4);
+    }
+
+    function renderTable(){
+      const q=$("searchInput").value.trim().toLowerCase(), gf=$("groupFilter").value;
+      const tb=$("processTable").querySelector("tbody"); tb.innerHTML="";
+      processRows.filter(r=>(!gf||r.group===gf)&&(!q||[r.group,r.taskNo,r.task,r.processNo,r.process,r.owner,r.kpi,r.risk].join(" ").toLowerCase().includes(q)))
+      .forEach(r=>{
+        const tr=document.createElement("tr"); const c=(t,cls)=>{const td=document.createElement("td"); if(cls) td.classList.add(cls); td.textContent=t||""; tr.appendChild(td);};
+        c(r.group,"col-gray"); c(r.taskNo,"col-gray"); c(r.task,"col-gray"); c(r.processNo,"col-gray"); c(r.process,"col-gray"); c(r.owner,"col-gray");
+        c(r.laws,"col-green"); c(r.docs,"col-green"); c(r.input,"col-green"); c(r.outCount,"col-green"); c(r.avg,"col-green");
+        c(r.kpi,"col-blue"); c(r.risk,"col-blue"); c(linkedOut(r),"col-blue");
+        const td=document.createElement("td"), b=document.createElement("button"); b.type="button"; b.className="secondary"; b.textContent="Atvērt kartiņu"; b.onclick=()=>openEditor(r); td.appendChild(b); tr.appendChild(td);
+        tb.appendChild(tr);
+      });
+      applyLevel();
+    }
+
+    function toMx(headers, rows){ if(!headers.length||!rows.length) return "<p>Nav datu.</p>"; let h="<table><thead><tr><th></th>"+headers.map(x=>"<th>"+x+"</th>").join("")+"</tr></thead><tbody>";
+      rows.forEach(r=>{h+="<tr><th>"+r.label+"</th>"+headers.map(x=>"<td>"+(r.set.has(x)?"X":"")+"</td>").join("")+"</tr>";}); return h+"</tbody></table>"; }
+    function rebuildMx(){
+      const t2p=new Map(), pset=new Set();
+      processRows.forEach(r=>{const t=((r.taskNo||"")+" "+(r.task||"")).trim()||"(nav uzdevuma)", p=(r.process||r.processNo||"").trim()||"(nav procesa)";
+        if(!t2p.has(t)) t2p.set(t,new Set()); t2p.get(t).add(p); pset.add(p);});
+      $("m1").innerHTML=toMx(Array.from(pset), Array.from(t2p.keys()).map(k=>({label:k,set:t2p.get(k)})));
+      const p2o=new Map(), oset=new Set();
+      processRows.forEach(r=>{const p=(r.process||r.processNo||"").trim()||"(nav procesa)", outs=linkedOut(r).split(";").map(x=>x.trim()).filter(Boolean);
+        if(!p2o.has(p)) p2o.set(p,new Set()); outs.forEach(o=>{p2o.get(p).add(o); oset.add(o);});});
+      $("m2").innerHTML=toMx(Array.from(oset), Array.from(p2o.keys()).map(k=>({label:k,set:p2o.get(k)})));
+    }
+
+    function fillForm(r){
+      $("eId").value=r?String(r.id||""):""; $("eGroup").value=r?r.group:"pamatdarbības procesi"; $("eTaskNo").value=r?r.taskNo:""; $("eTask").value=r?r.task:"";
+      $("eProcNo").value=r?r.processNo:""; $("eProcess").value=r?r.process:""; $("eOwner").value=r?r.owner:""; $("eLaws").value=r?r.laws:""; $("eDocs").value=r?r.docs:"";
+      $("eInput").value=r?r.input:""; $("eOutCount").value=r?r.outCount:""; $("eAvg").value=r?r.avg:""; $("eKpi").value=r?r.kpi:""; $("eRisk").value=r?r.risk:"";
+    }
+    function formVals(){ return {group:$("eGroup").value.trim(),taskNo:$("eTaskNo").value.trim(),task:$("eTask").value.trim(),processNo:$("eProcNo").value.trim(),process:$("eProcess").value.trim(),
+      owner:$("eOwner").value.trim(),laws:$("eLaws").value.trim(),docs:$("eDocs").value.trim(),input:$("eInput").value.trim(),outCount:$("eOutCount").value.trim(),
+      avg:$("eAvg").value.trim(),kpi:$("eKpi").value.trim(),risk:$("eRisk").value.trim()};}
+    function pickKey(raw, choices){ const k=raw?fk(raw,choices):null; if(k) return k; return choices.find(c=>dbCols.has(c))||null; }
+    function toPayload(f,row){
+      const raw=row?row.raw:null, map={group:["procesu_grupa","Procesu grupa","group","procGroup"],taskNo:["uzdevuma_nr","Uzdevuma Nr.","taskNo"],task:["uzdevums","Uzdevums","task"],
+        processNo:["procesa_nr","Procesa Nr.","processNo"],process:["procesi_dzives_ciklam","Procesi, kas nodrošina uzdevuma dzīves ciklu","processLife"],owner:["procesa_ipasnieks","Procesa īpašnieks","processOwner"],
+        laws:["normativie_akti","Normatīvie akti","laws"],docs:["procesa_dokumentacija","Procesa dokumentācija","docs"],input:["procesa_iniciators","input"],
+        outCount:["galaproduktu_skaits","outputCount"],avg:["videjais_izpildes_laiks","outputAvgTime"],kpi:["kpi"],risk:["riski","riskInfo"]};
+      const p={}; Object.keys(map).forEach(k=>{ const key=pickKey(raw,map[k]); if(key) p[key]=f[k]||""; }); return p;
+    }
+    function openEditor(r){
+      $("editorCard").classList.remove("hidden"); $("editorTitle").textContent=r?"Procesa kartiņa (rediģēt)":"Procesa kartiņa (jauns)"; fillForm(r);
+      const e=canEdit(); $("deleteBtn").classList.toggle("hidden", !(r&&e));
+      $("editorForm").querySelectorAll("input,select,button").forEach(el=>{ if(el.id==="closeBtn") return; el.disabled=!e;});
+      $("modeHint").textContent=e?"Labošanas režīms ieslēgts.":"Skatīšanās režīms.";
+    }
+
+    function loadRoles(){ try{roles=JSON.parse(localStorage.getItem("roleMap")||"{}");}catch{roles={};} if(!roles.daina) roles.daina="admin_edit"; if(!roles.guest) roles.guest="viewer"; renderRoles(); }
+    function saveRoles(){ localStorage.setItem("roleMap",JSON.stringify(roles)); renderRoles(); }
+    function renderRoles(){
+      const us=Object.keys(roles).sort(); $("userSelect").innerHTML=us.map(u=>`<option value="${u}">${u}</option>`).join("");
+      if(!us.includes(user)) user=us[0]||"daina"; $("userSelect").value=user; $("roleSelect").value=role();
+      const tb=$("roleTable").querySelector("tbody"); tb.innerHTML="";
+      us.forEach(u=>{ const tr=document.createElement("tr"); tr.innerHTML=`<td>${u}</td><td>${roles[u]}</td><td><button type="button" class="secondary" data-u="${u}">Dzēst</button></td>`; tb.appendChild(tr); });
+    }
+
+    // events
+    $("refreshBtn").onclick=async()=>{ await loadCsv(); await loadDb(); renderTable(); rebuildMx(); };
+    $("searchInput").oninput=renderTable; $("groupFilter").onchange=renderTable; $("levelSelect").onchange=()=>{applyLevel(); rebuildMx();};
+    $("newBtn").onclick=()=>openEditor(null); $("closeBtn").onclick=()=>$("editorCard").classList.add("hidden");
+    $("editorForm").onsubmit=async(e)=>{ e.preventDefault(); if(!canEdit()){alert("Labošana pieejama tikai admin (labot)."); return;}
+      const f=formVals(), id=$("eId").value;
+      try{
+        if(!id){ const {error}=await supabaseClient.from(TABLE).insert(toPayload(f,null)); if(error) throw error; }
+        else{ const row=processRows.find(r=>String(r.id)===String(id)); if(!row||!row.idKey||row.id==="") throw new Error("Nav derīgas primārās atslēgas.");
+          const {error}=await supabaseClient.from(TABLE).update(toPayload(f,row)).eq(row.idKey,row.id); if(error) throw error; }
+        $("editorCard").classList.add("hidden"); await loadDb(); renderTable(); rebuildMx(); status("Saglabāts.","ok");
+      }catch(err){ status("DB kļūda: "+(err.message||err),"error"); }
+    };
+    $("deleteBtn").onclick=async()=>{ if(!canEdit()) return; const id=$("eId").value, row=processRows.find(r=>String(r.id)===String(id)); if(!row||!row.idKey||row.id==="") return;
+      if(!confirm("Dzēst ierakstu?")) return; try{ const {error}=await supabaseClient.from(TABLE).delete().eq(row.idKey,row.id); if(error) throw error;
+        $("editorCard").classList.add("hidden"); await loadDb(); renderTable(); rebuildMx(); status("Dzēsts.","ok");
+      }catch(err){ status("DB kļūda: "+(err.message||err),"error"); }};
+    $("shareBtn").onclick=async()=>{ const u=new URL(location.href); u.searchParams.set("user",user); u.searchParams.set("level",$("levelSelect").value); try{await navigator.clipboard.writeText(u.toString()); alert("Saite nokopēta.");}catch{alert("Neizdevās kopēt saiti.");}};
+    $("emailBtn").onclick=()=>{ const u=new URL(location.href); u.searchParams.set("user",user); u.searchParams.set("level",$("levelSelect").value); location.href="mailto:?subject="+encodeURIComponent("Procesu vadības bloks")+"&body="+encodeURIComponent("Saite:\n"+u.toString()); };
+    $("userSelect").onchange=()=>{ user=$("userSelect").value; $("roleSelect").value=role(); renderTable(); };
+    $("saveRoleBtn").onclick=()=>{ roles[user]=$("roleSelect").value; saveRoles(); renderTable(); };
+    $("assignRoleBtn").onclick=()=>{ const u=$("newUserInput").value.trim(); if(!u) return; roles[u]=$("newRoleSelect").value; saveRoles(); $("newUserInput").value=""; };
+    $("roleTable").onclick=(e)=>{ const b=e.target.closest("button[data-u]"); if(!b) return; const u=b.getAttribute("data-u"); if(u==="daina"){alert("Primāro admin lietotāju nedzēšam.");return;} delete roles[u]; saveRoles(); };
+
+    (async function init(){
+      const p=new URLSearchParams(location.search); if(p.get("user")) user=p.get("user"); if(["1","2","3","4"].includes(p.get("level"))) $("levelSelect").value=p.get("level");
+      loadRoles(); await loadCsv(); await loadDb(); renderTable(); rebuildMx();
+    })();
+  </script>
+</body>
+</html>

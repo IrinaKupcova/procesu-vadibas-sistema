@@ -1,0 +1,66 @@
+Galaproduktu veidu katalogs,,,,
+Pamata galaprodukts ,Galaproduktu veidi,"Struktūrvienība-izpildītājs, kas rada galaprodukta veidu",Uzdevuma Nr.,Procesa Nr.
+"Objekts reģistrēts NM reģistrā
+Sniegts reģistrācijas atteikums",SD veicēja reģistrācija,NP RD,P1.,P1.1.
+"Objekts reģistrēts NM reģistrā
+Sniegts reģistrācijas atteikums",SD veicēja reģistrācijas atteikums,NP RD,P1.,P1.1.
+"Objekts reģistrēts NM reģistrā
+Sniegts reģistrācijas atteikums",Patentmaksātāja reģistrācija ,NP RD,P1.,P1.1.
+"Objekts reģistrēts NM reģistrā
+Sniegts reģistrācijas atteikums",Patentmaksātāja reģistrācijas atteikums  ,NP RD,P1.,P1.1.
+"Objekts reģistrēts NM reģistrā
+Sniegts reģistrācijas atteikums",MUN maksātāja reģistrācija ,NP RD,P1.,P1.1.
+"Objekts reģistrēts NM reģistrā
+Sniegts reģistrācijas atteikums",MUN maksātāja reģistrācijas atteikums  ,NP RD,P1.,P1.1.
+"Objekts reģistrēts NM reģistrā
+Sniegts reģistrācijas atteikums",PVN maksātāja reģistrācija ,NP PVND,P1.,P1.1.
+"Objekts reģistrēts NM reģistrā
+Sniegts reģistrācijas atteikums",PVN maksātāja reģistrācijas atteikums  ,NP PVND,P1.,P1.1.
+"Objekts reģistrēts NM reģistrā
+Sniegts reģistrācijas atteikums",PSD veicēja reģistrācija,NP RD,P1.,P1.1.
+"Objekts reģistrēts NM reģistrā
+Sniegts reģistrācijas atteikums",PSD veicēja reģistrācijas atteikums,NP RD,P1.,P1.1.
+"NM statuss/ informācija aktualizēta 
+NM izslēgts no NM reģistra ",Aktualizēti NM reģistra dati (NACE),NP RD,P1.,P1.2.
+"NM statuss/ informācija aktualizēta 
+NM izslēgts no NM reģistra ",Aktualizēti NM reģistra dati (norēķinu konts / maksājumu sistēmas),NP RD,P1.,P1.2.
+"NM statuss/ informācija aktualizēta 
+NM izslēgts no NM reģistra ",Aktualizētas pilnvaras,NP RD,P1.,P1.2.
+"NM statuss/ informācija aktualizēta 
+NM izslēgts no NM reģistra ",Aktualizēti patiesā labuma guvēja dati,NP RD,P1.,P1.2.
+"NM statuss/ informācija aktualizēta 
+NM izslēgts no NM reģistra ",Noņemts MUN statuss,NP RD,P1.,P1.2.
+"NM statuss/ informācija aktualizēta 
+NM izslēgts no NM reģistra ",Noņemts PVN statuss,NP PVND,P1.,P1.2.
+"NM statuss/ informācija aktualizēta 
+NM izslēgts no NM reģistra ",Aktualizēts SD konta statuss,NP RD,P1.,P1.2.
+"NM statuss/ informācija aktualizēta 
+NM izslēgts no NM reģistra ",Pieņemts lēmums par datu/statusa neaktualizēšanu (atteikums),,P1.,P1.2.
+"NM statuss/ informācija aktualizēta 
+NM izslēgts no NM reģistra ",Dzēsta struktūrvienība ,,P1.,P1.2.
+"NM statuss/ informācija aktualizēta 
+NM izslēgts no NM reģistra ",izslēgta SD,,P1.,P1.2.
+"Deklarācija pieņemta
+Deklarācijas pieņemšanas atteikums ",Pieņemta un reģistrēta deklarācija (GID),,P1.,P1.3.
+"Deklarācija pieņemta
+Deklarācijas pieņemšanas atteikums ",Pieņemta un reģistrēta deklarācija (PVN),,P1.,P1.3.
+"Deklarācija pieņemta
+Deklarācijas pieņemšanas atteikums ",Pieņemta un reģistrēta deklarācija (IIN),,P1.,P1.3.
+"Deklarācija pieņemta
+Deklarācijas pieņemšanas atteikums ",Pieņemta un reģistrēta deklarācija (akcīze),,P1.,P1.3.
+"Deklarācija pieņemta
+Deklarācijas pieņemšanas atteikums ",Pieņemta un reģistrēta deklarācija (cita veida),,P1.,P1.3.
+"Deklarācija pieņemta
+Deklarācijas pieņemšanas atteikums ",Reģistrēta deklarācijas precizācija,,P1.,P1.3.
+"Deklarācija pieņemta
+Deklarācijas pieņemšanas atteikums ",Deklarācija noraidīta / atteikta pieņemšana (kļūdu dēļ),,P1.,P1.3.
+"Deklarācija pieņemta
+Deklarācijas pieņemšanas atteikums ",Aprēķināts maksājamais nodoklis,,P1.,P1.4.
+"Deklarācija pieņemta
+Deklarācijas pieņemšanas atteikums ",Aprēķināts atmaksājamais nodoklis,,P1.,P1.4.
+"Deklarācija pieņemta
+Deklarācijas pieņemšanas atteikums ",Veikts nodokļa pārrēķins / korekcija,,P1.,P1.4.
+"Deklarācija pieņemta
+Deklarācijas pieņemšanas atteikums ",Aprēķins par citu maksājumu/saistību (cits),,P1.,P1.4.
+"Deklarācija pieņemta
+Deklarācijas pieņemšanas atteikums ",Atteikums ,,P1.,P1.4.

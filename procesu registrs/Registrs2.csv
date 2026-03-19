@@ -1,0 +1,73 @@
+"“Procesu reģistrs vairs nav uzdevumu katalogs.
+Tas ir vadības instruments, kas rāda, kā iestāde rada vērtību.”",,"Uzdevumi - KO iestāde dara,
+Procesi - KĀ uzdevums tiek izpildīts,
+Funkcijas - AR KĀDIEM konkrētiem darbiem, lomām un atbildībām process tiek nodrošināts.",,https://www.figma.com/make/7Oqlkka2Op8EYVvXR9jH1T/Interactive-Process-Register-Prototype?t=hsltd28PE9z26tvT-20&fullscreen=1,Procesu reģistra pamatskats ,,,,,,,,,,,,,,,
+,,,,,Procesu reģistra paplašinātais pamatskats,,,,,,,,,,,,,,,
+,,,,,Papildu informācija vai datu sasaiste ,,,,,,,,,,,,,,,
+Procesu grupa,Uzdevuma Nr.,Uzdevums,Procesa Nr.,"Procesi, kas nodrošina uzdevuma dzīves ciklu
+ Parasti viens izriet no otra. Tikai kopā veicina uzdevuma mērķa sasniegšanu.","Procesa īpašnieks 
+Augstāka līmeņa lēmējspējīgs vadītājs.
+Ja procesu īsteno vairākās pārvaldes - tās pārvaldes direktors, kurai ir resurietilpīgāka procesa daļa. ",Procesa pamata galaprodukti,Procesa galaproduktu veidu katalogs ,Procesu reglamentējošie ārējie normatīvie akti,"Procesa dokumentācija
+procesa apraksti, noteikumi, vadlīnijas u.t.t. ",Procesa iniciātors (input),Procesa galaproduktu skaits,Procesa galaproduktu vidējais izpildes laiks,"Citi rādītāji
+informācija/ īsceļš uz VID rādītāju ezera datiem","Uzdevuma/ procesa KPI
+Mainīgi - katru reizi var būt cits, atkarīgi no uzstadīta mērķa. 
+Iespējams, sasaistīti ar stratēgijas datiem.
+Nosaka ar mērķi uzlabot uzdevumu/ procesu, nezaudēt esošo kvalitāti, mazināt risku u.t.t.","Pakalpojumi, kurus nodrošina process
+informācija/ īsceļš uz pakalpojumu vadības datiem",Vai procesam ir izveidota plūsma shēma ,"Procesa nodrošināšanai izmantoti IT resursi
+IS, programatūras, vietnes u.t.t.","Informācija par procesu riskiem
+risku veidi, notikumi, risku mazinošie pasākumi (informācija/ īsceļš uz risku vadības datiem)","Informācija par procesu optimizāciju:
+* iekšējo un ārējo auditu sasaiste ar procesu;
+* RZ u.c. 
+(informācija/ īsceļš uz datu avotiem)",Saistošie procesi
+Pamatdarbības procesi (P),P1,Nodokļu saistību dzīves cikla nodrosināšana,P1.1.,Reģistrācija,,"Objekts reģistrēts reģistrā
+Sniegts reģistrācijas atteikums",Galaproduktu veidu katalogs'!A1,,,Klienta pieprasījums ,"P.1.1.1. - reģistrēts xx / atteikts xx
+P1.1.2.  - reģistrēts xx / atteikts xx
+…..........","P.1.1.1. - reģistrēts vid_laiks / atteikts vid_laiks
+P1.1.2.  - reģistrēts vid_laiks / atteikts vid_laiks
+…..........",,Vidēja laika samazināšana,,,,,,
+Pamatdarbības procesi (P),P1,Nodokļu saistību dzīves cikla nodrosināšana,P1.2.,NM statusa un datu pārvaldība,,"NM statuss/ informācija aktualizēta 
+NM izslēgts no NM reģistra ",Galaproduktu veidu katalogs'!A2,,,"Kienta iesniegtā informācija/ fakts, kas iniciē klienta datu aktualizēšanu ","P1.2.1. aktualizēts/ nav aktualizēts 
+…....................","P1.2.1. aktualizēts izpildes vid_laiks/ nav aktualizēts izpildes vid_laiks 
+…....................",,Vidēja laika samazināšana,,,,,,
+Pamatdarbības procesi (P),P1,Nodokļu saistību dzīves cikla nodrosināšana,,P1.3. Deklarēšana,,"Deklarācija pieņemta
+Deklarācijas pieņemšanas atteikums ",Galaproduktu veidu katalogs'!A3,,,Klienta iesniegta deklarācija vai deklarēšanai sagatavoti dati,"P.1.3.1. - pieņemta un reģistrēta xx
+…..........",P1.3.1. izpildes vid_laiks/ nav aktualizēts izpildes vid_laiks ,,"Vidēja laika samazināšana, aprēķināts/ iekasēts nodokis ",,,,,,
+Pamatdarbības procesi (P),P1,Nodokļu saistību dzīves cikla nodrosināšana,,P1.4. Aprēķins,,"
+",Galaproduktu veidu katalogs'!A4,,,Apstiprināta deklarācija un aktuāli klienta dati,,,,,,,,,,
+Pamatdarbības procesi (P),P1,Nodokļu saistību dzīves cikla nodrosināšana,,P1.5. Maksājumu uzskaite,,,Galaproduktu veidu katalogs'!A5,,,Aprēķina rezultāts un saņemta maksājuma informācija,,,,,,,,,,
+Pamatdarbības procesi (P),P1,Nodokļu saistību dzīves cikla nodrosināšana,,P1.6. Parādu uzraudzība,,,Galaproduktu veidu katalogs'!A6,,,Nesamaksāta vai daļēji apmaksāta saistība noteiktajā termiņā,,,,,,,,,,
+Pamatdarbības procesi (P),P3,Nodokļu kontrole un audits ,,P2.1. Riska atlase,,,Galaproduktu veidu katalogs'!A8,,,"Informācija par nodokļu maksātāju darbību, uzvedību vai datu neatbilstībām (riska indikatori, analītikas rezultāti)",,,,,,,,,,
+Pamatdarbības procesi (P),P4,Nodokļu kontrole un audits ,, P2.2. Pārbaude,,,Galaproduktu veidu katalogs'!A9,,,Atlasīts riska gadījums vai nodokļu maksātājs pārbaudei,,,,,,,,,,
+Pamatdarbības procesi (P),P5,Nodokļu kontrole un audits ,,P.2.3. Lēmums,,,Galaproduktu veidu katalogs'!A10,,,Pārbaudes rezultāti,,,,,,,,,,
+Pamatdarbības procesi (P),P6,Nodokļu kontrole un audits ,,P.2.4. Sankciju piemērošana,,,Galaproduktu veidu katalogs'!A11,,,Pieņemts lēmums par sankciju piemērošanu,,,,,,,,,,
+Pamatdarbības procesi (P),P4,Muitošanas un preču kontroles process ,,P3.1. Muitas deklarācija,,,Galaproduktu veidu katalogs'!A13,,,,,,,,,,,,,
+Pamatdarbības procesi (P),P5,Muitošanas un preču kontroles process ,,P3.2. Riska izvērtējums,,,Galaproduktu veidu katalogs'!A14,,,,,,,,,,,,,
+Pamatdarbības procesi (P),P6,Muitošanas un preču kontroles process ,,P3.3. Kontrole,,,Galaproduktu veidu katalogs'!A15,,,,,,,,,,,,,
+Pamatdarbības procesi (P),P7,Muitošanas un preču kontroles process ,,P3.4. Lēmums,,,Galaproduktu veidu katalogs'!A16,,,,,,,,,,,,,
+Pamatdarbības procesi (P),P8,Muitošanas un preču kontroles process ,,P3.5. Uzskaite,,,Galaproduktu veidu katalogs'!A17,,,,,,,,,,,,,
+Pamatdarbības procesi (P),P5,Klientu iesniegumu un konsultāciju pārvaldība ,,P4.1. Iesniegums/jautājums,,,Galaproduktu veidu katalogs'!A19,,,,,,,,,,,,,
+Pamatdarbības procesi (P),P6,Klientu iesniegumu un konsultāciju pārvaldība ,,P4.2. Izvērtēšana,,,Galaproduktu veidu katalogs'!A20,,,,,,,,,,,,,
+Pamatdarbības procesi (P),P7,Klientu iesniegumu un konsultāciju pārvaldība ,,P4.3. Atbilde,,,Galaproduktu veidu katalogs'!A21,,,,,,,,,,,,,
+Pamatdarbības procesi (P),P8,Klientu iesniegumu un konsultāciju pārvaldība ,,P4.4. Informēšana,,,Galaproduktu veidu katalogs'!A22,,,,,,,,,,,,,
+Vadības procesi (V),A2,Stratēģijas un procesu/pakalpojumu vadība,,A.1.1. Stratēģijas izstrāde ,,,Galaproduktu veidu katalogs'!A24,,,,,,,,,,,,,
+Vadības procesi (V),A3,Stratēģijas un procesu/pakalpojumu vadība,,A1.2. KPI noteikšana,,,Galaproduktu veidu katalogs'!A25,,,,,,,,,,,,,
+Vadības procesi (V),A4,Stratēģijas un procesu/pakalpojumu vadība,,A1.3. Uzraudzība,,,Galaproduktu veidu katalogs'!A26,,,,,,,,,,,,,
+Vadības procesi (V),A5,Stratēģijas un procesu/pakalpojumu vadība,,A1.4. Uzlabošana,,,Galaproduktu veidu katalogs'!A27,,,,,,,,,,,,,
+Vadības procesi (V),A3,Personāla un finanšu resursu vadība ,,A2.1. Plānošana,,,Galaproduktu veidu katalogs'!A29,,,,,,,,,,,,,
+Vadības procesi (V),A4,Personāla un finanšu resursu vadība ,,A2.2. Uzskaite,,,Galaproduktu veidu katalogs'!A30,,,,,,,,,,,,,
+Vadības procesi (V),A5,Personāla un finanšu resursu vadība ,,A2.3. Attīstība,,,Galaproduktu veidu katalogs'!A31,,,,,,,,,,,,,
+Vadības procesi (V),A6,Personāla un finanšu resursu vadība ,,A.2.4. Kontrole,,,Galaproduktu veidu katalogs'!A32,,,,,,,,,,,,,
+Atbalsta procesi (A),A4,"IT attīstība, uzturēšana un datu pārvaldība ",,A3.1. Prasību analīze,,,Galaproduktu veidu katalogs'!A34,,,,,,,,,,,,,
+Atbalsta procesi (A),A5,"IT attīstība, uzturēšana un datu pārvaldība ",,A3.2. Izstrāde,,,Galaproduktu veidu katalogs'!A35,,,,,,,,,,,,,
+Atbalsta procesi (A),A6,"IT attīstība, uzturēšana un datu pārvaldība ",,A3.3.Uzturēšana,,,Galaproduktu veidu katalogs'!A36,,,,,,,,,,,,,
+Atbalsta procesi (A),A7,"IT attīstība, uzturēšana un datu pārvaldība ",,A3.4. Datu kvalitāte,,,Galaproduktu veidu katalogs'!A37,,,,,,,,,,,,,
+Vadības procesi (V),A5,"Risku, kvalitātes un atbilstības vadība",,A3.1. Prasību analīze,,,Galaproduktu veidu katalogs'!A39,,,,,,,,,,,,,
+Vadības procesi (V),A6,"Risku, kvalitātes un atbilstības vadība",,A3.2. Izstrāde,,,Galaproduktu veidu katalogs'!A40,,,,,,,,,,,,,
+Vadības procesi (V),A7,"Risku, kvalitātes un atbilstības vadība",,A3.3.Uzturēšana,,,Galaproduktu veidu katalogs'!A41,,,,,,,,,,,,,
+Vadības procesi (V),A8,"Risku, kvalitātes un atbilstības vadība",,A3.4. Datu kvalitāte,,,Galaproduktu veidu katalogs'!A42,,,,,,,,,,,,,
+Atbalsta procesi (A),A6,"Normatīvo aktu, dokumentu un izmaiņu pārvadība ",,A5.1. Izstrāde ,,,Galaproduktu veidu katalogs'!A44,,,,,,,,,,,,,
+Atbalsta procesi (A),A7,"Normatīvo aktu, dokumentu un izmaiņu pārvadība ",,A5.2. Saskaņošana,,,Galaproduktu veidu katalogs'!A45,,,,,,,,,,,,,
+Atbalsta procesi (A),A8,"Normatīvo aktu, dokumentu un izmaiņu pārvadība ",,A5.3. Apstiprināšana,,,Galaproduktu veidu katalogs'!A46,,,,,,,,,,,,,
+Atbalsta procesi (A),A9,"Normatīvo aktu, dokumentu un izmaiņu pārvadība ",,A5.4. Publicēšana,,,Galaproduktu veidu katalogs'!A47,,,,,,,,,,,,,
+Atbalsta procesi (A),A10,"Normatīvo aktu, dokumentu un izmaiņu pārvadība ",,A5.5.Aktualizācija,,,Galaproduktu veidu katalogs'!A48,,,,,,,,,,,,,
+,,,,,,,Galaproduktu veidu katalogs'!A49,,,,,,,,,,,,,
