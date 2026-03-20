@@ -27,6 +27,9 @@
 <body>
   <h1>Procesu vadības bloks</h1>
   <p class="tagline">Pamatskats (pelēks), Pilnais skats (pelēks+zaļš), Papildu/datu sasaiste (pelēks+zaļš+zils). Matrica vienmēr redzama apakšējā joslā. Redz visi; labo tikai administrators (labot).</p>
+  <p style="margin-top:10px;font-size:12px;color:#b91c1c">
+    Svarīgi: atvērt caur <code>http://localhost</code>, nevis <code>file:///</code> (tas var salauzt `fetch`/CORS un citus lokālos JS mehānismus).
+  </p>
 
   <div class="card">
     <div class="toolbar">
@@ -115,21 +118,26 @@
     </div>
   </div>
 
-  <script>
-    const supabaseClient = window.supabase.createClient("https://ettesmdcpizztgwewhpx.supabase.co","sb_publishable_FwFOqhTwn6LYQvFd2z0cPA_fCf3H_8-");
-    const TABLE = "procesu_registrs";
-    const CSV = "Lilitas&Irinas versija_apvienots_variants2.csv";
-    const GROUPS = new Set(["pamatdarbības procesi","atbalsta procesi","vadības procesi","citi procesi"]);
+  <script src="DB.js"></script>
 
-    let processRows = [], csvRows = [], dbCols = new Set(), user = "daina", roles = {};
+  <script>
+    const CSV = "Lilitas&Irinas versija_apvienots_variants2.csv";
+
+    let processRows = [], csvRows = [], user = "daina", roles = {};
     const $ = id => document.getElementById(id);
     const status = (t,k="info") => { $("dbStatus").textContent=t; $("dbStatus").className="status "+k; };
     const role = () => roles[user] || "viewer";
     const canEdit = () => role()==="admin_edit";
-    const fk = (o,a)=>a.find(k=>Object.prototype.hasOwnProperty.call(o,k));
-    const gv = (o,a)=>{ const k=fk(o,a); return k?o[k]:""; };
-    const gid = o => fk(o,["id","ID","Id"]) || null;
-    const normGroup = g => { const t=String(g||"").trim().toLowerCase(); return GROUPS.has(t)?t:"citi procesi"; };
+
+    // Bootstrap pārbaude: šo failu nedrīkst atvērt ar file://
+    // (dažiem pārlūkprogrammu drošības režīmiem tas rada unique origin/CORS problēmas).
+    if (location.protocol === "file:") {
+      try {
+        $("dbStatus").textContent = "Brīdinājums: atver caur http://localhost (nevis file://).";
+        $("dbStatus").className = "status error";
+      } catch {}
+      console.warn("Brīdinājums: neatver šo failu caur file://. Palaid lokālu serveri (piem., python -m http.server vai cits).");
+    }
 
     function parseCSV(t){ const out=[]; let r=[],c="",i=0,q=false; while(i<t.length){ const ch=t[i];
       if(ch=='"'){ if(q&&t[i+1]=='"'){c+='"';i+=2;continue;} q=!q;i++;continue; }
@@ -139,7 +147,30 @@
     } if(c.length||r.length){r.push(c); out.push(r);} return out; }
 
     async function loadCsv(){
-      const resp=await fetch(encodeURI(CSV)); if(!resp.ok) throw new Error("CSV nav pieejams");
+      // Ja lapa palaista kā file://, pārlūks bloķē CSV fetch (CORS), tāpēc fetch nemaz nesaucam.
+      if (location.protocol === "file:") {
+        csvRows = [];
+        const tbody = $("catalogTable").querySelector("tbody");
+        if (tbody) tbody.innerHTML = "";
+        status("CSV ielāde no file:// nav atļauta (CORS). Turpinām bez kataloga.","info");
+        return;
+      }
+      // file:// režīmā pārlūks var bloķēt CSV fetch (CORS). Šajā gadījumā turpinām bez CSV.
+      let resp;
+      try{
+        resp=await fetch(encodeURI(CSV));
+      }catch{
+        csvRows=[];
+        const tbody=$("catalogTable").querySelector("tbody"); if(tbody) tbody.innerHTML="";
+        status("CSV nav pieejams file:// režīmā. Turpinām bez kataloga.","info");
+        return;
+      }
+      if(!resp.ok){
+        csvRows=[];
+        const tbody=$("catalogTable").querySelector("tbody"); if(tbody) tbody.innerHTML="";
+        status("CSV nav pieejams ("+resp.status+"). Turpinām bez kataloga.","info");
+        return;
+      }
       const arr=parseCSV(await resp.text()); if(arr.length<3) return;
       const h=arr[1].map(x=>String(x||"").trim().toLowerCase());
       const iBase=h.findIndex(x=>x.includes("pamata galaprodukts"));
@@ -161,26 +192,21 @@
 
     async function loadDb(){
       status("Ielādē no DB...","info");
-      const {data,error}=await supabaseClient.from(TABLE).select("*");
-      if(error){ status("DB kļūda (procesi): "+error.message,"error"); return; }
-      processRows=(data||[]).map(d=>({
-        id:gv(d,["id","ID","Id"]), idKey:gid(d), raw:d,
-        group:normGroup(gv(d,["procesu_grupa","Procesu grupa","group","procGroup"])),
-        taskNo:gv(d,["uzdevuma_nr","Uzdevuma Nr.","taskNo"]), task:gv(d,["uzdevums","Uzdevums","task"]),
-        processNo:gv(d,["procesa_nr","Procesa Nr.","processNo"]), process:gv(d,["procesi_dzives_ciklam","Procesi, kas nodrošina uzdevuma dzīves ciklu","processLife"]),
-        owner:gv(d,["procesa_ipasnieks","Procesa īpašnieks","processOwner"]),
-        input:gv(d,["procesa_iniciators","input"]),
-        products:gv(d,["galaprodukti","outputProducts","normativie_akti","Normatīvie akti","laws"]),
-        productTypes:gv(d,["galaproduktu_veidi","outputTypes","procesa_dokumentacija","Procesa dokumentācija","docs"]) || linkedOut({ taskNo:gv(d,["uzdevuma_nr","Uzdevuma Nr.","taskNo"]), processNo:gv(d,["procesa_nr","Procesa Nr.","processNo"]) }),
-        relatedProcesses:gv(d,["saistitie_procesi","relatedProcesses","galaproduktu_skaits","outputCount"]),
-        services:gv(d,["pakalpojumi","services","videjais_izpildes_laiks","outputAvgTime"]),
-        flowcharts:gv(d,["plusmas_shemas","plūsmas_shēmas","flowcharts","kpi"]),
-        itResources:gv(d,["it_resursi","itResources","riski","riskInfo"]),
-        optimization:gv(d,["optimizacija","optimization"]),
-        otherMetrics:gv(d,["citi_raditaji","otherMetrics"])
-      }));
-      dbCols=new Set(); processRows.forEach(r=>Object.keys(r.raw||{}).forEach(k=>dbCols.add(k)));
-      status("Ielādēts: "+processRows.length,"ok");
+      try{
+        const api = window.DB;
+        if(!api || typeof api.load !== "function"){
+          const msg = "DB API nav ielādēts. Pārliecinies, ka <script src=\"DB.js\"> tiešām ielādējas un ir tajā pašā mapē.";
+          console.error(msg, api);
+          status(msg,"error");
+          return;
+        }
+        processRows = await api.load();
+        status("Ielādēts: "+processRows.length,"ok");
+      }catch(err){
+        console.error("DB load error:", err);
+        const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (e => (e && e.message) ? e.message : String(e));
+        status("DB kļūda: "+mapper(err),"error");
+      }
     }
 
     function applyLevel(){
@@ -226,14 +252,6 @@
     function formVals(){ return {group:$("eGroup").value.trim(),taskNo:$("eTaskNo").value.trim(),task:$("eTask").value.trim(),processNo:$("eProcNo").value.trim(),process:$("eProcess").value.trim(),
       owner:$("eOwner").value.trim(),products:$("eLaws").value.trim(),productTypes:$("eDocs").value.trim(),input:$("eInput").value.trim(),relatedProcesses:$("eOutCount").value.trim(),
       services:$("eAvg").value.trim(),flowcharts:$("eKpi").value.trim(),itResources:$("eRisk").value.trim(),optimization:$("eOpt").value.trim(),otherMetrics:$("eOther").value.trim()};}
-    function pickKey(raw, choices){ const k=raw?fk(raw,choices):null; if(k) return k; return choices.find(c=>dbCols.has(c))||null; }
-    function toPayload(f,row){
-      const raw=row?row.raw:null, map={group:["procesu_grupa","Procesu grupa","group","procGroup"],taskNo:["uzdevuma_nr","Uzdevuma Nr.","taskNo"],task:["uzdevums","Uzdevums","task"],
-        processNo:["procesa_nr","Procesa Nr.","processNo"],process:["procesi_dzives_ciklam","Procesi, kas nodrošina uzdevuma dzīves ciklu","processLife"],owner:["procesa_ipasnieks","Procesa īpašnieks","processOwner"],
-        products:["galaprodukti","outputProducts","normativie_akti","Normatīvie akti","laws"],productTypes:["galaproduktu_veidi","outputTypes","procesa_dokumentacija","Procesa dokumentācija","docs"],input:["procesa_iniciators","input"],
-        relatedProcesses:["saistitie_procesi","relatedProcesses","galaproduktu_skaits","outputCount"],services:["pakalpojumi","services","videjais_izpildes_laiks","outputAvgTime"],flowcharts:["plusmas_shemas","plūsmas_shēmas","flowcharts","kpi"],itResources:["it_resursi","itResources","riski","riskInfo"],optimization:["optimizacija","optimization"],otherMetrics:["citi_raditaji","otherMetrics"]};
-      const p={}; Object.keys(map).forEach(k=>{ const key=pickKey(raw,map[k]); if(key) p[key]=f[k]||""; }); return p;
-    }
     function openEditor(r){
       $("editorCard").classList.remove("hidden"); $("editorTitle").textContent=r?"Procesa kartiņa (rediģēt)":"Procesa kartiņa (jauns)"; fillForm(r);
       const e=canEdit(); $("deleteBtn").classList.toggle("hidden", !(r&&e));
@@ -241,12 +259,24 @@
       $("modeHint").textContent=e?"Labošanas režīms ieslēgts.":"Skatīšanās režīms.";
     }
 
-    function loadRoles(){ try{roles=JSON.parse(localStorage.getItem("roleMap")||"{}");}catch{roles={};} if(!roles.daina) roles.daina="admin_edit"; if(!roles.guest) roles.guest="viewer"; renderRoles(); }
+    function loadRoles(){
+      try{roles=JSON.parse(localStorage.getItem("roleMap")||"{}");}catch{roles={};}
+      // Lai testēšana/rediģēšana vienmēr strādā, piespiedam daina būt admin_edit.
+      roles.daina="admin_edit";
+      if(!roles.guest) roles.guest="viewer";
+      renderRoles();
+    }
     function saveRoles(){ localStorage.setItem("roleMap",JSON.stringify(roles)); renderRoles(); }
     function renderRoles(){
-      const us=Object.keys(roles).sort(); $("userSelect").innerHTML=us.map(u=>`<option value="${u}">${u}</option>`).join("");
-      if(!us.includes(user)) user=us[0]||"daina"; $("userSelect").value=user; $("roleSelect").value=role();
-      const tb=$("roleTable").querySelector("tbody"); tb.innerHTML="";
+      const us=Object.keys(roles).sort();
+      if($("userSelect")) $("userSelect").innerHTML=us.map(u=>`<option value="${u}">${u}</option>`).join("");
+      if(!us.includes(user)) user=us[0]||"daina";
+      if($("userSelect")) $("userSelect").value=user;
+      if($("roleSelect")) $("roleSelect").value=role();
+      const roleTable=$("roleTable");
+      if(!roleTable) return;
+      const tb=roleTable.querySelector("tbody"); if(!tb) return;
+      tb.innerHTML="";
       us.forEach(u=>{ const tr=document.createElement("tr"); tr.innerHTML=`<td>${u}</td><td>${roles[u]}</td><td><button type="button" class="secondary" data-u="${u}">Dzēst</button></td>`; tb.appendChild(tr); });
     }
 
@@ -256,29 +286,111 @@
     $("newBtn").onclick=()=>openEditor(null); $("closeBtn").onclick=()=>$("editorCard").classList.add("hidden");
     $("editorForm").onsubmit=async(e)=>{ e.preventDefault(); if(!canEdit()){alert("Labošana pieejama tikai admin (labot)."); return;}
       const f=formVals(), id=$("eId").value;
+      if(!f.taskNo){ status("Lauks 'Uzdevuma Nr.' ir obligāts.","error"); return; }
       try{
-        if(!id){ const {error}=await supabaseClient.from(TABLE).insert(toPayload(f,null)); if(error) throw error; }
-        else{ const row=processRows.find(r=>String(r.id)===String(id)); if(!row||!row.idKey||row.id==="") throw new Error("Nav derīgas primārās atslēgas.");
-          const {error}=await supabaseClient.from(TABLE).update(toPayload(f,row)).eq(row.idKey,row.id); if(error) throw error; }
+        const api = window.DB;
+        if(!api || typeof api.insert !== "function" || typeof api.update !== "function" || typeof api.remove !== "function"){
+          const msg = "DB API nav pieejams. Pārliecinies, ka <script src=\"DB.js\"> ielādējas.";
+          console.error(msg, api);
+          status(msg,"error");
+          return;
+        }
+        if(!id){
+          await api.insert(f);
+        } else {
+          const row=processRows.find(r=>String(r.id)===String(id));
+          if(!row||!row.idKey||row.id==="") throw new Error("Nav derīgas primārās atslēgas.");
+          await api.update(row, f);
+        }
         $("editorCard").classList.add("hidden"); await loadDb(); renderTable(); rebuildMx(); status("Saglabāts.","ok");
-      }catch(err){ status("DB kļūda: "+(err.message||err),"error"); }
+      }catch(err){
+        const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (e => (e && e.message) ? e.message : String(e));
+        console.error("DB save error:", err);
+        const msg = mapper(err);
+        alert("DB kļūda: " + msg);
+        status("DB kļūda: "+msg,"error");
+      }
     };
     $("deleteBtn").onclick=async()=>{ if(!canEdit()) return; const id=$("eId").value, row=processRows.find(r=>String(r.id)===String(id)); if(!row||!row.idKey||row.id==="") return;
-      if(!confirm("Dzēst ierakstu?")) return; try{ const {error}=await supabaseClient.from(TABLE).delete().eq(row.idKey,row.id); if(error) throw error;
+      if(!confirm("Dzēst ierakstu?")) return; try{
+        const api = window.DB;
+        if(!api || typeof api.remove !== "function"){
+          const msg = "DB API nav pieejams. Pārliecinies, ka <script src=\"DB.js\"> ielādējas.";
+          console.error(msg, api);
+          status(msg,"error");
+          return;
+        }
+        await api.remove(row);
         $("editorCard").classList.add("hidden"); await loadDb(); renderTable(); rebuildMx(); status("Dzēsts.","ok");
-      }catch(err){ status("DB kļūda: "+(err.message||err),"error"); }};
+      }catch(err){
+        const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (e => (e && e.message) ? e.message : String(e));
+        console.error("DB delete error:", err);
+        const msg = mapper(err);
+        alert("DB kļūda: " + msg);
+        status("DB kļūda: "+msg,"error");
+      }};
     $("shareBtn").onclick=async()=>{ const u=new URL(location.href); u.searchParams.set("user",user); u.searchParams.set("level",$("levelSelect").value); try{await navigator.clipboard.writeText(u.toString()); alert("Saite nokopēta.");}catch{alert("Neizdevās kopēt saiti.");}};
     $("emailBtn").onclick=()=>{ const u=new URL(location.href); u.searchParams.set("user",user); u.searchParams.set("level",$("levelSelect").value); location.href="mailto:?subject="+encodeURIComponent("Procesu vadības bloks")+"&body="+encodeURIComponent("Saite:\n"+u.toString()); };
-    $("userSelect").onchange=()=>{ user=$("userSelect").value; $("roleSelect").value=role(); renderTable(); };
-    $("saveRoleBtn").onclick=()=>{ roles[user]=$("roleSelect").value; saveRoles(); renderTable(); };
-    $("assignRoleBtn").onclick=()=>{ const u=$("newUserInput").value.trim(); if(!u) return; roles[u]=$("newRoleSelect").value; saveRoles(); $("newUserInput").value=""; };
-    $("roleTable").onclick=(e)=>{ const b=e.target.closest("button[data-u]"); if(!b) return; const u=b.getAttribute("data-u"); if(u==="daina"){alert("Primāro admin lietotāju nedzēšam.");return;} delete roles[u]; saveRoles(); };
+    if($("userSelect")) $("userSelect").onchange=()=>{ user=$("userSelect").value; if($("roleSelect")) $("roleSelect").value=role(); renderTable(); };
+    if($("saveRoleBtn")) $("saveRoleBtn").onclick=()=>{ roles[user]=$("roleSelect").value; saveRoles(); renderTable(); };
+    if($("assignRoleBtn")) $("assignRoleBtn").onclick=()=>{ const u=$("newUserInput").value.trim(); if(!u) return; roles[u]=$("newRoleSelect").value; saveRoles(); $("newUserInput").value=""; };
+    if($("roleTable")) $("roleTable").onclick=(e)=>{ const b=e.target.closest("button[data-u]"); if(!b) return; const u=b.getAttribute("data-u"); if(u==="daina"){alert("Primāro admin lietotāju nedzēšam.");return;} delete roles[u]; saveRoles(); };
 
     (async function init(){
       const p=new URLSearchParams(location.search); if(p.get("user")) user=p.get("user"); if(["1","2","3"].includes(p.get("level"))) $("levelSelect").value=p.get("level");
-      loadRoles(); await loadCsv(); await loadDb(); renderTable(); rebuildMx();
+      loadRoles();
+      try{ await loadCsv(); }catch{}
+      await loadDb(); renderTable(); rebuildMx();
+
+      // DB -> HTML sinhronizācija (polling).
+      // Pēc tam, kad DB dati tiek mainīti no ārpuses (cits lietotājs/cits skats),
+      // šī lapa automātiski atjaunos tabulu un matricu.
+      let polling = false;
+      let lastFingerprint = "";
+
+      function fingerprint(rows){
+        // Paraksts no svarīgākajiem lauku setiem; mērķis ir pamanīt izmaiņas,
+        // nevis 100% uzticami salīdzināt visu rindu (tas būtu smagāk).
+        return (rows||[]).map(r=>[
+          r.idKey, r.taskNo, r.task, r.processNo, r.process, r.owner,
+          r.input, r.products, r.productTypes,
+          r.relatedProcesses, r.services, r.flowcharts, r.itResources,
+          r.optimization, r.otherMetrics, r.group
+        ].join("~")).join("|");
+      }
+
+      async function pollDb(){
+        if(polling) return;
+        polling = true;
+        try{
+          const api = window.DB;
+          if(!api || typeof api.load !== "function") return;
+          // Neatjaunojam tabulu, ja rediģēšanas kartiņa ir atvērta,
+          // lai lietotājs nezaudētu rediģēto saturu/nesaprastu, kas notiek.
+          const editorCard = $("editorCard");
+          if(editorCard && !editorCard.classList.contains("hidden")) return;
+          const rows = await api.load();
+          const fp = fingerprint(rows);
+          if(fp !== lastFingerprint){
+            lastFingerprint = fp;
+            processRows = rows;
+            renderTable();
+            rebuildMx();
+          }
+        }catch(err){
+          // Polling nedrīkst sabojāt UI; parādam tikai konsolē.
+          console.error("DB polling error:", err);
+        }finally{
+          polling = false;
+        }
+      }
+
+      // Sākam pēc pirmās inicializācijas.
+      lastFingerprint = fingerprint(processRows);
+      setInterval(pollDb, 7000);
     })();
   </script>
   <script src="Filtrs.js"></script>
+  <script src="Pievienot%20jaunu%20procesu.js"></script>
 </body>
 </html>
