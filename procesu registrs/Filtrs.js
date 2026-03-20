@@ -236,6 +236,22 @@
     applyAllFilters();
   }
 
+  function clearAllFilters() {
+    state.quick = { process: "", task: "", owner: "", output: "" };
+    state.processHeader = {};
+    state.catalogHeader = {};
+
+    const searchInput = document.getElementById("searchInput");
+    if (searchInput) searchInput.value = "";
+
+    document.querySelectorAll(".th-filter-box select[data-col-index]").forEach((s) => {
+      s.value = "";
+    });
+    document.querySelectorAll(".th-filter-btn.active").forEach((b) => b.classList.remove("active"));
+
+    rerender();
+  }
+
   function setupRenderHook() {
     // index.html renderTable ir lokāla funkcija; drošāk ir dot publisku pēcrendera callback.
     window.__afterTableRenderFilters = function () {
@@ -254,6 +270,9 @@
     refreshHeaderFilterOptions("catalogTable", "catalogHeader");
     setupRenderHook();
     applyAllFilters();
+    window.removeAllFilters = clearAllFilters;
+    const clearBtn = document.getElementById("clearFiltersBtn");
+    if (clearBtn) clearBtn.addEventListener("click", clearAllFilters);
   }
 
   function boot() {
