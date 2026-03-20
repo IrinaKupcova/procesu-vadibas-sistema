@@ -64,7 +64,7 @@
     card.innerHTML = `
       <div class="toolbar">
         <div class="left">
-          <label style="margin-left:0;font-size:16px;font-weight:700;color:#0f172a">Skata izvēle
+          <label style="margin-left:0;font-size:18px;font-weight:700;color:#0f172a">Skata izvēle
             <select id="extraViewSelect">
               <option value="owners" selected>Izpildītāji</option>
               <option value="tasks">Uzdevumi</option>

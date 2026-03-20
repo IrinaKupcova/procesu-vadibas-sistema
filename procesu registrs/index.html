@@ -28,6 +28,7 @@
     .table-body-hidden tbody{display:none}
     .hint{font-size:12px;color:#475569}
     .search-hit{outline:2px solid #f59e0b;background:#fef3c7}
+    .section-title{margin:0;font-size:18px;font-weight:700}
   </style>
 </head>
 <body>
@@ -35,7 +36,7 @@
   <p class="tagline">Pamatskats (pelēks), Pilnais skats (pelēks+zaļš), Papildu/datu sasaiste (pelēks+zaļš+zils). Redz visi; labo tikai administrators (labot).</p>
   <div class="card">
     <div class="toolbar">
-      <div class="left"><strong>Procesu reģistrs</strong> <span id="dbStatus" class="status info"></span></div>
+      <div class="left"><span id="dbStatus" class="status info"></span></div>
       <div class="right">
         <button type="button" id="shareBtn" class="secondary">Šērot</button>
         <button type="button" id="emailBtn" class="secondary">Sūtīt e-pastā</button>
@@ -62,7 +63,7 @@
 
   <div class="card" id="processListCard">
     <div class="toolbar">
-      <div class="left"><strong>Procesu reģistrs</strong></div>
+      <div class="left"><div class="section-title">Procesu reģistrs</div></div>
       <div class="right"><button type="button" id="toggleProcessBtn" class="secondary">Atvērt procesu reģistru</button></div>
     </div>
     <div id="processListBody">
@@ -70,7 +71,7 @@
         <th class="col-gray">Procesu grupa</th><th class="col-gray">Uzdevuma Nr.</th><th class="col-gray">Uzdevums</th><th class="col-gray">Procesa Nr.</th>
         <th class="col-gray">Process</th><th class="col-gray">Procesa īpašnieks</th>
         <th class="col-green">Procesa iniciātors (input)</th><th class="col-green">Galaprodukti</th><th class="col-green">Galaproduktu veidi</th>
-        <th class="col-blue">Saistītie procesi</th><th class="col-blue">Pakalpojumi</th><th class="col-blue">Plūsmas shēmas</th><th class="col-blue">IT resursi</th><th class="col-blue">Optimizācija</th><th class="col-blue">Citi rādītāji</th><th>Kartiņa</th>
+        <th class="col-blue">Saistītie procesi</th><th class="col-blue">Pakalpojumi</th><th class="col-blue">Plūsmas shēmas</th><th class="col-blue">IT resursi</th><th class="col-blue">Optimizācija</th><th class="col-blue">Citi rādītāji</th><th>Procesa kartiņa</th>
       </tr></thead><tbody></tbody></table>
     </div>
   </div>
@@ -113,7 +114,7 @@
 
   <div class="card" id="catalogListCard">
     <div class="toolbar">
-      <div class="left"><h2 style="margin:0">Galaproduktu veidu katalogs</h2></div>
+      <div class="left"><div class="section-title">Galaproduktu veidu katalogs</div></div>
       <div class="right">
         <button type="button" id="toggleCatalogBtn" class="secondary">Atvērt katalogu</button>
         <button type="button" id="newCatalogBtn">Pievienot jaunu galaprodukta veidu</button>
@@ -121,7 +122,7 @@
     </div>
     <div id="catalogListBody">
       <table id="catalogTable" class="table-body-hidden"><thead><tr>
-        <th>Galaproduktu veida Nr.</th><th>Galaprodukta veids</th><th>Strukturvieniba izpilditajs, kas rada galaprodukta veidu</th><th>Uzdevuma Nr.</th><th>Procesa Nr.</th><th>Kartiņa</th>
+        <th>Galaprodukta veida Nr.</th><th>Galaprodukta veids</th><th>Strukturvieniba izpilditajs, kas rada galaprodukta veidu</th><th>Uzdevuma Nr.</th><th>Procesa Nr.</th><th>Procesa kartiņa</th>
       </tr></thead><tbody></tbody></table>
     </div>
   </div>
@@ -131,7 +132,7 @@
     <form id="catalogEditorForm">
       <input id="cTypeNoOrig" type="hidden" />
       <div class="form-row">
-        <div class="form-group"><label>Galaproduktu veida Nr.</label><input id="cTypeNo" /></div>
+        <div class="form-group"><label>Galaprodukta veida Nr.</label><input id="cTypeNo" /></div>
         <div class="form-group"><label>Galaprodukta veids</label><input id="cType" /></div>
       </div>
       <div class="form-row">
@@ -171,7 +172,7 @@
           return;
         }
         csvRows = await api.loadCatalogTypes();
-        status("Galaproduktu veidu katalogs ielādēts: " + csvRows.length, "ok");
+        // Nerādām ielādēto GP skaitu augšā.
       }catch(err){
         csvRows = [];
         const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (e => (e && e.message) ? e.message : String(e));
@@ -196,6 +197,9 @@
         td.appendChild(b); tr.appendChild(td);
         tbody.appendChild(tr);
       });
+      if (typeof window.__afterTableRenderFilters === "function") {
+        window.__afterTableRenderFilters();
+      }
     }
 
     function linkedOut(r){
@@ -322,7 +326,7 @@
       services:$("eAvg").value.trim(),flowcharts:$("eKpi").value.trim(),itResources:$("eRisk").value.trim(),optimization:$("eOpt").value.trim(),otherMetrics:$("eOther").value.trim()};}
     function openEditor(r){
       editingRow = r || null;
-      $("editorCard").classList.remove("hidden"); $("editorTitle").textContent=r?"Procesa kartiņa (rediģēt)":"Procesa kartiņa (jauns)"; fillForm(r);
+      $("editorCard").classList.remove("hidden"); $("editorTitle").textContent="Procesa kartiņa"; fillForm(r);
       const e=canEdit(); $("deleteBtn").classList.toggle("hidden", !(r&&e));
       $("editorForm").querySelectorAll("input,select,button").forEach(el=>{ if(el.id==="closeBtn") return; el.disabled=!e;});
       $("modeHint").textContent=e?"Labošanas režīms ieslēgts.":"Skatīšanās režīms.";
