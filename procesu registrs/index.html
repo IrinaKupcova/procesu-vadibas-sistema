@@ -27,10 +27,6 @@
 <body>
   <h1>Procesu vadības bloks</h1>
   <p class="tagline">Pamatskats (pelēks), Pilnais skats (pelēks+zaļš), Papildu/datu sasaiste (pelēks+zaļš+zils). Matrica vienmēr redzama apakšējā joslā. Redz visi; labo tikai administrators (labot).</p>
-  <p style="margin-top:10px;font-size:12px;color:#b91c1c">
-    Svarīgi: atvērt caur <code>http://localhost</code>, nevis <code>file:///</code> (tas var salauzt `fetch`/CORS un citus lokālos JS mehānismus).
-  </p>
-
   <div class="card">
     <div class="toolbar">
       <div class="left"><strong>Procesu reģistrs</strong> <span id="dbStatus" class="status info"></span></div>
@@ -129,16 +125,6 @@
     const role = () => roles[user] || "viewer";
     const canEdit = () => role()==="admin_edit";
 
-    // Bootstrap pārbaude: šo failu nedrīkst atvērt ar file://
-    // (dažiem pārlūkprogrammu drošības režīmiem tas rada unique origin/CORS problēmas).
-    if (location.protocol === "file:") {
-      try {
-        $("dbStatus").textContent = "Brīdinājums: atver caur http://localhost (nevis file://).";
-        $("dbStatus").className = "status error";
-      } catch {}
-      console.warn("Brīdinājums: neatver šo failu caur file://. Palaid lokālu serveri (piem., python -m http.server vai cits).");
-    }
-
     function parseCSV(t){ const out=[]; let r=[],c="",i=0,q=false; while(i<t.length){ const ch=t[i];
       if(ch=='"'){ if(q&&t[i+1]=='"'){c+='"';i+=2;continue;} q=!q;i++;continue; }
       if(!q&&ch==","){r.push(c);c="";i++;continue;}
@@ -147,22 +133,19 @@
     } if(c.length||r.length){r.push(c); out.push(r);} return out; }
 
     async function loadCsv(){
-      // Ja lapa palaista kā file://, pārlūks bloķē CSV fetch (CORS), tāpēc fetch nemaz nesaucam.
       if (location.protocol === "file:") {
         csvRows = [];
         const tbody = $("catalogTable").querySelector("tbody");
         if (tbody) tbody.innerHTML = "";
-        status("CSV ielāde no file:// nav atļauta (CORS). Turpinām bez kataloga.","info");
         return;
       }
-      // file:// režīmā pārlūks var bloķēt CSV fetch (CORS). Šajā gadījumā turpinām bez CSV.
       let resp;
       try{
         resp=await fetch(encodeURI(CSV));
       }catch{
         csvRows=[];
         const tbody=$("catalogTable").querySelector("tbody"); if(tbody) tbody.innerHTML="";
-        status("CSV nav pieejams file:// režīmā. Turpinām bez kataloga.","info");
+        status("CSV nav pieejams. Turpinām bez kataloga.","info");
         return;
       }
       if(!resp.ok){

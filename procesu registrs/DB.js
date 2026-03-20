@@ -73,6 +73,21 @@
     otherMetrics: ["citi_raditaji", "otherMetrics"],
   };
 
+  // Papildu aliasi, lai saskaņotu ar tavu tabulas shēmu:
+  // "Procesa_numurs", "Procesa_galaprodukti", "Pakalpojumi" u.c.
+  aliasMap.processNo = (aliasMap.processNo || []).concat(["Procesa_numurs", "procesa_numurs"]);
+  aliasMap.process = (aliasMap.process || []).concat(["Process"]);
+  aliasMap.owner = (aliasMap.owner || []).concat(["Procesa_ipasnieks"]);
+  aliasMap.products = (aliasMap.products || []).concat(["Procesa_galaprodukti"]);
+  aliasMap.productTypes = (aliasMap.productTypes || []).concat(["Procesa_galaproduktu_veidi"]);
+  aliasMap.input = (aliasMap.input || []).concat(["Procesa_iniciators"]);
+  aliasMap.relatedProcesses = (aliasMap.relatedProcesses || []).concat(["Saistitie_procesi", "Procesa_galaproduktu_skaits"]);
+  aliasMap.services = (aliasMap.services || []).concat(["Pakalpojumi", "Procesa_galaproduktu videjais_izpildes_laiks"]);
+  aliasMap.flowcharts = (aliasMap.flowcharts || []).concat(["Plusma_shema"]);
+  aliasMap.itResources = (aliasMap.itResources || []).concat(["IT_resursi", "Risku_vadiba"]);
+  aliasMap.optimization = (aliasMap.optimization || []).concat(["Optimizacija"]);
+  aliasMap.otherMetrics = (aliasMap.otherMetrics || []).concat(["Citi_raditaji", "Uzdevuma_procesa_KPI"]);
+
   function toPayload(formVals, rowRawOrNull) {
     const raw = rowRawOrNull || null;
     const p = {};
@@ -102,18 +117,18 @@
       group: normGroup(gv(d, ["procesu_grupa", "Procesu grupa", "group", "procGroup", "procesuGrupa"])),
       taskNo: gv(d, ["Uzdevuma_Nr.", "uzdevuma_nr", "Uzdevuma Nr.", "taskNo"]),
       task: gv(d, ["Uzdevums", "uzdevums", "task"]),
-      processNo: gv(d, ["procesa_nr", "Procesa_Nr.", "Procesa Nr.", "processNo"]),
-      process: gv(d, ["Procesi, kas nodrošina uzdevuma dzīves ciklu", "procesi_dzives_ciklam", "processLife"]),
-      owner: gv(d, ["procesa_ipasnieks", "Procesa_īpašnieks", "Procesa īpašnieks", "processOwner"]),
-      input: gv(d, ["procesa_iniciators", "input"]),
-      products: gv(d, ["galaprodukti", "outputProducts", "normativie_akti", "Normatīvie akti", "laws"]),
-      productTypes: gv(d, ["galaproduktu_veidi", "outputTypes", "procesa_dokumentacija", "Procesa dokumentācija", "docs"]),
-      relatedProcesses: gv(d, ["saistitie_procesi", "relatedProcesses", "galaproduktu_skaits", "outputCount"]),
-      services: gv(d, ["pakalpojumi", "services", "videjais_izpildes_laiks", "outputAvgTime"]),
-      flowcharts: gv(d, ["plusmas_shemas", "plūsmas_shēmas", "flowcharts", "kpi"]),
-      itResources: gv(d, ["it_resursi", "itResources", "riski", "riskInfo"]),
-      optimization: gv(d, ["optimizacija", "optimization"]),
-      otherMetrics: gv(d, ["citi_raditaji", "otherMetrics"]),
+      processNo: gv(d, ["procesa_nr", "Procesa_Nr.", "Procesa Nr.", "processNo", "Procesa_numurs", "procesa_numurs"]),
+      process: gv(d, ["Procesi, kas nodrošina uzdevuma dzīves ciklu", "procesi_dzives_ciklam", "processLife", "Process"]),
+      owner: gv(d, ["procesa_ipasnieks", "Procesa_ipasnieks", "Procesa_īpašnieks", "Procesa īpašnieks", "processOwner"]),
+      input: gv(d, ["procesa_iniciators", "Procesa_iniciators", "input"]),
+      products: gv(d, ["galaprodukti", "outputProducts", "normativie_akti", "Normatīvie akti", "laws", "Procesa_galaprodukti"]),
+      productTypes: gv(d, ["galaproduktu_veidi", "outputTypes", "procesa_dokumentacija", "Procesa dokumentācija", "docs", "Procesa_galaproduktu_veidi"]),
+      relatedProcesses: gv(d, ["saistitie_procesi", "Saistitie_procesi", "relatedProcesses", "galaproduktu_skaits", "outputCount", "Procesa_galaproduktu_skaits"]),
+      services: gv(d, ["pakalpojumi", "Pakalpojumi", "services", "videjais_izpildes_laiks", "outputAvgTime", "Procesa_galaproduktu videjais_izpildes_laiks"]),
+      flowcharts: gv(d, ["plusmas_shemas", "plūsmas_shēmas", "flowcharts", "kpi", "Plusma_shema"]),
+      itResources: gv(d, ["it_resursi", "IT_resursi", "itResources", "riski", "riskInfo", "Risku_vadiba"]),
+      optimization: gv(d, ["optimizacija", "optimization", "Optimizacija"]),
+      otherMetrics: gv(d, ["citi_raditaji", "Citi_raditaji", "otherMetrics", "Uzdevuma_procesa_KPI"]),
     };
   }
 
