@@ -25,8 +25,9 @@
     .editor-frame{border:2px solid #cbd5e1;border-radius:14px}
     .editor-actions{display:flex;gap:8px;justify-content:flex-start;align-items:center;padding-top:8px}
     .catalog-jump{font-size:11px;padding:4px 6px;border-radius:4px;background:#e2e8f0;color:#0f172a;margin-left:6px}
-    .section-body.hidden{display:none}
+    .table-body-hidden tbody{display:none}
     .hint{font-size:12px;color:#475569}
+    .search-hit{outline:2px solid #f59e0b;background:#fef3c7}
   </style>
 </head>
 <body>
@@ -53,8 +54,7 @@
       <label>Līmenis
         <select id="levelSelect"><option value="1" selected>Pamatskats</option><option value="2">Pilnais skats</option><option value="3">Papildu/datu sasaiste</option></select>
       </label>
-      <input id="searchInput" placeholder="Meklēt pēc atslēgas vārdiem..." />
-      <span class="hint">Meklē pēc atslēgas vārdiem</span>
+      <input id="searchInput" placeholder="Meklē pēc atslēgas vārdiem..." />
       <button type="button" id="newBtn">Pievienot jaunu procesu</button>
       <span id="modeHint"></span>
     </div>
@@ -65,8 +65,8 @@
       <div class="left"><strong>Procesu reģistrs</strong></div>
       <div class="right"><button type="button" id="toggleProcessBtn" class="secondary">Atvērt procesu reģistru</button></div>
     </div>
-    <div id="processListBody" class="section-body hidden">
-      <table id="processTable"><thead><tr>
+    <div id="processListBody">
+      <table id="processTable" class="table-body-hidden"><thead><tr>
         <th class="col-gray">Procesu grupa</th><th class="col-gray">Uzdevuma Nr.</th><th class="col-gray">Uzdevums</th><th class="col-gray">Procesa Nr.</th>
         <th class="col-gray">Process</th><th class="col-gray">Procesa īpašnieks</th>
         <th class="col-green">Procesa iniciātors (input)</th><th class="col-green">Galaprodukti</th><th class="col-green">Galaproduktu veidi</th>
@@ -119,8 +119,8 @@
         <button type="button" id="newCatalogBtn">Pievienot jaunu galaprodukta veidu</button>
       </div>
     </div>
-    <div id="catalogListBody" class="section-body hidden">
-      <table id="catalogTable"><thead><tr>
+    <div id="catalogListBody">
+      <table id="catalogTable" class="table-body-hidden"><thead><tr>
         <th>Galaproduktu veida Nr.</th><th>Galaprodukta veids</th><th>Strukturvieniba izpilditajs, kas rada galaprodukta veidu</th><th>Uzdevuma Nr.</th><th>Procesa Nr.</th><th>Kartiņa</th>
       </tr></thead><tbody></tbody></table>
     </div>
@@ -234,6 +234,10 @@
       const p=String(procNo||"").trim();
       const table=$("catalogTable");
       if(!table) return;
+      if(table.classList.contains("table-body-hidden")){
+        table.classList.remove("table-body-hidden");
+        if($("toggleCatalogBtn")) $("toggleCatalogBtn").textContent="Aizvērt katalogu";
+      }
       const rows=Array.from(table.querySelectorAll("tbody tr"));
       let matched=false;
       rows.forEach((tr)=>{
@@ -252,7 +256,8 @@
     function renderTable(){
       const q=$("searchInput").value.trim().toLowerCase(), gf=($("groupFilter")?$("groupFilter").value:"");
       const tb=$("processTable").querySelector("tbody"); tb.innerHTML="";
-      processRows.filter(r=>(!gf||r.group===gf)&&(!q||[r.group,r.taskNo,r.task,r.processNo,r.process,r.owner,r.products,r.productTypes,r.relatedProcesses,r.services,r.flowcharts,r.itResources,r.optimization,r.otherMetrics].join(" ").toLowerCase().includes(q)))
+      const matchedRows = processRows.filter(r=>(!gf||r.group===gf)&&(!q||[r.group,r.taskNo,r.task,r.processNo,r.process,r.owner,r.products,r.productTypes,r.relatedProcesses,r.services,r.flowcharts,r.itResources,r.optimization,r.otherMetrics].join(" ").toLowerCase().includes(q)));
+      matchedRows
       .forEach(r=>{
         const tr=document.createElement("tr"); const c=(t,cls)=>{const td=document.createElement("td"); if(cls) td.classList.add(cls); td.textContent=t||""; tr.appendChild(td);};
         c(r.group,"col-gray"); c(r.taskNo,"col-gray"); c(r.task,"col-gray"); c(r.processNo,"col-gray"); c(r.process,"col-gray"); c(r.owner,"col-gray");
@@ -264,9 +269,19 @@
         tdType.appendChild(span); tdType.appendChild(jump); tr.appendChild(tdType);
         c(r.relatedProcesses,"col-blue"); c(r.services,"col-blue"); c(r.flowcharts,"col-blue"); c(r.itResources,"col-blue"); c(r.optimization,"col-blue"); c(r.otherMetrics,"col-blue");
         const td=document.createElement("td"), b=document.createElement("button"); b.type="button"; b.className="secondary"; b.textContent="Atvērt kartiņu"; b.onclick=()=>openEditor(r); td.appendChild(b); tr.appendChild(td);
+        if(q) tr.classList.add("search-hit");
         tb.appendChild(tr);
       });
       applyLevel();
+      if(q){
+        const table=$("processTable");
+        if(table && table.classList.contains("table-body-hidden")){
+          table.classList.remove("table-body-hidden");
+          if($("toggleProcessBtn")) $("toggleProcessBtn").textContent="Aizvērt procesu reģistru";
+        }
+        const firstHit = tb.querySelector("tr.search-hit");
+        if(firstHit) firstHit.scrollIntoView({behavior:"smooth", block:"center"});
+      }
       if (typeof window.renderExtraViews === "function") window.renderExtraViews();
     }
 
@@ -341,14 +356,14 @@
     // events
     $("searchInput").oninput=renderTable; if($("groupFilter")) $("groupFilter").onchange=renderTable; $("levelSelect").onchange=()=>{applyLevel(); rebuildMx();};
     if($("toggleProcessBtn")) $("toggleProcessBtn").onclick=()=>{
-      const body=$("processListBody");
-      body.classList.toggle("hidden");
-      $("toggleProcessBtn").textContent = body.classList.contains("hidden") ? "Atvērt procesu reģistru" : "Aizvērt procesu reģistru";
+      const table=$("processTable");
+      table.classList.toggle("table-body-hidden");
+      $("toggleProcessBtn").textContent = table.classList.contains("table-body-hidden") ? "Atvērt procesu reģistru" : "Aizvērt procesu reģistru";
     };
     if($("toggleCatalogBtn")) $("toggleCatalogBtn").onclick=()=>{
-      const body=$("catalogListBody");
-      body.classList.toggle("hidden");
-      $("toggleCatalogBtn").textContent = body.classList.contains("hidden") ? "Atvērt katalogu" : "Aizvērt katalogu";
+      const table=$("catalogTable");
+      table.classList.toggle("table-body-hidden");
+      $("toggleCatalogBtn").textContent = table.classList.contains("table-body-hidden") ? "Atvērt katalogu" : "Aizvērt katalogu";
     };
     $("newBtn").onclick=()=>openEditor(null); $("closeBtn").onclick=()=>{$("editorCard").classList.add("hidden"); editingRow=null;};
     $("newCatalogBtn").onclick=()=>openCatalogEditor(null);
