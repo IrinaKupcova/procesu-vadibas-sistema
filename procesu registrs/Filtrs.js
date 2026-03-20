@@ -28,7 +28,7 @@
       .th-filter-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
       .th-filter-box{display:none;margin-top:4px}
       .th-filter-box.open{display:block}
-      .th-filter-box input,.th-filter-box select{width:100%;font-size:11px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px}
+      .th-filter-box select{width:100%;font-size:11px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px;background:#fff}
     `;
     document.head.appendChild(s);
   }
@@ -70,44 +70,29 @@
       const box = document.createElement("div");
       box.className = "th-filter-box";
 
-      const input = document.createElement("input");
-      input.type = "text";
-      input.placeholder = "Filtrēt...";
-      input.dataset.colIndex = String(idx);
-      const listId = `${tableId}_col_${idx}_list`;
-      input.setAttribute("list", listId);
-      const datalist = document.createElement("datalist");
-      datalist.id = listId;
+      const select = document.createElement("select");
+      select.dataset.colIndex = String(idx);
+      select.dataset.tableId = tableId;
+      const emptyOpt = document.createElement("option");
+      emptyOpt.value = "";
+      emptyOpt.textContent = "Visas vērtības";
+      select.appendChild(emptyOpt);
 
       const onFilterChange = (value) => {
-        const col = input.dataset.colIndex;
+        const col = select.dataset.colIndex;
         state[key][col] = value;
         btn.classList.toggle("active", norm(value) !== "");
         selectBestLevel();
         applyAllFilters();
       };
-      input.addEventListener("input", (e) => onFilterChange(e.target.value));
-      input.addEventListener("change", (e) => onFilterChange(e.target.value));
+      select.addEventListener("change", (e) => onFilterChange(e.target.value));
 
       btn.addEventListener("click", () => {
-        const tbody = table.querySelector("tbody");
-        const uniq = new Set();
-        Array.from(tbody ? tbody.querySelectorAll("tr") : []).forEach((tr) => {
-          const val = String(tr.children[idx]?.textContent || "").trim();
-          if (val) uniq.add(val);
-        });
-        datalist.innerHTML = "";
-        Array.from(uniq).sort().slice(0, 400).forEach((v) => {
-          const o = document.createElement("option");
-          o.value = v;
-          datalist.appendChild(o);
-        });
         box.classList.toggle("open");
-        if (box.classList.contains("open")) input.focus();
+        if (box.classList.contains("open")) select.focus();
       });
 
-      box.appendChild(input);
-      box.appendChild(datalist);
+      box.appendChild(select);
       wrap.appendChild(label);
       wrap.appendChild(btn);
       th.appendChild(wrap);
@@ -188,6 +173,62 @@
   function applyAllFilters() {
     applyProcessFilters();
     applyCatalogFilters();
+    autoOpenOnFilteredResult();
+  }
+
+  function autoOpenOnFilteredResult() {
+    const processTable = document.getElementById("processTable");
+    const catalogTable = document.getElementById("catalogTable");
+    const processHasFilter = Object.values(state.processHeader || {}).some((v) => norm(v) !== "");
+    const catalogHasFilter = Object.values(state.catalogHeader || {}).some((v) => norm(v) !== "");
+
+    if (processTable && processHasFilter) {
+      const hasVisible = Array.from(processTable.querySelectorAll("tbody tr")).some((tr) => tr.style.display !== "none");
+      if (hasVisible && processTable.classList.contains("table-body-hidden")) {
+        processTable.classList.remove("table-body-hidden");
+        const b = document.getElementById("toggleProcessBtn");
+        if (b) b.textContent = "Aizvērt procesu reģistru";
+      }
+    }
+    if (catalogTable && catalogHasFilter) {
+      const hasVisible = Array.from(catalogTable.querySelectorAll("tbody tr")).some((tr) => tr.style.display !== "none");
+      if (hasVisible && catalogTable.classList.contains("table-body-hidden")) {
+        catalogTable.classList.remove("table-body-hidden");
+        const b = document.getElementById("toggleCatalogBtn");
+        if (b) b.textContent = "Aizvērt katalogu";
+      }
+    }
+  }
+
+  function refreshHeaderFilterOptions(tableId, key) {
+    const table = document.getElementById(tableId);
+    if (!table) return;
+    const tbody = table.querySelector("tbody");
+    if (!tbody) return;
+    const selects = Array.from(table.querySelectorAll(".th-filter-box select[data-col-index]"));
+    selects.forEach((select) => {
+      const col = Number(select.dataset.colIndex);
+      const selected = state[key][String(col)] || "";
+      const uniqVals = new Set();
+      Array.from(tbody.querySelectorAll("tr")).forEach((tr) => {
+        const v = String(tr.children[col]?.textContent || "").trim();
+        if (v) uniqVals.add(v);
+      });
+      select.innerHTML = "";
+      const empty = document.createElement("option");
+      empty.value = "";
+      empty.textContent = "Visas vērtības";
+      select.appendChild(empty);
+      Array.from(uniqVals).sort().slice(0, 600).forEach((v) => {
+        const o = document.createElement("option");
+        o.value = v;
+        o.textContent = v;
+        select.appendChild(o);
+      });
+      select.value = selected;
+      const btn = select.closest("th")?.querySelector(".th-filter-btn");
+      if (btn) btn.classList.toggle("active", norm(selected) !== "");
+    });
   }
 
   function rerender() {
@@ -196,13 +237,12 @@
   }
 
   function setupRenderHook() {
-    if (typeof window.renderTable !== "function" || window.__filterHooked) return;
-    const original = window.renderTable;
-    window.renderTable = function () {
-      original();
+    // index.html renderTable ir lokāla funkcija; drošāk ir dot publisku pēcrendera callback.
+    window.__afterTableRenderFilters = function () {
+      refreshHeaderFilterOptions("processTable", "processHeader");
+      refreshHeaderFilterOptions("catalogTable", "catalogHeader");
       applyAllFilters();
     };
-    window.__filterHooked = true;
   }
 
   function init() {
@@ -210,6 +250,8 @@
     ensureQuickFilters();
     ensureHeaderFilters("processTable", "processHeader", true);
     ensureHeaderFilters("catalogTable", "catalogHeader", false);
+    refreshHeaderFilterOptions("processTable", "processHeader");
+    refreshHeaderFilterOptions("catalogTable", "catalogHeader");
     setupRenderHook();
     applyAllFilters();
   }

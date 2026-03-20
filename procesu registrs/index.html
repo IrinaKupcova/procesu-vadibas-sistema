@@ -275,12 +275,16 @@
       applyLevel();
       if(q){
         const table=$("processTable");
+        // Meklējot pēc atslēgvārda, automātiski atveram reģistru ar atrasto vienību.
         if(table && table.classList.contains("table-body-hidden")){
           table.classList.remove("table-body-hidden");
           if($("toggleProcessBtn")) $("toggleProcessBtn").textContent="Aizvērt procesu reģistru";
         }
         const firstHit = tb.querySelector("tr.search-hit");
         if(firstHit) firstHit.scrollIntoView({behavior:"smooth", block:"center"});
+      }
+      if (typeof window.__afterTableRenderFilters === "function") {
+        window.__afterTableRenderFilters();
       }
       if (typeof window.renderExtraViews === "function") window.renderExtraViews();
     }
@@ -488,6 +492,7 @@
   </script>
   <script src="Filtrs.js"></script>
   <script src="Procesu%20registrs.js"></script>
+  <script src="Skata%20zona.js"></script>
   <script src="Pievienot%20jaunu%20procesu.js"></script>
   <script src="Procesa%20kartina.js"></script>
 </body>
