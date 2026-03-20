@@ -28,62 +28,16 @@
       .th-filter-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
       .th-filter-box{display:none;margin-top:4px}
       .th-filter-box.open{display:block}
-      .th-filter-box input{width:100%;font-size:11px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px}
+      .th-filter-box input,.th-filter-box select{width:100%;font-size:11px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px}
     `;
     document.head.appendChild(s);
   }
 
   function ensureQuickFilters() {
     const searchInput = document.getElementById("searchInput");
-    if (!searchInput || document.getElementById("mainFilterField")) return;
-
-    const host = searchInput.parentElement;
-    if (!host) return;
-
-    const wrap = document.createElement("div");
-    wrap.className = "main-filter-wrap";
-    wrap.id = "mainFilterWrap";
-
-    const field = document.createElement("select");
-    field.id = "mainFilterField";
-    field.innerHTML = [
-      '<option value="process">Process</option>',
-      '<option value="task">Uzdevums</option>',
-      '<option value="owner">Izpildītājs</option>',
-      '<option value="output">Galaprodukta veids</option>'
-    ].join("");
-
-    const input = document.createElement("input");
-    input.id = "mainFilterValue";
-    input.placeholder = "Filtrēšanas vērtība...";
-    input.style.minWidth = "220px";
-
-    const clearBtn = document.createElement("button");
-    clearBtn.type = "button";
-    clearBtn.className = "secondary";
-    clearBtn.textContent = "Notīrīt filtru";
-
-    wrap.appendChild(field);
-    wrap.appendChild(input);
-    wrap.appendChild(clearBtn);
-    host.appendChild(wrap);
-
-    const syncMain = () => {
-      state.quick.process = "";
-      state.quick.task = "";
-      state.quick.owner = "";
-      state.quick.output = "";
-      state.quick[field.value] = input.value;
-      selectBestLevel();
-      rerender();
-    };
-
-    field.addEventListener("change", syncMain);
-    input.addEventListener("input", syncMain);
-    clearBtn.addEventListener("click", () => {
-      input.value = "";
-      syncMain();
-    });
+    if (!searchInput) return;
+    // Galvenais filtrs ir pārvaldīts index/Procesu registrs.js pusē.
+    // Te neatstājam otru (dublējošu) filtra UI.
   }
 
   function ensureHeaderFilters(tableId, key, skipLast) {
@@ -120,21 +74,40 @@
       input.type = "text";
       input.placeholder = "Filtrēt...";
       input.dataset.colIndex = String(idx);
+      const listId = `${tableId}_col_${idx}_list`;
+      input.setAttribute("list", listId);
+      const datalist = document.createElement("datalist");
+      datalist.id = listId;
 
-      input.addEventListener("input", (e) => {
-        const col = e.target.dataset.colIndex;
-        state[key][col] = e.target.value;
-        btn.classList.toggle("active", norm(e.target.value) !== "");
+      const onFilterChange = (value) => {
+        const col = input.dataset.colIndex;
+        state[key][col] = value;
+        btn.classList.toggle("active", norm(value) !== "");
         selectBestLevel();
         applyAllFilters();
-      });
+      };
+      input.addEventListener("input", (e) => onFilterChange(e.target.value));
+      input.addEventListener("change", (e) => onFilterChange(e.target.value));
 
       btn.addEventListener("click", () => {
+        const tbody = table.querySelector("tbody");
+        const uniq = new Set();
+        Array.from(tbody ? tbody.querySelectorAll("tr") : []).forEach((tr) => {
+          const val = String(tr.children[idx]?.textContent || "").trim();
+          if (val) uniq.add(val);
+        });
+        datalist.innerHTML = "";
+        Array.from(uniq).sort().slice(0, 400).forEach((v) => {
+          const o = document.createElement("option");
+          o.value = v;
+          datalist.appendChild(o);
+        });
         box.classList.toggle("open");
         if (box.classList.contains("open")) input.focus();
       });
 
       box.appendChild(input);
+      box.appendChild(datalist);
       wrap.appendChild(label);
       wrap.appendChild(btn);
       th.appendChild(wrap);

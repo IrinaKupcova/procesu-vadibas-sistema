@@ -25,6 +25,8 @@
     .editor-frame{border:2px solid #cbd5e1;border-radius:14px}
     .editor-actions{display:flex;gap:8px;justify-content:flex-start;align-items:center;padding-top:8px}
     .catalog-jump{font-size:11px;padding:4px 6px;border-radius:4px;background:#e2e8f0;color:#0f172a;margin-left:6px}
+    .section-body.hidden{display:none}
+    .hint{font-size:12px;color:#475569}
   </style>
 </head>
 <body>
@@ -51,19 +53,26 @@
       <label>Līmenis
         <select id="levelSelect"><option value="1" selected>Pamatskats</option><option value="2">Pilnais skats</option><option value="3">Papildu/datu sasaiste</option></select>
       </label>
-      <input id="searchInput" placeholder="Meklēt..." />
+      <input id="searchInput" placeholder="Meklēt pēc atslēgas vārdiem..." />
+      <span class="hint">Meklē pēc atslēgas vārdiem</span>
       <button type="button" id="newBtn">Pievienot jaunu procesu</button>
       <span id="modeHint"></span>
     </div>
   </div>
 
-  <div class="card">
-    <table id="processTable"><thead><tr>
-      <th class="col-gray">Procesu grupa</th><th class="col-gray">Uzdevuma Nr.</th><th class="col-gray">Uzdevums</th><th class="col-gray">Procesa Nr.</th>
-      <th class="col-gray">Process</th><th class="col-gray">Procesa īpašnieks</th>
-      <th class="col-green">Procesa iniciātors (input)</th><th class="col-green">Galaprodukti</th><th class="col-green">Galaproduktu veidi</th>
-      <th class="col-blue">Saistītie procesi</th><th class="col-blue">Pakalpojumi</th><th class="col-blue">Plūsmas shēmas</th><th class="col-blue">IT resursi</th><th class="col-blue">Optimizācija</th><th class="col-blue">Citi rādītāji</th><th>Kartiņa</th>
-    </tr></thead><tbody></tbody></table>
+  <div class="card" id="processListCard">
+    <div class="toolbar">
+      <div class="left"><strong>Procesu reģistrs</strong></div>
+      <div class="right"><button type="button" id="toggleProcessBtn" class="secondary">Atvērt procesu reģistru</button></div>
+    </div>
+    <div id="processListBody" class="section-body hidden">
+      <table id="processTable"><thead><tr>
+        <th class="col-gray">Procesu grupa</th><th class="col-gray">Uzdevuma Nr.</th><th class="col-gray">Uzdevums</th><th class="col-gray">Procesa Nr.</th>
+        <th class="col-gray">Process</th><th class="col-gray">Procesa īpašnieks</th>
+        <th class="col-green">Procesa iniciātors (input)</th><th class="col-green">Galaprodukti</th><th class="col-green">Galaproduktu veidi</th>
+        <th class="col-blue">Saistītie procesi</th><th class="col-blue">Pakalpojumi</th><th class="col-blue">Plūsmas shēmas</th><th class="col-blue">IT resursi</th><th class="col-blue">Optimizācija</th><th class="col-blue">Citi rādītāji</th><th>Kartiņa</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
   </div>
 
   <div class="card hidden editor-frame" id="editorCard">
@@ -102,14 +111,19 @@
     </form>
   </div>
 
-  <div class="card">
+  <div class="card" id="catalogListCard">
     <div class="toolbar">
       <div class="left"><h2 style="margin:0">Galaproduktu veidu katalogs</h2></div>
-      <div class="right"><button type="button" id="newCatalogBtn">Pievienot jaunu galaprodukta veidu</button></div>
+      <div class="right">
+        <button type="button" id="toggleCatalogBtn" class="secondary">Atvērt katalogu</button>
+        <button type="button" id="newCatalogBtn">Pievienot jaunu galaprodukta veidu</button>
+      </div>
     </div>
-    <table id="catalogTable"><thead><tr>
-      <th>Galaproduktu veida Nr.</th><th>Galaprodukta veids</th><th>Strukturvieniba izpilditajs, kas rada galaprodukta veidu</th><th>Uzdevuma Nr.</th><th>Procesa Nr.</th><th>Kartiņa</th>
-    </tr></thead><tbody></tbody></table>
+    <div id="catalogListBody" class="section-body hidden">
+      <table id="catalogTable"><thead><tr>
+        <th>Galaproduktu veida Nr.</th><th>Galaprodukta veids</th><th>Strukturvieniba izpilditajs, kas rada galaprodukta veidu</th><th>Uzdevuma Nr.</th><th>Procesa Nr.</th><th>Kartiņa</th>
+      </tr></thead><tbody></tbody></table>
+    </div>
   </div>
 
   <div class="card hidden editor-frame" id="catalogEditorCard">
@@ -253,9 +267,12 @@
         tb.appendChild(tr);
       });
       applyLevel();
+      if (typeof window.renderExtraViews === "function") window.renderExtraViews();
     }
 
     function rebuildMx(){ /* Matrica izņemta pēc prasības. */ }
+    window.getProcessRows = () => Array.isArray(processRows) ? processRows.slice() : [];
+    window.getCatalogRows = () => Array.isArray(csvRows) ? csvRows.slice() : [];
 
     function fillForm(r){
       $("eId").value=r?String(r.id||""):""; $("eGroup").value=r?r.group:"pamatdarbības procesi"; $("eTaskNo").value=r?r.taskNo:""; $("eTask").value=r?r.task:"";
@@ -323,6 +340,16 @@
 
     // events
     $("searchInput").oninput=renderTable; if($("groupFilter")) $("groupFilter").onchange=renderTable; $("levelSelect").onchange=()=>{applyLevel(); rebuildMx();};
+    if($("toggleProcessBtn")) $("toggleProcessBtn").onclick=()=>{
+      const body=$("processListBody");
+      body.classList.toggle("hidden");
+      $("toggleProcessBtn").textContent = body.classList.contains("hidden") ? "Atvērt procesu reģistru" : "Aizvērt procesu reģistru";
+    };
+    if($("toggleCatalogBtn")) $("toggleCatalogBtn").onclick=()=>{
+      const body=$("catalogListBody");
+      body.classList.toggle("hidden");
+      $("toggleCatalogBtn").textContent = body.classList.contains("hidden") ? "Atvērt katalogu" : "Aizvērt katalogu";
+    };
     $("newBtn").onclick=()=>openEditor(null); $("closeBtn").onclick=()=>{$("editorCard").classList.add("hidden"); editingRow=null;};
     $("newCatalogBtn").onclick=()=>openCatalogEditor(null);
     $("catalogCloseBtn").onclick=()=>{$("catalogEditorCard").classList.add("hidden"); editingCatalogRow=null;};
@@ -441,100 +468,11 @@
         }
       });
 
-      // DB -> HTML sinhronizācija (polling).
-      // Pēc tam, kad DB dati tiek mainīti no ārpuses (cits lietotājs/cits skats),
-      // šī lapa automātiski atjaunos tabulu un matricu.
-      let polling = false;
-      let lastFingerprint = "";
-      let catalogPolling = false;
-      let lastCatalogFingerprint = "";
-
-      function fingerprint(rows){
-        // Paraksts no svarīgākajiem lauku setiem; mērķis ir pamanīt izmaiņas,
-        // nevis 100% uzticami salīdzināt visu rindu (tas būtu smagāk).
-        return (rows||[]).map(r=>[
-          r.idKey, r.taskNo, r.task, r.processNo, r.process, r.owner,
-          r.input, r.products, r.productTypes,
-          r.relatedProcesses, r.services, r.flowcharts, r.itResources,
-          r.optimization, r.otherMetrics, r.group
-        ].join("~")).join("|");
-      }
-      function catalogFingerprint(rows){
-        return (rows||[]).map(r=>[
-          r.id, r.typeNo, r.type, r.unit, r.taskNo, r.procNo
-        ].join("~")).join("|");
-      }
-
-      async function pollDb(){
-        if(polling) return;
-        polling = true;
-        try{
-          const api = window.DB;
-          if(!api || typeof api.load !== "function") return;
-          // Neatjaunojam tabulu, ja rediģēšanas kartiņa ir atvērta,
-          // lai lietotājs nezaudētu rediģēto saturu/nesaprastu, kas notiek.
-          const editorCard = $("editorCard");
-          if(editorCard && !editorCard.classList.contains("hidden")) return;
-          const rows = await api.load();
-          const fp = fingerprint(rows);
-          if(fp !== lastFingerprint){
-            lastFingerprint = fp;
-            processRows = rows;
-            renderTable();
-            rebuildMx();
-          }
-        }catch(err){
-          // Polling nedrīkst sabojāt UI; parādam tikai konsolē.
-          console.error("DB polling error:", err);
-        }finally{
-          polling = false;
-        }
-      }
-
-      async function pollCatalog(){
-        if(catalogPolling) return;
-        catalogPolling = true;
-        try{
-          const api = window.DB;
-          if(!api || typeof api.loadCatalogTypes !== "function") return;
-          if($("catalogEditorCard") && !$("catalogEditorCard").classList.contains("hidden")) return;
-          const rows = await api.loadCatalogTypes();
-          const fp = catalogFingerprint(rows);
-          if(fp !== lastCatalogFingerprint){
-            lastCatalogFingerprint = fp;
-            csvRows = rows;
-            const tbody=$("catalogTable").querySelector("tbody");
-            tbody.innerHTML="";
-            csvRows.forEach(x=>{
-              const tr=document.createElement("tr");
-              [x.typeNo,x.type,x.unit,x.taskNo,x.procNo].forEach(v=>{
-                const td=document.createElement("td");
-                td.textContent=v||"";
-                tr.appendChild(td);
-              });
-              const td=document.createElement("td");
-              const b=document.createElement("button");
-              b.type="button"; b.className="secondary"; b.textContent="Atvērt kartiņu";
-              b.onclick=()=>openCatalogEditor(x);
-              td.appendChild(b); tr.appendChild(td);
-              tbody.appendChild(tr);
-            });
-          }
-        }catch(err){
-          console.error("Catalog polling error:", err);
-        }finally{
-          catalogPolling = false;
-        }
-      }
-
-      // Sākam pēc pirmās inicializācijas.
-      lastFingerprint = fingerprint(processRows);
-      lastCatalogFingerprint = catalogFingerprint(csvRows);
-      setInterval(pollDb, 7000);
-      setInterval(pollCatalog, 7000);
+      // Polling noņemts no index.html, jo sinhronizāciju centralizē DB.js (startSync).
     })();
   </script>
   <script src="Filtrs.js"></script>
+  <script src="Procesu%20registrs.js"></script>
   <script src="Pievienot%20jaunu%20procesu.js"></script>
   <script src="Procesa%20kartina.js"></script>
 </body>
