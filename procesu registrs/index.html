@@ -22,11 +22,14 @@
     button:hover{background:#1d4ed8}button.secondary{background:#e5e7eb;color:#111827}button.secondary:hover{background:#d1d5db}
     button.danger{background:#dc2626}button.danger:hover{background:#b91c1c}
     .hidden{display:none!important}.status{font-size:12px}.status.info{color:#334155}.status.ok{color:#166534}.status.error{color:#b91c1c}
+    .editor-frame{border:2px solid #cbd5e1;border-radius:14px}
+    .editor-actions{display:flex;gap:8px;justify-content:flex-start;align-items:center;padding-top:8px}
+    .catalog-jump{font-size:11px;padding:4px 6px;border-radius:4px;background:#e2e8f0;color:#0f172a;margin-left:6px}
   </style>
 </head>
 <body>
   <h1>Procesu vadības bloks</h1>
-  <p class="tagline">Pamatskats (pelēks), Pilnais skats (pelēks+zaļš), Papildu/datu sasaiste (pelēks+zaļš+zils). Matrica vienmēr redzama apakšējā joslā. Redz visi; labo tikai administrators (labot).</p>
+  <p class="tagline">Pamatskats (pelēks), Pilnais skats (pelēks+zaļš), Papildu/datu sasaiste (pelēks+zaļš+zils). Redz visi; labo tikai administrators (labot).</p>
   <div class="card">
     <div class="toolbar">
       <div class="left"><strong>Procesu reģistrs</strong> <span id="dbStatus" class="status info"></span></div>
@@ -46,10 +49,9 @@
       </label>
       <button type="button" id="saveRoleBtn" class="secondary">Saglabāt manu lomu</button>
       <label>Līmenis
-        <select id="levelSelect"><option value="1">Pamatskats</option><option value="2" selected>Pilnais skats</option><option value="3">Papildu/datu sasaiste</option></select>
+        <select id="levelSelect"><option value="1" selected>Pamatskats</option><option value="2">Pilnais skats</option><option value="3">Papildu/datu sasaiste</option></select>
       </label>
       <input id="searchInput" placeholder="Meklēt..." />
-      <button type="button" id="refreshBtn" class="secondary">Atsvaidzināt</button>
       <button type="button" id="newBtn">Pievienot jaunu procesu</button>
       <span id="modeHint"></span>
     </div>
@@ -64,12 +66,12 @@
     </tr></thead><tbody></tbody></table>
   </div>
 
-  <div class="card hidden" id="editorCard">
+  <div class="card hidden editor-frame" id="editorCard">
     <h2 id="editorTitle">Procesa kartiņa</h2>
     <form id="editorForm">
       <input id="eId" type="hidden" />
       <div class="form-row">
-        <div class="form-group"><label>Procesu grupa</label><select id="eGroup"><option>pamatdarbības procesi</option><option>atbalsta procesi</option><option>vadības procesi</option><option>citi procesi</option></select></div>
+        <div class="form-group"><label>Procesu grupa</label><select id="eGroup"><option>pamatdarbības procesi</option><option>atbalsta procesi</option><option>vadības procesi</option></select></div>
         <div class="form-group"><label>Uzdevuma Nr.</label><input id="eTaskNo" /></div>
         <div class="form-group"><label>Uzdevums</label><input id="eTask" /></div>
         <div class="form-group"><label>Procesa Nr.</label><input id="eProcNo" /></div>
@@ -78,7 +80,7 @@
         <div class="form-group"><label>Process</label><input id="eProcess" /></div>
         <div class="form-group"><label>Procesa īpašnieks</label><input id="eOwner" /></div>
         <div class="form-group"><label>Galaprodukti</label><input id="eLaws" /></div>
-        <div class="form-group"><label>Galaproduktu veidi</label><input id="eDocs" /></div>
+        <div class="form-group"><label>Galaproduktu veidi</label><div style="display:flex;gap:6px;align-items:center"><input id="eDocs" /><button type="button" id="gotoCatalogBtn" class="catalog-jump">Pāriet uz katalogu</button></div></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Procesa iniciātors (input)</label><input id="eInput" /></div>
@@ -91,80 +93,95 @@
         <div class="form-group"><label>Optimizācija</label><input id="eOpt" /></div>
         <div class="form-group"><label>Citi rādītāji</label><input id="eOther" /></div>
       </div>
-      <div class="row">
+      <div class="editor-actions">
+        <button type="button" id="editBtn" class="secondary">Labot</button>
         <button type="submit">Saglabāt</button>
-        <button type="button" id="deleteBtn" class="danger hidden">Dzēst</button>
         <button type="button" id="closeBtn" class="secondary">Aizvērt</button>
+        <button type="button" id="deleteBtn" class="danger hidden">Dzēst</button>
       </div>
     </form>
   </div>
 
   <div class="card">
-    <h2>Galaproduktu veidu katalogs</h2>
+    <div class="toolbar">
+      <div class="left"><h2 style="margin:0">Galaproduktu veidu katalogs</h2></div>
+      <div class="right"><button type="button" id="newCatalogBtn">Pievienot jaunu galaprodukta veidu</button></div>
+    </div>
     <table id="catalogTable"><thead><tr>
-      <th>Pamata galaprodukts</th><th>Galaproduktu veidi</th><th>Struktūrvienība-izpildītājs, kas rada galaprodukta veidu</th><th>Uzdevuma Nr.</th><th>Procesa Nr.</th>
+      <th>Galaproduktu veida Nr.</th><th>Galaprodukta veids</th><th>Strukturvieniba izpilditajs, kas rada galaprodukta veidu</th><th>Uzdevuma Nr.</th><th>Procesa Nr.</th><th>Kartiņa</th>
     </tr></thead><tbody></tbody></table>
   </div>
 
-  <div class="card" id="matrixCard">
-    <h2>Matrica: Uzdevumi ↔ Procesi ↔ Galaproduktu veidi</h2>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div><h3>Uzdevumi ↔ Procesi</h3><div id="m1"></div></div>
-      <div><h3>Procesi ↔ Galaproduktu veidi</h3><div id="m2"></div></div>
-    </div>
+  <div class="card hidden editor-frame" id="catalogEditorCard">
+    <h2 id="catalogEditorTitle">Galaprodukta veida kartiņa</h2>
+    <form id="catalogEditorForm">
+      <input id="cTypeNoOrig" type="hidden" />
+      <div class="form-row">
+        <div class="form-group"><label>Galaproduktu veida Nr.</label><input id="cTypeNo" /></div>
+        <div class="form-group"><label>Galaprodukta veids</label><input id="cType" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Strukturvieniba izpilditajs, kas rada galaprodukta veidu</label><input id="cUnit" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Uzdevuma Nr.</label><input id="cTaskNo" /></div>
+        <div class="form-group"><label>Procesa Nr.</label><input id="cProcNo" /></div>
+      </div>
+      <div class="editor-actions">
+        <button type="submit">Saglabāt</button>
+        <button type="button" id="catalogDeleteBtn" class="danger hidden">Dzēst</button>
+        <button type="button" id="catalogCloseBtn" class="secondary">Aizvērt</button>
+      </div>
+    </form>
   </div>
 
   <script src="DB.js"></script>
 
   <script>
-    const CSV = "Lilitas&Irinas versija_apvienots_variants2.csv";
-
     let processRows = [], csvRows = [], user = "daina", roles = {};
+    let editingRow = null;
+    let editingCatalogRow = null;
     const $ = id => document.getElementById(id);
     const status = (t,k="info") => { $("dbStatus").textContent=t; $("dbStatus").className="status "+k; };
     const role = () => roles[user] || "viewer";
     const canEdit = () => role()==="admin_edit";
 
-    function parseCSV(t){ const out=[]; let r=[],c="",i=0,q=false; while(i<t.length){ const ch=t[i];
-      if(ch=='"'){ if(q&&t[i+1]=='"'){c+='"';i+=2;continue;} q=!q;i++;continue; }
-      if(!q&&ch==","){r.push(c);c="";i++;continue;}
-      if(!q&&(ch=="\n"||ch=="\r")){ if(ch=="\r"&&t[i+1]=="\n")i++; r.push(c); out.push(r); r=[]; c=""; i++; continue; }
-      c+=ch; i++;
-    } if(c.length||r.length){r.push(c); out.push(r);} return out; }
-
-    async function loadCsv(){
-      if (location.protocol === "file:") {
-        csvRows = [];
-        const tbody = $("catalogTable").querySelector("tbody");
-        if (tbody) tbody.innerHTML = "";
-        return;
-      }
-      let resp;
+    async function loadCatalog(){
       try{
-        resp=await fetch(encodeURI(CSV));
-      }catch{
-        csvRows=[];
-        const tbody=$("catalogTable").querySelector("tbody"); if(tbody) tbody.innerHTML="";
-        status("CSV nav pieejams. Turpinām bez kataloga.","info");
-        return;
+        const api = window.DB;
+        if(!api || typeof api.loadCatalogTypes !== "function"){
+          csvRows = [];
+          const tbody = $("catalogTable").querySelector("tbody");
+          if (tbody) tbody.innerHTML = "";
+          status("Kataloga DB API nav pieejams.","error");
+          return;
+        }
+        csvRows = await api.loadCatalogTypes();
+        status("Galaproduktu veidu katalogs ielādēts: " + csvRows.length, "ok");
+      }catch(err){
+        csvRows = [];
+        const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (e => (e && e.message) ? e.message : String(e));
+        const msg = mapper(err);
+        console.error("Catalog DB load error:", err);
+        status("Kataloga DB kļūda: " + msg, "error");
       }
-      if(!resp.ok){
-        csvRows=[];
-        const tbody=$("catalogTable").querySelector("tbody"); if(tbody) tbody.innerHTML="";
-        status("CSV nav pieejams ("+resp.status+"). Turpinām bez kataloga.","info");
-        return;
-      }
-      const arr=parseCSV(await resp.text()); if(arr.length<3) return;
-      const h=arr[1].map(x=>String(x||"").trim().toLowerCase());
-      const iBase=h.findIndex(x=>x.includes("pamata galaprodukts"));
-      const iType=h.findIndex(x=>x.includes("galaproduktu veidi"));
-      const iUnit=h.findIndex(x=>x.includes("struktūrvienība"));
-      const iTask=h.findIndex(x=>x.includes("uzdevuma nr"));
-      const iProc=h.findIndex(x=>x.includes("procesa nr"));
-      csvRows=arr.slice(2).map(r=>({base:r[iBase]||"",type:r[iType]||"",unit:r[iUnit]||"",taskNo:r[iTask]||"",procNo:r[iProc]||""}))
-      .filter(x=>x.base||x.type||x.unit||x.taskNo||x.procNo);
-      const tbody=$("catalogTable").querySelector("tbody"); tbody.innerHTML="";
-      csvRows.forEach(x=>{ const tr=document.createElement("tr"); [x.base,x.type,x.unit,x.taskNo,x.procNo].forEach(v=>{const td=document.createElement("td");td.textContent=v;tr.appendChild(td);}); tbody.appendChild(tr);});
+
+      const tbody=$("catalogTable").querySelector("tbody");
+      tbody.innerHTML="";
+      csvRows.forEach(x=>{
+        const tr=document.createElement("tr");
+        [x.typeNo,x.type,x.unit,x.taskNo,x.procNo].forEach(v=>{
+          const td=document.createElement("td");
+          td.textContent=v||"";
+          tr.appendChild(td);
+        });
+        const td=document.createElement("td");
+        const b=document.createElement("button");
+        b.type="button"; b.className="secondary"; b.textContent="Atvērt kartiņu";
+        b.onclick=()=>openCatalogEditor(x);
+        td.appendChild(b); tr.appendChild(td);
+        tbody.appendChild(tr);
+      });
     }
 
     function linkedOut(r){
@@ -196,7 +213,26 @@
       const l=Number($("levelSelect").value), g=l>=2, b=l>=3;
       document.querySelectorAll("th.col-green,td.col-green").forEach(e=>e.style.display=g?"":"none");
       document.querySelectorAll("th.col-blue,td.col-blue").forEach(e=>e.style.display=b?"":"none");
-      $("matrixCard").classList.remove("hidden");
+    }
+
+    function gotoCatalogFor(taskNo, procNo){
+      const t=String(taskNo||"").trim();
+      const p=String(procNo||"").trim();
+      const table=$("catalogTable");
+      if(!table) return;
+      const rows=Array.from(table.querySelectorAll("tbody tr"));
+      let matched=false;
+      rows.forEach((tr)=>{
+        const tds=tr.querySelectorAll("td");
+        const mt = String(tds[3]?.textContent||"").trim()===t;
+        const mp = String(tds[4]?.textContent||"").trim()===p;
+        const hit = (t && mt) || (p && mp);
+        tr.style.outline = hit ? "2px solid #2563eb" : "";
+        tr.style.background = hit ? "#dbeafe" : "";
+        if(hit) matched=true;
+      });
+      table.scrollIntoView({behavior:"smooth", block:"center"});
+      if(!matched) alert("Katalogā nav atrasta atbilstoša rinda.");
     }
 
     function renderTable(){
@@ -206,7 +242,12 @@
       .forEach(r=>{
         const tr=document.createElement("tr"); const c=(t,cls)=>{const td=document.createElement("td"); if(cls) td.classList.add(cls); td.textContent=t||""; tr.appendChild(td);};
         c(r.group,"col-gray"); c(r.taskNo,"col-gray"); c(r.task,"col-gray"); c(r.processNo,"col-gray"); c(r.process,"col-gray"); c(r.owner,"col-gray");
-        c(r.input,"col-green"); c(r.products,"col-green"); c(r.productTypes,"col-green");
+        c(r.input,"col-green"); c(r.products,"col-green");
+        const tdType=document.createElement("td"); tdType.classList.add("col-green");
+        const span=document.createElement("span"); span.textContent=r.productTypes||"";
+        const jump=document.createElement("button"); jump.type="button"; jump.className="catalog-jump"; jump.textContent="Pāriet uz katalogu";
+        jump.onclick=()=>gotoCatalogFor(r.taskNo, r.processNo);
+        tdType.appendChild(span); tdType.appendChild(jump); tr.appendChild(tdType);
         c(r.relatedProcesses,"col-blue"); c(r.services,"col-blue"); c(r.flowcharts,"col-blue"); c(r.itResources,"col-blue"); c(r.optimization,"col-blue"); c(r.otherMetrics,"col-blue");
         const td=document.createElement("td"), b=document.createElement("button"); b.type="button"; b.className="secondary"; b.textContent="Atvērt kartiņu"; b.onclick=()=>openEditor(r); td.appendChild(b); tr.appendChild(td);
         tb.appendChild(tr);
@@ -214,32 +255,49 @@
       applyLevel();
     }
 
-    function toMx(headers, rows){ if(!headers.length||!rows.length) return "<p>Nav datu.</p>"; let h="<table><thead><tr><th></th>"+headers.map(x=>"<th>"+x+"</th>").join("")+"</tr></thead><tbody>";
-      rows.forEach(r=>{h+="<tr><th>"+r.label+"</th>"+headers.map(x=>"<td>"+(r.set.has(x)?"X":"")+"</td>").join("")+"</tr>";}); return h+"</tbody></table>"; }
-    function rebuildMx(){
-      const t2p=new Map(), pset=new Set();
-      processRows.forEach(r=>{const t=((r.taskNo||"")+" "+(r.task||"")).trim()||"(nav uzdevuma)", p=(r.process||r.processNo||"").trim()||"(nav procesa)";
-        if(!t2p.has(t)) t2p.set(t,new Set()); t2p.get(t).add(p); pset.add(p);});
-      $("m1").innerHTML=toMx(Array.from(pset), Array.from(t2p.keys()).map(k=>({label:k,set:t2p.get(k)})));
-      const p2o=new Map(), oset=new Set();
-      processRows.forEach(r=>{const p=(r.process||r.processNo||"").trim()||"(nav procesa)", outs=linkedOut(r).split(";").map(x=>x.trim()).filter(Boolean);
-        if(!p2o.has(p)) p2o.set(p,new Set()); outs.forEach(o=>{p2o.get(p).add(o); oset.add(o);});});
-      $("m2").innerHTML=toMx(Array.from(oset), Array.from(p2o.keys()).map(k=>({label:k,set:p2o.get(k)})));
-    }
+    function rebuildMx(){ /* Matrica izņemta pēc prasības. */ }
 
     function fillForm(r){
       $("eId").value=r?String(r.id||""):""; $("eGroup").value=r?r.group:"pamatdarbības procesi"; $("eTaskNo").value=r?r.taskNo:""; $("eTask").value=r?r.task:"";
       $("eProcNo").value=r?r.processNo:""; $("eProcess").value=r?r.process:""; $("eOwner").value=r?r.owner:""; $("eLaws").value=r?r.products:""; $("eDocs").value=r?r.productTypes:"";
       $("eInput").value=r?r.input:""; $("eOutCount").value=r?r.relatedProcesses:""; $("eAvg").value=r?r.services:""; $("eKpi").value=r?r.flowcharts:""; $("eRisk").value=r?r.itResources:""; $("eOpt").value=r?r.optimization:""; $("eOther").value=r?r.otherMetrics:"";
+      if($("gotoCatalogBtn")) $("gotoCatalogBtn").onclick=()=>gotoCatalogFor($("eTaskNo").value, $("eProcNo").value);
+    }
+    function fillCatalogForm(r){
+      $("cTypeNoOrig").value = r ? String(r.id || r.typeNo || "") : "";
+      $("cTypeNo").value = r ? (r.typeNo || "") : "";
+      $("cType").value = r ? (r.type || "") : "";
+      $("cUnit").value = r ? (r.unit || "") : "";
+      $("cTaskNo").value = r ? (r.taskNo || "") : "";
+      $("cProcNo").value = r ? (r.procNo || "") : "";
+      $("catalogDeleteBtn").classList.toggle("hidden", !r);
+    }
+    function catalogFormVals(){
+      return {
+        typeNo: $("cTypeNo").value.trim(),
+        type: $("cType").value.trim(),
+        unit: $("cUnit").value.trim(),
+        taskNo: $("cTaskNo").value.trim(),
+        procNo: $("cProcNo").value.trim(),
+      };
     }
     function formVals(){ return {group:$("eGroup").value.trim(),taskNo:$("eTaskNo").value.trim(),task:$("eTask").value.trim(),processNo:$("eProcNo").value.trim(),process:$("eProcess").value.trim(),
       owner:$("eOwner").value.trim(),products:$("eLaws").value.trim(),productTypes:$("eDocs").value.trim(),input:$("eInput").value.trim(),relatedProcesses:$("eOutCount").value.trim(),
       services:$("eAvg").value.trim(),flowcharts:$("eKpi").value.trim(),itResources:$("eRisk").value.trim(),optimization:$("eOpt").value.trim(),otherMetrics:$("eOther").value.trim()};}
     function openEditor(r){
+      editingRow = r || null;
       $("editorCard").classList.remove("hidden"); $("editorTitle").textContent=r?"Procesa kartiņa (rediģēt)":"Procesa kartiņa (jauns)"; fillForm(r);
       const e=canEdit(); $("deleteBtn").classList.toggle("hidden", !(r&&e));
       $("editorForm").querySelectorAll("input,select,button").forEach(el=>{ if(el.id==="closeBtn") return; el.disabled=!e;});
       $("modeHint").textContent=e?"Labošanas režīms ieslēgts.":"Skatīšanās režīms.";
+    }
+    function openCatalogEditor(r){
+      editingCatalogRow = r || null;
+      $("catalogEditorCard").classList.remove("hidden");
+      $("catalogEditorTitle").textContent = r ? "Galaprodukta veida kartiņa (rediģēt)" : "Galaprodukta veida kartiņa (jauns)";
+      fillCatalogForm(r);
+      const e = canEdit();
+      $("catalogEditorForm").querySelectorAll("input,button").forEach(el=>{ if(el.id==="catalogCloseBtn") return; el.disabled=!e;});
     }
 
     function loadRoles(){
@@ -264,12 +322,16 @@
     }
 
     // events
-    $("refreshBtn").onclick=async()=>{ await loadCsv(); await loadDb(); renderTable(); rebuildMx(); };
     $("searchInput").oninput=renderTable; if($("groupFilter")) $("groupFilter").onchange=renderTable; $("levelSelect").onchange=()=>{applyLevel(); rebuildMx();};
-    $("newBtn").onclick=()=>openEditor(null); $("closeBtn").onclick=()=>$("editorCard").classList.add("hidden");
+    $("newBtn").onclick=()=>openEditor(null); $("closeBtn").onclick=()=>{$("editorCard").classList.add("hidden"); editingRow=null;};
+    $("newCatalogBtn").onclick=()=>openCatalogEditor(null);
+    $("catalogCloseBtn").onclick=()=>{$("catalogEditorCard").classList.add("hidden"); editingCatalogRow=null;};
+    if($("editBtn")) $("editBtn").onclick=()=>{ if(!canEdit()) return; $("editorForm").querySelectorAll("input,select").forEach(el=>el.disabled=false); };
     $("editorForm").onsubmit=async(e)=>{ e.preventDefault(); if(!canEdit()){alert("Labošana pieejama tikai admin (labot)."); return;}
-      const f=formVals(), id=$("eId").value;
+      const f=formVals();
       if(!f.taskNo){ status("Lauks 'Uzdevuma Nr.' ir obligāts.","error"); return; }
+      if(!f.task){ status("Lauks 'Uzdevums' ir obligāts.","error"); return; }
+      if(!f.processNo){ status("Lauks 'Procesa Nr.' ir obligāts.","error"); return; }
       try{
         const api = window.DB;
         if(!api || typeof api.insert !== "function" || typeof api.update !== "function" || typeof api.remove !== "function"){
@@ -278,13 +340,12 @@
           status(msg,"error");
           return;
         }
-        if(!id){
+        if(!editingRow){
           await api.insert(f);
         } else {
-          const row=processRows.find(r=>String(r.id)===String(id));
-          if(!row||!row.idKey||row.id==="") throw new Error("Nav derīgas primārās atslēgas.");
-          await api.update(row, f);
+          await api.update(editingRow, f);
         }
+        editingRow=null;
         $("editorCard").classList.add("hidden"); await loadDb(); renderTable(); rebuildMx(); status("Saglabāts.","ok");
       }catch(err){
         const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (e => (e && e.message) ? e.message : String(e));
@@ -294,7 +355,7 @@
         status("DB kļūda: "+msg,"error");
       }
     };
-    $("deleteBtn").onclick=async()=>{ if(!canEdit()) return; const id=$("eId").value, row=processRows.find(r=>String(r.id)===String(id)); if(!row||!row.idKey||row.id==="") return;
+    $("deleteBtn").onclick=async()=>{ if(!canEdit()) return; const row=editingRow; if(!row) return;
       if(!confirm("Dzēst ierakstu?")) return; try{
         const api = window.DB;
         if(!api || typeof api.remove !== "function"){
@@ -304,6 +365,7 @@
           return;
         }
         await api.remove(row);
+        editingRow=null;
         $("editorCard").classList.add("hidden"); await loadDb(); renderTable(); rebuildMx(); status("Dzēsts.","ok");
       }catch(err){
         const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (e => (e && e.message) ? e.message : String(e));
@@ -312,6 +374,47 @@
         alert("DB kļūda: " + msg);
         status("DB kļūda: "+msg,"error");
       }};
+    $("catalogEditorForm").onsubmit=async(e)=>{
+      e.preventDefault();
+      if(!canEdit()){ alert("Labošana pieejama tikai admin (labot)."); return; }
+      const api = window.DB;
+      if(!api || typeof api.insertCatalog!=="function" || typeof api.updateCatalog!=="function"){
+        status("Kataloga DB API nav pieejams.","error");
+        return;
+      }
+      const f = catalogFormVals();
+      try{
+        if(!editingCatalogRow){
+          await api.insertCatalog(f);
+        }else{
+          await api.updateCatalog(editingCatalogRow, f);
+        }
+        editingCatalogRow=null;
+        $("catalogEditorCard").classList.add("hidden");
+        await loadCatalog();
+      }catch(err){
+        const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (x=>String(x));
+        const msg = mapper(err);
+        alert("DB kļūda: "+msg);
+        status("Kataloga DB kļūda: "+msg,"error");
+      }
+    };
+    $("catalogDeleteBtn").onclick=async()=>{
+      if(!canEdit()) return;
+      if(!editingCatalogRow) return;
+      if(!confirm("Dzēst galaprodukta veidu?")) return;
+      try{
+        await window.DB.removeCatalog(editingCatalogRow);
+        editingCatalogRow=null;
+        $("catalogEditorCard").classList.add("hidden");
+        await loadCatalog();
+      }catch(err){
+        const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (x=>String(x));
+        const msg = mapper(err);
+        alert("DB kļūda: "+msg);
+        status("Kataloga DB kļūda: "+msg,"error");
+      }
+    };
     $("shareBtn").onclick=async()=>{ const u=new URL(location.href); u.searchParams.set("user",user); u.searchParams.set("level",$("levelSelect").value); try{await navigator.clipboard.writeText(u.toString()); alert("Saite nokopēta.");}catch{alert("Neizdevās kopēt saiti.");}};
     $("emailBtn").onclick=()=>{ const u=new URL(location.href); u.searchParams.set("user",user); u.searchParams.set("level",$("levelSelect").value); location.href="mailto:?subject="+encodeURIComponent("Procesu vadības bloks")+"&body="+encodeURIComponent("Saite:\n"+u.toString()); };
     if($("userSelect")) $("userSelect").onchange=()=>{ user=$("userSelect").value; if($("roleSelect")) $("roleSelect").value=role(); renderTable(); };
@@ -322,7 +425,7 @@
     (async function init(){
       const p=new URLSearchParams(location.search); if(p.get("user")) user=p.get("user"); if(["1","2","3"].includes(p.get("level"))) $("levelSelect").value=p.get("level");
       loadRoles();
-      try{ await loadCsv(); }catch{}
+      try{ await loadCatalog(); }catch{}
       await loadDb(); renderTable(); rebuildMx();
 
       // DB -> HTML sinhronizācija (polling).
@@ -330,6 +433,8 @@
       // šī lapa automātiski atjaunos tabulu un matricu.
       let polling = false;
       let lastFingerprint = "";
+      let catalogPolling = false;
+      let lastCatalogFingerprint = "";
 
       function fingerprint(rows){
         // Paraksts no svarīgākajiem lauku setiem; mērķis ir pamanīt izmaiņas,
@@ -339,6 +444,11 @@
           r.input, r.products, r.productTypes,
           r.relatedProcesses, r.services, r.flowcharts, r.itResources,
           r.optimization, r.otherMetrics, r.group
+        ].join("~")).join("|");
+      }
+      function catalogFingerprint(rows){
+        return (rows||[]).map(r=>[
+          r.id, r.typeNo, r.type, r.unit, r.taskNo, r.procNo
         ].join("~")).join("|");
       }
 
@@ -368,12 +478,51 @@
         }
       }
 
+      async function pollCatalog(){
+        if(catalogPolling) return;
+        catalogPolling = true;
+        try{
+          const api = window.DB;
+          if(!api || typeof api.loadCatalogTypes !== "function") return;
+          if($("catalogEditorCard") && !$("catalogEditorCard").classList.contains("hidden")) return;
+          const rows = await api.loadCatalogTypes();
+          const fp = catalogFingerprint(rows);
+          if(fp !== lastCatalogFingerprint){
+            lastCatalogFingerprint = fp;
+            csvRows = rows;
+            const tbody=$("catalogTable").querySelector("tbody");
+            tbody.innerHTML="";
+            csvRows.forEach(x=>{
+              const tr=document.createElement("tr");
+              [x.typeNo,x.type,x.unit,x.taskNo,x.procNo].forEach(v=>{
+                const td=document.createElement("td");
+                td.textContent=v||"";
+                tr.appendChild(td);
+              });
+              const td=document.createElement("td");
+              const b=document.createElement("button");
+              b.type="button"; b.className="secondary"; b.textContent="Atvērt kartiņu";
+              b.onclick=()=>openCatalogEditor(x);
+              td.appendChild(b); tr.appendChild(td);
+              tbody.appendChild(tr);
+            });
+          }
+        }catch(err){
+          console.error("Catalog polling error:", err);
+        }finally{
+          catalogPolling = false;
+        }
+      }
+
       // Sākam pēc pirmās inicializācijas.
       lastFingerprint = fingerprint(processRows);
+      lastCatalogFingerprint = catalogFingerprint(csvRows);
       setInterval(pollDb, 7000);
+      setInterval(pollCatalog, 7000);
     })();
   </script>
   <script src="Filtrs.js"></script>
   <script src="Pievienot%20jaunu%20procesu.js"></script>
+  <script src="Procesa%20kartina.js"></script>
 </body>
 </html>
