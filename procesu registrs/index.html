@@ -427,6 +427,19 @@
       loadRoles();
       try{ await loadCatalog(); }catch{}
       await loadDb(); renderTable(); rebuildMx();
+      if(window.DB && typeof window.DB.startSync === "function"){
+        window.DB.startSync({ pollMs: 7000 });
+      }
+      window.addEventListener("app:db-sync", async (ev)=>{
+        const kind = ev && ev.detail ? ev.detail.kind : "all";
+        if(kind==="all" || kind==="process"){
+          await loadDb();
+          renderTable();
+        }
+        if(kind==="all" || kind==="catalog"){
+          await loadCatalog();
+        }
+      });
 
       // DB -> HTML sinhronizācija (polling).
       // Pēc tam, kad DB dati tiek mainīti no ārpuses (cits lietotājs/cits skats),

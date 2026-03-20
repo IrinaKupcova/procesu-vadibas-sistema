@@ -17,6 +17,8 @@
   ]);
 
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  let syncChannel = null;
+  let pollTimer = null;
 
   let dbCols = new Set();
 
@@ -36,6 +38,11 @@
     return /^[A-Za-z0-9_]+$/.test(s) ? s : `"${s.replace(/"/g, '""')}"`;
   };
   const qeq = (query, key, value) => query.eq(pgCol(key), value);
+  const emitSync = (kind, source) => {
+    try {
+      window.dispatchEvent(new CustomEvent("app:db-sync", { detail: { kind, source } }));
+    } catch (_) {}
+  };
 
   function mapDbError(err) {
     const msg = String((err && err.message) || err || "");
@@ -58,7 +65,7 @@
       if (k) return k;
     }
     // insert gadījumā izvēlamies tikai tos kandidātus, kas parādās shēmā (no iepriekš ielādētajiem datiem).
-    return choices.find((c) => dbCols.has(c)) || null;
+    return choices.find((c) => dbCols.size === 0 || dbCols.has(c)) || choices[0] || null;
   }
 
   const aliasMap = {
@@ -163,6 +170,7 @@
     const payload = toPayload(formVals, null);
     const { data, error } = await supabaseClient.from(TABLE).insert(payload).select("*").single();
     if (error) throw error;
+    emitSync("process", "html");
     return data;
   }
 
@@ -184,6 +192,7 @@
 
     const { data, error } = await q.select("*").single();
     if (error) throw error;
+    emitSync("process", "html");
     return data;
   }
 
@@ -204,6 +213,7 @@
 
     const { data, error } = await q.select("*").single();
     if (error) throw error;
+    emitSync("process", "html");
     return data;
   }
 
@@ -253,6 +263,7 @@
       .select("*")
       .single();
     if (error) throw error;
+    emitSync("catalog", "html");
     return mapCatalogRow(data);
   }
 
@@ -277,6 +288,7 @@
       .select("*")
       .single();
     if (error) throw error;
+    emitSync("catalog", "html");
     return mapCatalogRow(data);
   }
 
@@ -291,7 +303,39 @@
       .select("*")
       .single();
     if (error) throw error;
+    emitSync("catalog", "html");
     return data;
+  }
+
+  function stopSync() {
+    if (syncChannel) {
+      try { supabaseClient.removeChannel(syncChannel); } catch (_) {}
+      syncChannel = null;
+    }
+    if (pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  }
+
+  function startSync(opts) {
+    const options = opts || {};
+    const pollMs = Number(options.pollMs || 7000);
+    stopSync();
+
+    // Realtime DB -> HTML
+    syncChannel = supabaseClient.channel("app-db-sync");
+    syncChannel
+      .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, () => emitSync("process", "db"))
+      .on("postgres_changes", { event: "*", schema: "public", table: CATALOG_TABLE }, () => emitSync("catalog", "db"))
+      .subscribe((status) => {
+        if (status === "SUBSCRIBED") emitSync("all", "db");
+      });
+
+    // Fallback polling (ja realtime nav pieejams/RLS kanālu ierobežojumi)
+    pollTimer = setInterval(() => {
+      emitSync("all", "db");
+    }, pollMs);
   }
 
   window.DB = {
@@ -304,6 +348,8 @@
     insertCatalog,
     updateCatalog,
     removeCatalog,
+    startSync,
+    stopSync,
     mapDbError,
   };
 })();
