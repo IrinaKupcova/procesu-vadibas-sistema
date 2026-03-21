@@ -36,7 +36,7 @@
   function ensureQuickFilters() {
     const searchInput = document.getElementById("searchInput");
     if (!searchInput) return;
-    // Galvenais filtrs ir pārvaldīts Procesu_registrs.js pusē.
+    // Galvenais filtrs ir pārvaldīts index/Procesu registrs.js pusē.
     // Te neatstājam otru (dublējošu) filtra UI.
   }
 
