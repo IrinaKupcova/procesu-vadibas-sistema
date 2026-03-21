@@ -131,15 +131,24 @@
                 ? err.message
                 : String(err);
           if (statusEl) statusEl.textContent = "";
+          const bid =
+            typeof api.getPieteikumiStorageBucket === "function"
+              ? api.getPieteikumiStorageBucket()
+              : api.STORAGE_BUCKET_PIETEIKUMI || api.STORAGE_BUCKET_CHANGE_REQ || "pieteikumu-vesture";
           alert(
             "Pielikumu augšupielāde neizdevās:\n" +
               msg +
-              "\n\nPārbaudiet Supabase Storage:\n" +
-              "• bucket id: " +
-              (api.STORAGE_BUCKET_PIETEIKUMI || api.STORAGE_BUCKET_CHANGE_REQ || "pieteikumu-vesture") +
-              "\n• mape: pielikumi_uz_pieteikumiem/\n" +
-              "• Storage politikas (INSERT anon vai autentificētam).\n" +
-              "Projekts: ettesmdcpizztgwewhpx.supabase.co"
+              "\n\nJa kļūda ir «Bucket not found»:\n" +
+              "1) Atveriet Supabase → Storage.\n" +
+              "2) Ja sarakstā nav bucket «" +
+              bid +
+              "», spiediet New bucket un Name (id) ierakstiet tieši: " +
+              bid +
+              "\n3) Pievienojiet politiku, kas atļauj INSERT (anon vai signed-in).\n" +
+              "4) Ja bucket izveidojāt ar citu nosaukumu, index.html iestatiet:\n" +
+              "   window.PV_SUPABASE_STORAGE_BUCKET = \"jusu-bucket-id\";\n" +
+              "(pirms <script src=\"DB.js\">)\n\n" +
+              "Mape failiem: pielikumi_uz_pieteikumiem/"
           );
           return;
         }
@@ -169,10 +178,16 @@
               ? ve.message
               : String(ve);
         console.error("Pieteikumu vesture:", ve);
+        const bid2 =
+          window.DB && typeof window.DB.getPieteikumiStorageBucket === "function"
+            ? window.DB.getPieteikumiStorageBucket()
+            : "pieteikumu-vesture";
         alert(
           "Brīdinājums: pilna pieteikuma JSON pieraksts netika saglabāts krātuvē:\n" +
             vm +
-            "\n\nPārbaudiet bucket «pieteikumu-vesture», mapi vesture/ un INSERT politiku.\nTurpinām ar e-pasta atvēršanu."
+            "\n\nPārbaudiet bucket «" +
+            bid2 +
+            "», mapi vesture/ un INSERT politiku.\nTurpinām ar e-pasta atvēršanu."
         );
       }
       if (statusEl) statusEl.textContent = vestureNote ? "Pieteikums saglabāts krātuvē." : "";

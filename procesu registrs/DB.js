@@ -315,17 +315,25 @@
   }
 
   /**
-   * Supabase Storage — viena krātuve «Pieteikumu vesture» (bucket id: pieteikumu-vesture).
-   * Projekta Storage bāze: https://<project-ref>.supabase.co/storage/v1/ …
-   * (S3-saderīgs: …storage.supabase.co/storage/v1/s3 — lieto Supabase klientam, ne tieši no pārlūka.)
+   * Supabase Storage — krātuve «Pieteikumu vesture».
+   * Bucket **jāizveido** Supabase → Storage → New bucket (Name = id, piem. pieteikumu-vesture).
+   * Citam id: pirms DB.js iestatiet window.PV_SUPABASE_STORAGE_BUCKET = "jusu-bucket-id";
    *
-   * Mapes:
-   * - pielikumi_uz_pieteikumiem/ — augšupielādētie faili
-   * - vesture/ — katra pieteikuma JSON pieraksts
+   * Mapes: pielikumi_uz_pieteikumiem/ , vesture/
    */
-  const STORAGE_BUCKET_PIETEIKUMI = "pieteikumu-vesture";
-  /** @deprecated Lietot STORAGE_BUCKET_PIETEIKUMI; atstāts saderībai ar veco kodu */
-  const STORAGE_BUCKET_CHANGE_REQ = STORAGE_BUCKET_PIETEIKUMI;
+  const DEFAULT_STORAGE_BUCKET_PIETEIKUMI = "pieteikumu-vesture";
+
+  function getPieteikumiStorageBucket() {
+    try {
+      const w = typeof window !== "undefined" ? window : null;
+      if (w && w.PV_SUPABASE_STORAGE_BUCKET != null) {
+        const s = String(w.PV_SUPABASE_STORAGE_BUCKET).trim();
+        if (s) return s;
+      }
+    } catch (_) {}
+    return DEFAULT_STORAGE_BUCKET_PIETEIKUMI;
+  }
+
   const STORAGE_PREFIX_ATTACH = "pielikumi_uz_pieteikumiem";
   const STORAGE_PREFIX_VESTURE = "vesture";
 
@@ -341,14 +349,15 @@
     const out = [];
     for (const file of files) {
       const safe = sanitizeFileName(file.name);
+      const bucket = getPieteikumiStorageBucket();
       const path = `${STORAGE_PREFIX_ATTACH}/${Date.now()}_${Math.random().toString(36).slice(2, 10)}_${safe}`;
-      const { error } = await supabaseClient.storage.from(STORAGE_BUCKET_PIETEIKUMI).upload(path, file, {
+      const { error } = await supabaseClient.storage.from(bucket).upload(path, file, {
         contentType: file.type || "application/octet-stream",
         upsert: true,
         cacheControl: "3600",
       });
       if (error) throw error;
-      const { data: pub } = supabaseClient.storage.from(STORAGE_BUCKET_PIETEIKUMI).getPublicUrl(path);
+      const { data: pub } = supabaseClient.storage.from(bucket).getPublicUrl(path);
       out.push({ name: file.name, path, url: pub.publicUrl });
     }
     return out;
@@ -370,14 +379,15 @@
       null,
       2
     );
+    const bucket = getPieteikumiStorageBucket();
     const blob = new Blob([payload], { type: "application/json;charset=utf-8" });
-    const { error } = await supabaseClient.storage.from(STORAGE_BUCKET_PIETEIKUMI).upload(path, blob, {
+    const { error } = await supabaseClient.storage.from(bucket).upload(path, blob, {
       contentType: "application/json",
       upsert: false,
       cacheControl: "60",
     });
     if (error) throw error;
-    const { data: pub } = supabaseClient.storage.from(STORAGE_BUCKET_PIETEIKUMI).getPublicUrl(path);
+    const { data: pub } = supabaseClient.storage.from(bucket).getPublicUrl(path);
     return { path, publicUrl: pub.publicUrl, id };
   }
 
@@ -427,8 +437,13 @@
     mapDbError,
     uploadChangeRequestFiles,
     savePieteikumuVestureSnapshot,
-    STORAGE_BUCKET_PIETEIKUMI,
-    STORAGE_BUCKET_CHANGE_REQ,
+    getPieteikumiStorageBucket,
+    get STORAGE_BUCKET_PIETEIKUMI() {
+      return getPieteikumiStorageBucket();
+    },
+    get STORAGE_BUCKET_CHANGE_REQ() {
+      return getPieteikumiStorageBucket();
+    },
     STORAGE_PREFIX_ATTACH,
     STORAGE_PREFIX_VESTURE,
   };
