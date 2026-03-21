@@ -20,7 +20,7 @@
     input,select{font-size:13px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:4px}
     button{font-size:13px;padding:8px 12px;border:0;border-radius:4px;background:#2563eb;color:#fff;cursor:pointer}
     button:hover{background:#1d4ed8}button.secondary{background:#e5e7eb;color:#111827}button.secondary:hover{background:#d1d5db}
-    button.danger{background:#dc2626}button.danger:hover{background:#b91c1c}
+    button.danger{background:#db2929}button.danger:hover{background:#b91c1c}
     .hidden{display:none!important}.status{font-size:12px}.status.info{color:#334155}.status.ok{color:#166534}.status.error{color:#b91c1c}
     .editor-frame{border:2px solid #cbd5e1;border-radius:14px}
     .editor-actions{display:flex;gap:8px;justify-content:flex-start;align-items:center;padding-top:8px}
@@ -28,25 +28,43 @@
     .table-body-hidden tbody{display:none}
     .hint{font-size:12px;color:#475569}
     .search-hit{outline:2px solid #f59e0b;background:#fef3c7}
-    .gp-veidi-cell{display:flex;flex-direction:column;align-items:stretch;gap:6px;border:1px solid #cbd5e1;border-radius:6px;padding:6px;background:#fff}
-    .gp-veidi-cell input{width:100%;box-sizing:border-box}
     .section-title{margin:0;font-size:18px;font-weight:700}
     .change-req-card h2{margin-top:0}
     .change-req-card h3{margin:16px 0 8px;font-size:14px;color:#1e293b;border-bottom:1px solid #e2e8f0;padding-bottom:4px}
     .change-req-card textarea{min-height:100px;font-size:13px;padding:8px;border:1px solid #cbd5e1;border-radius:4px;resize:vertical;width:100%;box-sizing:border-box;max-width:100%}
     .change-req-hint{font-size:11px;color:#64748b;margin-top:4px;font-weight:normal;text-transform:none;letter-spacing:normal}
+    #changeRequestToggleBtn{background:#7c3aed;color:#fff}
+    #changeRequestToggleBtn:hover{background:#6d28d9}
+    .pv-help-i-wrap{display:inline-flex;align-items:center;vertical-align:middle;margin-left:4px}
+    .pv-help-i-btn{width:18px;height:18px;min-width:18px;padding:0;border:0;border-radius:50%;background:#6366f1;color:#fff;font-size:11px;font-weight:700;cursor:pointer;line-height:1;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+    .pv-help-i-btn:hover{background:#4f46e5}
+    .pv-help-i-btn[aria-expanded="true"]{background:#4338ca}
+    #pvHelpPopover{position:fixed;z-index:10050;max-width:min(420px,92vw);background:#fff;border:1px solid #cbd5e1;border-radius:10px;padding:12px 14px;box-shadow:0 10px 40px rgba(0,0,0,.18);font-size:13px;line-height:1.45;color:#1e293b;pointer-events:auto}
+    #pvHelpPopover.hidden{display:none!important}
+    #faqModalCard{position:fixed;inset:0;z-index:10040;background:rgba(15,23,42,.45);display:flex;align-items:flex-start;justify-content:center;padding:24px;overflow:auto}
+    #faqModalCard.hidden{display:none!important}
+    #faqModalInner{max-width:720px;width:100%;margin-top:40px;background:#fff;border-radius:12px;padding:18px 20px;box-shadow:0 20px 50px rgba(0,0,0,.2)}
+    .faq-item{margin-bottom:14px;padding-bottom:14px;border-bottom:1px solid #e2e8f0}
+    .faq-item h4{margin:0 0 6px;font-size:14px;color:#0f172a}
+    .faq-item p{margin:0;font-size:13px;color:#334155;white-space:pre-wrap}
+    #skaidrojumiAdminCard h3{margin:12px 0 8px;font-size:14px}
+    .help-admin-table{width:100%;font-size:12px;border-collapse:collapse}
+    .help-admin-table th,.help-admin-table td{border:1px solid #e2e8f0;padding:6px 8px;vertical-align:top}
+    .help-admin-table input[type="text"],.help-admin-table textarea{width:100%;box-sizing:border-box;font-size:12px}
   </style>
 </head>
 <body>
   <h1>Procesu vadības bloks</h1>
   <p class="tagline">Pamatskats (pelēks), Pilnais skats (pelēks+zaļš), Papildu/datu sasaiste (pelēks+zaļš+zils). Redz visi; labo tikai administrators (labot).</p>
-  <div class="card">
+  <div class="card" id="topToolbarCard">
     <div class="toolbar">
       <div class="left"><span id="dbStatus" class="status info"></span></div>
       <div class="right">
-        <button type="button" id="changeRequestToggleBtn" class="secondary">Izmaiņu pieteikuma veidlapa</button>
+        <button type="button" id="changeRequestToggleBtn">Izmaiņu pieteikuma veidlapa</button>
         <button type="button" id="shareBtn" class="secondary">Šērot</button>
         <button type="button" id="emailBtn" class="secondary">Sūtīt e-pastā</button>
+        <button type="button" id="faqOpenBtn" class="secondary">Biežāk uzdotie jautājumi un skaidrojumi</button>
+        <button type="button" id="helpAdminOpenBtn" class="secondary hidden">Skaidrojuma ievietošana</button>
       </div>
     </div>
     <div class="row">
@@ -128,6 +146,27 @@
     </form>
   </div>
 
+  <div id="faqModalCard" class="hidden" aria-hidden="true">
+    <div id="faqModalInner">
+      <div class="toolbar" style="margin-bottom:12px">
+        <h2 style="margin:0;font-size:18px">Biežāk uzdotie jautājumi un skaidrojumi</h2>
+        <button type="button" id="faqCloseBtn" class="secondary">Aizvērt</button>
+      </div>
+      <div id="faqModalBody" class="hint">Nav ierakstu. Saturu pievieno administrators sadaļā «Skaidrojuma ievietošana».</div>
+    </div>
+  </div>
+
+  <div class="card hidden editor-frame" id="skaidrojumiAdminCard">
+    <div class="toolbar" style="margin-bottom:8px">
+      <h2 style="margin:0;font-size:18px">Skaidrojuma ievietošana</h2>
+      <button type="button" id="helpAdminCloseBtn" class="secondary">Aizvērt</button>
+    </div>
+    <p class="hint" style="margin-top:0">Tikai lomai «administrators (labot)». Šeit pārvaldāt «i» skaidrojumus un BUJ sarakstu. Datu glabāšana: pārlūka <code>localStorage</code> (nākotnē var pārcelt uz DB).</p>
+    <div id="skaidrojumiAdminMount"></div>
+  </div>
+
+  <div id="pvHelpPopover" class="hidden" role="tooltip"><div id="pvHelpPopoverText"></div></div>
+
   <div class="card" id="processListCard">
     <div class="toolbar">
       <div class="left"><div class="section-title">Procesu reģistrs</div></div>
@@ -157,7 +196,7 @@
         <div class="form-group"><label>Process</label><input id="eProcess" /></div>
         <div class="form-group"><label>Procesa īpašnieks</label><input id="eOwner" /></div>
         <div class="form-group"><label>Galaprodukti</label><input id="eLaws" /></div>
-        <div class="form-group"><label>Galaproduktu veidi</label><div class="gp-veidi-cell"><input id="eDocs" /><button type="button" id="gotoCatalogBtn" class="catalog-jump" style="align-self:flex-start;margin-left:0">Pāriet uz katalogu</button></div></div>
+        <div class="form-group"><label>Galaproduktu veidi</label><input type="hidden" id="eDocs" /><button type="button" id="gotoCatalogBtn" class="catalog-jump" style="margin-left:0">Pāriet uz katalogu</button></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Procesa iniciātors (input)</label><input id="eInput" /></div>
@@ -267,6 +306,7 @@
       if (typeof window.__afterTableRenderFilters === "function") {
         window.__afterTableRenderFilters();
       }
+      if (typeof window.refreshHelpIcons === "function") window.refreshHelpIcons();
     }
 
     function linkedOut(r){
@@ -334,10 +374,9 @@
         c(r.group,"col-gray"); c(r.taskNo,"col-gray"); c(r.task,"col-gray"); c(r.processNo,"col-gray"); c(r.process,"col-gray"); c(r.owner,"col-gray");
         c(r.input,"col-green"); c(r.products,"col-green");
         const tdType=document.createElement("td"); tdType.classList.add("col-green");
-        const span=document.createElement("span"); span.textContent=r.productTypes||"";
         const jump=document.createElement("button"); jump.type="button"; jump.className="catalog-jump"; jump.textContent="Pāriet uz katalogu";
         jump.onclick=()=>gotoCatalogFor(r.taskNo, r.processNo);
-        tdType.appendChild(span); tdType.appendChild(jump); tr.appendChild(tdType);
+        tdType.appendChild(jump); tr.appendChild(tdType);
         c(r.relatedProcesses,"col-blue"); c(r.services,"col-blue"); c(r.flowcharts,"col-blue"); c(r.itResources,"col-blue"); c(r.optimization,"col-blue"); c(r.otherMetrics,"col-blue");
         const td=document.createElement("td"), b=document.createElement("button"); b.type="button"; b.className="secondary"; b.textContent="Atvērt kartiņu"; b.onclick=()=>openEditor(r); td.appendChild(b); tr.appendChild(td);
         if(q) tr.classList.add("search-hit");
@@ -358,6 +397,7 @@
         window.__afterTableRenderFilters();
       }
       if (typeof window.renderExtraViews === "function") window.renderExtraViews();
+      if (typeof window.refreshHelpIcons === "function") window.refreshHelpIcons();
     }
 
     function rebuildMx(){ /* Matrica izņemta pēc prasības. */ }
@@ -534,8 +574,8 @@
     };
     $("shareBtn").onclick=async()=>{ const u=new URL(location.href); u.searchParams.set("user",user); u.searchParams.set("level",$("levelSelect").value); try{await navigator.clipboard.writeText(u.toString()); alert("Saite nokopēta.");}catch{alert("Neizdevās kopēt saiti.");}};
     $("emailBtn").onclick=()=>{ const u=new URL(location.href); u.searchParams.set("user",user); u.searchParams.set("level",$("levelSelect").value); location.href="mailto:?subject="+encodeURIComponent("Procesu vadības bloks")+"&body="+encodeURIComponent("Saite:\n"+u.toString()); };
-    if($("userSelect")) $("userSelect").onchange=()=>{ user=$("userSelect").value; if($("roleSelect")) $("roleSelect").value=role(); renderTable(); };
-    if($("saveRoleBtn")) $("saveRoleBtn").onclick=()=>{ roles[user]=$("roleSelect").value; saveRoles(); renderTable(); };
+    if($("userSelect")) $("userSelect").onchange=()=>{ user=$("userSelect").value; if($("roleSelect")) $("roleSelect").value=role(); renderTable(); if(typeof window.refreshHelpAdminVisibility==="function")window.refreshHelpAdminVisibility(); };
+    if($("saveRoleBtn")) $("saveRoleBtn").onclick=()=>{ roles[user]=$("roleSelect").value; saveRoles(); renderTable(); if(typeof window.refreshHelpAdminVisibility==="function")window.refreshHelpAdminVisibility(); };
     if($("assignRoleBtn")) $("assignRoleBtn").onclick=()=>{ const u=$("newUserInput").value.trim(); if(!u) return; roles[u]=$("newRoleSelect").value; saveRoles(); $("newUserInput").value=""; };
     if($("roleTable")) $("roleTable").onclick=(e)=>{ const b=e.target.closest("button[data-u]"); if(!b) return; const u=b.getAttribute("data-u"); if(u==="daina"){alert("Primāro admin lietotāju nedzēšam.");return;} delete roles[u]; saveRoles(); };
 
@@ -567,5 +607,6 @@
   <script src="Pievienot%20jaunu%20procesu.js"></script>
   <script src="Procesa%20kartina.js"></script>
   <script src="Izmainu_pieteikums.js"></script>
+  <script src="Skaidrojumi.js"></script>
 </body>
 </html>
