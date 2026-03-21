@@ -6,10 +6,21 @@
   <title>Procesu vadības bloks - 4. iterācija (clean)</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 16px; background: #f5f7fb; color: #111827; }
-    h1 { margin: 0 0 6px; font-size: 24px; } h2 { margin: 0 0 8px; font-size: 18px; } h3 { margin: 12px 0 6px; font-size: 15px; }
-    .tagline { margin: 0 0 14px; font-size: 12px; color: #475569; }
+    body { font-family: Arial, sans-serif; margin: 0; padding: 20px 18px 32px; background: #0f172a; color: #e2e8f0; min-height: 100vh; box-sizing: border-box; }
+    h1 { margin: 0 0 6px; font-size: 24px; color: #f8fafc; font-weight: 700; } h2 { margin: 0 0 8px; font-size: 18px; } h3 { margin: 12px 0 6px; font-size: 15px; }
+    .tagline { margin: 0 0 18px; font-size: 12px; color: #94a3b8; max-width: 72ch; line-height: 1.45; }
     .card { background:#fff; border-radius:8px; padding:14px 16px; box-shadow:0 2px 6px rgba(0,0,0,.08); margin-bottom:14px; }
+    /* Galvenie satura bloki — skaidri atdalīti no tumšā fona */
+    .card.section-block { background: #f8fafc; color: #0f172a; border: 2px solid #475569; border-radius: 14px; padding: 18px 20px; margin-bottom: 22px; box-shadow: 0 8px 28px rgba(0,0,0,.35); }
+    .card.section-block .section-title { font-size: 1.2rem; font-weight: 700; color: #0f172a; text-transform: none; letter-spacing: 0.02em; }
+    #topToolbarCard { background: #1e293b; color: #e2e8f0; border: 2px solid #64748b; border-radius: 14px; padding: 16px 18px; margin-bottom: 22px; box-shadow: 0 6px 24px rgba(0,0,0,.35); }
+    #topToolbarCard .status { color: #cbd5e1; }
+    #topToolbarCard label { color: #cbd5e1; }
+    #topToolbarCard #modeHint { color: #94a3b8; font-size: 12px; }
+    #topToolbarCard input#searchInput { background: #0f172a; color: #f1f5f9; border-color: #475569; }
+    #topToolbarCard input#searchInput::placeholder { color: #64748b; }
+    #topToolbarCard select { background: #0f172a; color: #f1f5f9; border-color: #475569; }
+    .toolbar-inline-control select { font-weight: 600; }
     .toolbar,.row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
     .left,.right { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
     table { width:100%; border-collapse:collapse; margin-top:8px; } th,td { border-bottom:1px solid #e5e7eb; padding:7px 8px; text-align:left; font-size:12px; vertical-align:top; }
@@ -51,6 +62,9 @@
     .help-admin-table{width:100%;font-size:12px;border-collapse:collapse}
     .help-admin-table th,.help-admin-table td{border:1px solid #e2e8f0;padding:6px 8px;vertical-align:top}
     .help-admin-table input[type="text"],.help-admin-table textarea{width:100%;box-sizing:border-box;font-size:12px}
+    /* GP katalogs: paplašinātajā skatā redzama kolonna «Sensitīvitātes pakāpe» */
+    #catalogTable.catalog-view--compact th.catalog-col-sensitivity,
+    #catalogTable.catalog-view--compact td.catalog-col-sensitivity{display:none}
   </style>
 </head>
 <body>
@@ -77,9 +91,9 @@
         </select>
       </label>
       <button type="button" id="saveRoleBtn" class="secondary">Saglabāt manu lomu</button>
-      <label>Līmenis
-        <select id="levelSelect"><option value="1" selected>Pamatskats</option><option value="2">Pilnais skats</option><option value="3">Papildu/datu sasaiste</option></select>
-      </label>
+      <span class="toolbar-inline-control" title="Pamatskats / Pilnais skats / Papildu datu sasaiste">
+        <select id="levelSelect" aria-label="Reģistra detalizācijas līmenis"><option value="1" selected>Pamatskats</option><option value="2">Pilnais skats</option><option value="3">Papildu/datu sasaiste</option></select>
+      </span>
       <input id="searchInput" placeholder="Meklē pēc atslēgas vārdiem..." />
       <button type="button" id="clearFiltersBtn" class="secondary">Noņemt filtru</button>
       <button type="button" id="newBtn">Pievienot jaunu procesu</button>
@@ -120,7 +134,7 @@
         <div class="form-group"><label>Optimizācija</label><input id="ch_pr_opt" /></div>
         <div class="form-group"><label>Citi rādītāji</label><input id="ch_pr_other" /></div>
       </div>
-      <h3>Galaproduktu veidu katalogs</h3>
+      <h3>GP katalogs</h3>
       <div class="form-row">
         <div class="form-group"><label>Galaprodukta veida Nr.</label><input id="ch_gp_typeNo" /></div>
         <div class="form-group"><label>Galaprodukta veids</label><input id="ch_gp_type" /></div>
@@ -167,7 +181,7 @@
 
   <div id="pvHelpPopover" class="hidden" role="tooltip"><div id="pvHelpPopoverText"></div></div>
 
-  <div class="card" id="processListCard">
+  <div class="card section-block section-block--process" id="processListCard">
     <div class="toolbar">
       <div class="left"><div class="section-title">Procesu reģistrs</div></div>
       <div class="right"><button type="button" id="toggleProcessBtn" class="secondary">Atvērt procesu reģistru</button></div>
@@ -218,17 +232,19 @@
     </form>
   </div>
 
-  <div class="card" id="catalogListCard">
+  <div class="card section-block section-block--catalog" id="catalogListCard">
     <div class="toolbar">
-      <div class="left"><div class="section-title">Galaproduktu veidu katalogs</div></div>
+      <div class="left"><div class="section-title">GP katalogs</div></div>
       <div class="right">
         <button type="button" id="toggleCatalogBtn" class="secondary">Atvērt katalogu</button>
         <button type="button" id="newCatalogBtn">Pievienot jaunu galaprodukta veidu</button>
       </div>
     </div>
     <div id="catalogListBody">
-      <table id="catalogTable" class="table-body-hidden"><thead><tr>
-        <th>Galaprodukta veida Nr.</th><th>Galaprodukta veids</th><th>Strukturvieniba izpilditajs, kas rada galaprodukta veidu</th><th>Uzdevuma Nr.</th><th>Procesa Nr.</th><th>Procesa kartiņa</th>
+      <table id="catalogTable" class="table-body-hidden catalog-view--compact"><thead><tr>
+        <th>Galaprodukta veida Nr.</th><th>Galaprodukta veids</th><th>Strukturvieniba izpilditajs, kas rada galaprodukta veidu</th><th>Uzdevuma Nr.</th><th>Procesa Nr.</th>
+        <th class="catalog-col-sensitivity">Sensitīvitātes pakāpe <span class="hint" title="Datu sasaiste ar korupcijas riskiem">(korupcijas riski)</span></th>
+        <th>Procesa kartiņa</th>
       </tr></thead><tbody></tbody></table>
     </div>
   </div>
@@ -248,6 +264,9 @@
         <div class="form-group"><label>Uzdevuma Nr.</label><input id="cTaskNo" /></div>
         <div class="form-group"><label>Procesa Nr.</label><input id="cProcNo" /></div>
       </div>
+      <div class="form-row">
+        <div class="form-group"><label>Sensitīvitātes pakāpe <span class="hint" style="font-weight:normal">(datu sasaiste ar korupcijas riskiem; redzama paplašinātajā kataloga skatā)</span></label><input id="cSensitivity" placeholder="piem., zema / vidēja / augsta" /></div>
+      </div>
       <div class="editor-actions">
         <button type="submit">Saglabāt</button>
         <button type="button" id="catalogDeleteBtn" class="danger hidden">Dzēst</button>
@@ -257,6 +276,7 @@
   </div>
 
   <script src="DB.js"></script>
+  <script src="GP%20kataogs.js"></script>
 
   <script>
     let processRows = [], csvRows = [], user = "daina", roles = {};
@@ -278,6 +298,9 @@
           return;
         }
         csvRows = await api.loadCatalogTypes();
+        csvRows.forEach((r) => {
+          if (typeof window.mergeCatalogSensitivity === "function") window.mergeCatalogSensitivity(r);
+        });
         // Nerādām ielādēto GP skaitu augšā.
       }catch(err){
         csvRows = [];
@@ -296,6 +319,10 @@
           td.textContent=v||"";
           tr.appendChild(td);
         });
+        const tdSens=document.createElement("td");
+        tdSens.className="catalog-col-sensitivity";
+        tdSens.textContent=String(x.sensitivity||"").trim();
+        tr.appendChild(tdSens);
         const td=document.createElement("td");
         const b=document.createElement("button");
         b.type="button"; b.className="secondary"; b.textContent="Atvērt kartiņu";
@@ -307,6 +334,7 @@
         window.__afterTableRenderFilters();
       }
       if (typeof window.refreshHelpIcons === "function") window.refreshHelpIcons();
+      if (typeof window.applyGpCatalogView === "function") window.applyGpCatalogView();
     }
 
     function linkedOut(r){
@@ -417,6 +445,7 @@
       $("cUnit").value = r ? (r.unit || "") : "";
       $("cTaskNo").value = r ? (r.taskNo || "") : "";
       $("cProcNo").value = r ? (r.procNo || "") : "";
+      if ($("cSensitivity")) $("cSensitivity").value = r ? String(r.sensitivity || "").trim() : "";
       $("catalogDeleteBtn").classList.toggle("hidden", !r);
     }
     function catalogFormVals(){
@@ -426,6 +455,7 @@
         unit: $("cUnit").value.trim(),
         taskNo: $("cTaskNo").value.trim(),
         procNo: $("cProcNo").value.trim(),
+        sensitivity: $("cSensitivity") ? $("cSensitivity").value.trim() : "",
       };
     }
     function formVals(){ return {group:$("eGroup").value.trim(),taskNo:$("eTaskNo").value.trim(),task:$("eTask").value.trim(),processNo:$("eProcNo").value.trim(),process:$("eProcess").value.trim(),
@@ -546,6 +576,9 @@
         }else{
           await api.updateCatalog(editingCatalogRow, f);
         }
+        if (typeof window.persistCatalogSensitivity === "function") {
+          window.persistCatalogSensitivity(f.typeNo, f.sensitivity);
+        }
         editingCatalogRow=null;
         $("catalogEditorCard").classList.add("hidden");
         await loadCatalog();
@@ -560,8 +593,12 @@
       if(!canEdit()) return;
       if(!editingCatalogRow) return;
       if(!confirm("Dzēst galaprodukta veidu?")) return;
+      const delTypeNo = editingCatalogRow.typeNo || editingCatalogRow.id;
       try{
         await window.DB.removeCatalog(editingCatalogRow);
+        if (typeof window.removeCatalogSensitivity === "function" && delTypeNo) {
+          window.removeCatalogSensitivity(String(delTypeNo));
+        }
         editingCatalogRow=null;
         $("catalogEditorCard").classList.add("hidden");
         await loadCatalog();
@@ -600,6 +637,7 @@
 
       // Polling noņemts no index.html, jo sinhronizāciju centralizē DB.js (startSync).
     })();
+    window.loadCatalog = loadCatalog;
   </script>
   <script src="Filtrs.js"></script>
   <script src="Procesu%20registrs.js"></script>

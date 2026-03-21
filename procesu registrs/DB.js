@@ -227,6 +227,13 @@
       unit: gv(r, ["Strukturvieniba_izpilditajs_kas_rada_galaprodukta_veidu"]),
       taskNo: gv(r, ["Uzdevuma_Nr."]),
       procNo: gv(r, ["Procesa_Nr."]),
+      /** Sensitīvitātes pakāpe / sasaiste ar korupcijas riskiem (ja kolonna ir DB) */
+      sensitivity: gv(r, [
+        "Sensitivitates_pakape",
+        "Sensitīvitātes_pakāpe",
+        "sensitivitates_pakape",
+        "Korupcijas_riska_sasaiste",
+      ]),
       raw: r,
     };
   }

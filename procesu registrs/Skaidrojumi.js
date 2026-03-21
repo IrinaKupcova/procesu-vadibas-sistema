@@ -9,7 +9,7 @@
     { label: "— Izvēlēties sadaļu —", selector: "" },
     { label: "Augšējā vadības zona", selector: "#topToolbarCard" },
     { label: "Procesu reģistrs (bloks)", selector: "#processListCard" },
-    { label: "Galaproduktu veidu katalogs (bloks)", selector: "#catalogListCard" },
+    { label: "GP katalogs (bloks)", selector: "#catalogListCard" },
     { label: "Meklēšana", selector: "#searchInput" },
     { label: "Procesu tabula", selector: "#processTable" },
     { label: "Kataloga tabula", selector: "#catalogTable" },

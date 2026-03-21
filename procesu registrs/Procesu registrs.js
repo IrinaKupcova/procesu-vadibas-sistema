@@ -19,8 +19,10 @@
     if (!row || !processRight) return;
 
     const levelSelect = $("levelSelect");
-    const levelLabel = levelSelect ? levelSelect.closest("label") : null;
-    if (levelLabel && !processRight.contains(levelLabel)) processRight.prepend(levelLabel);
+    const levelWrap =
+      levelSelect &&
+      (levelSelect.closest(".toolbar-inline-control") || levelSelect.closest("label"));
+    if (levelWrap && !processRight.contains(levelWrap)) processRight.prepend(levelWrap);
 
     const newBtn = $("newBtn");
     if (newBtn && !processRight.contains(newBtn)) processRight.appendChild(newBtn);
@@ -59,17 +61,18 @@
     if (!processCard || !processCard.parentElement) return;
 
     const card = document.createElement("div");
-    card.className = "card";
+    card.className = "card section-block section-block--extraviews";
     card.id = "extraViewsCard";
     card.innerHTML = `
       <div class="toolbar">
         <div class="left">
-          <label style="margin-left:0;font-size:18px;font-weight:700;color:#0f172a">Skata izvēle
-            <select id="extraViewSelect">
-              <option value="owners" selected>Izpildītāji</option>
-              <option value="tasks">Uzdevumi</option>
-            </select>
-          </label>
+          <div class="section-title">Skata izvēle</div>
+        </div>
+        <div class="right">
+          <select id="extraViewSelect" style="font-weight:600;min-width:11rem">
+            <option value="owners" selected>Izpildītāji</option>
+            <option value="tasks">Uzdevumi</option>
+          </select>
         </div>
       </div>
       <div id="tasksViewWrap" class="hidden">
