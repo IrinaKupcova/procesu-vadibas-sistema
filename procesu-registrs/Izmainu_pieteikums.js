@@ -117,7 +117,7 @@
       if (files && files.length) {
         const api = window.DB;
         if (!api || typeof api.uploadChangeRequestFiles !== "function") {
-          alert("Pielikumu augšupielāde nav pieejama (DB API). Pārbaudiet, ka DB.js ir ielādēts.");
+          alert("Pielikumu augšupielāde nav pieejama (DB API). Pārbaudiet, ka DB.js ir ielādēts (tajā pašā mapē ar index.html).");
           return;
         }
         if (statusEl) statusEl.textContent = "Augšupielādē pielikumus…";
