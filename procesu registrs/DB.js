@@ -314,6 +314,73 @@
     return data;
   }
 
+  /**
+   * Supabase Storage — viena krātuve «Pieteikumu vesture» (bucket id: pieteikumu-vesture).
+   * Projekta Storage bāze: https://<project-ref>.supabase.co/storage/v1/ …
+   * (S3-saderīgs: …storage.supabase.co/storage/v1/s3 — lieto Supabase klientam, ne tieši no pārlūka.)
+   *
+   * Mapes:
+   * - pielikumi_uz_pieteikumiem/ — augšupielādētie faili
+   * - vesture/ — katra pieteikuma JSON pieraksts
+   */
+  const STORAGE_BUCKET_PIETEIKUMI = "pieteikumu-vesture";
+  /** @deprecated Lietot STORAGE_BUCKET_PIETEIKUMI; atstāts saderībai ar veco kodu */
+  const STORAGE_BUCKET_CHANGE_REQ = STORAGE_BUCKET_PIETEIKUMI;
+  const STORAGE_PREFIX_ATTACH = "pielikumi_uz_pieteikumiem";
+  const STORAGE_PREFIX_VESTURE = "vesture";
+
+  function sanitizeFileName(name) {
+    return String(name || "file")
+      .replace(/[^\w.\-\u0100-\u024F]/g, "_")
+      .slice(0, 180);
+  }
+
+  async function uploadChangeRequestFiles(fileList) {
+    const files = Array.from(fileList || []).filter((f) => f && f.size > 0);
+    if (!files.length) return [];
+    const out = [];
+    for (const file of files) {
+      const safe = sanitizeFileName(file.name);
+      const path = `${STORAGE_PREFIX_ATTACH}/${Date.now()}_${Math.random().toString(36).slice(2, 10)}_${safe}`;
+      const { error } = await supabaseClient.storage.from(STORAGE_BUCKET_PIETEIKUMI).upload(path, file, {
+        contentType: file.type || "application/octet-stream",
+        upsert: true,
+        cacheControl: "3600",
+      });
+      if (error) throw error;
+      const { data: pub } = supabaseClient.storage.from(STORAGE_BUCKET_PIETEIKUMI).getPublicUrl(path);
+      out.push({ name: file.name, path, url: pub.publicUrl });
+    }
+    return out;
+  }
+
+  /**
+   * Saglabā pilna pieteikuma tekstu + pielikumu metadatus JSON veidā krātuvē «Pieteikumu vesture».
+   */
+  async function savePieteikumuVestureSnapshot(bodyText, attachmentRecords, meta) {
+    const id = `${Date.now()}_${Math.random().toString(36).slice(2, 10)}`;
+    const path = `${STORAGE_PREFIX_VESTURE}/pieteikums_${id}.json`;
+    const payload = JSON.stringify(
+      {
+        saglabatsUtc: new Date().toISOString(),
+        meta: meta && typeof meta === "object" ? meta : {},
+        pielikumi: Array.isArray(attachmentRecords) ? attachmentRecords : [],
+        pieteikuma_teksts: String(bodyText || ""),
+      },
+      null,
+      2
+    );
+    const blob = new Blob([payload], { type: "application/json;charset=utf-8" });
+    const { error } = await supabaseClient.storage.from(STORAGE_BUCKET_PIETEIKUMI).upload(path, blob, {
+      contentType: "application/json",
+      upsert: false,
+      cacheControl: "60",
+    });
+    if (error) throw error;
+    const { data: pub } = supabaseClient.storage.from(STORAGE_BUCKET_PIETEIKUMI).getPublicUrl(path);
+    return { path, publicUrl: pub.publicUrl, id };
+  }
+
   function stopSync() {
     if (syncChannel) {
       try { supabaseClient.removeChannel(syncChannel); } catch (_) {}
@@ -358,5 +425,11 @@
     startSync,
     stopSync,
     mapDbError,
+    uploadChangeRequestFiles,
+    savePieteikumuVestureSnapshot,
+    STORAGE_BUCKET_PIETEIKUMI,
+    STORAGE_BUCKET_CHANGE_REQ,
+    STORAGE_PREFIX_ATTACH,
+    STORAGE_PREFIX_VESTURE,
   };
 })();

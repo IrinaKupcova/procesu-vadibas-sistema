@@ -1,9 +1,9 @@
-/* Izmaiņu pieteikuma veidlapa: atvērt/aizvērt, sagatavot e-pastu administratoram. */
+/* Izmaiņu pieteikuma veidlapa: atvērt/aizvērt, pielikumi (Supabase Storage), e-pasts administratoram. */
 (function () {
   "use strict";
 
   const ADMIN_EMAIL = "irina.kupcova@vid.gov.lv";
-  const MAILTO_MAX = 1800;
+  const MAILTO_MAX = 1900;
 
   const $ = (id) => document.getElementById(id);
 
@@ -12,7 +12,7 @@
     return el ? String(el.value || "").trim() : "";
   }
 
-  function buildBody() {
+  function buildBody(uploadedFiles) {
     const lines = [];
     lines.push("=== IZMAIŅU PIETEIKUMS — Procesu vadības bloks ===");
     lines.push("Datums: " + new Date().toISOString());
@@ -38,13 +38,20 @@
     lines.push("Optimizācija: " + val("ch_pr_opt"));
     lines.push("Citi rādītāji: " + val("ch_pr_other"));
     lines.push("");
-    lines.push("--- Galaproduktu veidu katalogs ---");
+    lines.push("--- GP katalogs ---");
     lines.push("Galaprodukta veida Nr.: " + val("ch_gp_typeNo"));
     lines.push("Galaprodukta veids: " + val("ch_gp_type"));
     lines.push("Strukturvieniba izpilditajs: " + val("ch_gp_unit"));
     lines.push("Uzdevuma Nr.: " + val("ch_gp_taskNo"));
     lines.push("Procesa Nr.: " + val("ch_gp_procNo"));
     lines.push("");
+    if (uploadedFiles && uploadedFiles.length) {
+      lines.push("--- Pielikumi (krātuve «Pieteikumu vesture» / pielikumi_uz_pieteikumiem) ---");
+      uploadedFiles.forEach((f, i) => {
+        lines.push((i + 1) + ". " + (f.name || "fails") + " — " + (f.url || ""));
+      });
+      lines.push("");
+    }
     lines.push("--- Lietotāja pamatojums ---");
     lines.push(val("ch_reason_user") || "(nav)");
     lines.push("");
@@ -60,6 +67,24 @@
       prev.unshift({ t: Date.now(), body });
       localStorage.setItem(key, JSON.stringify(prev.slice(0, 20)));
     } catch (_) {}
+  }
+
+  /** Uz Windows / dažiem pārlūkiem uzticamāk nekā location.href = mailto */
+  function openMailtoUrl(mailto) {
+    const a = document.createElement("a");
+    a.href = mailto;
+    a.style.position = "fixed";
+    a.style.left = "-9999px";
+    document.body.appendChild(a);
+    try {
+      a.click();
+    } finally {
+      setTimeout(() => {
+        try {
+          document.body.removeChild(a);
+        } catch (_) {}
+      }, 0);
+    }
   }
 
   function init() {
@@ -82,11 +107,81 @@
 
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const body = buildBody();
-      saveLocalCopy(body);
+      const statusEl = $("ch_attachments_status");
+      if (statusEl) statusEl.textContent = "";
+
+      const fileInput = $("ch_attachments");
+      const files = fileInput && fileInput.files ? fileInput.files : null;
+
+      let uploaded = [];
+      if (files && files.length) {
+        const api = window.DB;
+        if (!api || typeof api.uploadChangeRequestFiles !== "function") {
+          alert("Pielikumu augšupielāde nav pieejama (DB API). Pārbaudiet, ka DB.js ir ielādēts.");
+          return;
+        }
+        if (statusEl) statusEl.textContent = "Augšupielādē pielikumus…";
+        try {
+          uploaded = await api.uploadChangeRequestFiles(files);
+        } catch (err) {
+          const msg =
+            window.DB && typeof window.DB.mapDbError === "function"
+              ? window.DB.mapDbError(err)
+              : err && err.message
+                ? err.message
+                : String(err);
+          if (statusEl) statusEl.textContent = "";
+          alert(
+            "Pielikumu augšupielāde neizdevās:\n" +
+              msg +
+              "\n\nPārbaudiet Supabase Storage:\n" +
+              "• bucket id: " +
+              (api.STORAGE_BUCKET_PIETEIKUMI || api.STORAGE_BUCKET_CHANGE_REQ || "pieteikumu-vesture") +
+              "\n• mape: pielikumi_uz_pieteikumiem/\n" +
+              "• Storage politikas (INSERT anon vai autentificētam).\n" +
+              "Projekts: ettesmdcpizztgwewhpx.supabase.co"
+          );
+          return;
+        }
+        if (statusEl) statusEl.textContent = "Pielikumi augšupielādēti (" + uploaded.length + ").";
+      }
+
+      const body = buildBody(uploaded);
+
+      let vestureNote = "";
+      if (statusEl) statusEl.textContent = "Saglabā pieteikumu krātuvē «Pieteikumu vesture»…";
+      try {
+        const api = window.DB;
+        if (api && typeof api.savePieteikumuVestureSnapshot === "function") {
+          const snap = await api.savePieteikumuVestureSnapshot(body, uploaded, {
+            iesniedzejs: val("ch_submitter"),
+            strukturvieniba: val("ch_orgunit"),
+          });
+          if (snap && snap.publicUrl) {
+            vestureNote = "\n\n--- Pieteikuma pieraksts krātuvē (JSON) ---\n" + snap.publicUrl;
+          }
+        }
+      } catch (ve) {
+        const vm =
+          window.DB && typeof window.DB.mapDbError === "function"
+            ? window.DB.mapDbError(ve)
+            : ve && ve.message
+              ? ve.message
+              : String(ve);
+        console.error("Pieteikumu vesture:", ve);
+        alert(
+          "Brīdinājums: pilna pieteikuma JSON pieraksts netika saglabāts krātuvē:\n" +
+            vm +
+            "\n\nPārbaudiet bucket «pieteikumu-vesture», mapi vesture/ un INSERT politiku.\nTurpinām ar e-pasta atvēršanu."
+        );
+      }
+      if (statusEl) statusEl.textContent = vestureNote ? "Pieteikums saglabāts krātuvē." : "";
+
+      const fullBody = body + vestureNote;
+      saveLocalCopy(fullBody);
 
       const subject = "Izmaiņu pieteikums — Procesu vadības bloks";
-      let mailBody = body;
+      let mailBody = fullBody;
       if (mailBody.length > MAILTO_MAX) {
         mailBody =
           body.slice(0, MAILTO_MAX) +
@@ -102,20 +197,23 @@
         encodeURIComponent(mailBody);
 
       try {
-        await navigator.clipboard.writeText(body);
+        await navigator.clipboard.writeText(fullBody);
       } catch (_) {}
 
       try {
-        window.location.href = mailto;
+        openMailtoUrl(mailto);
       } catch (err) {
-        alert("Neizdevās atvērt e-pastu. Pilnais pieteikuma teksts ir nokopēts starpliktuvē — ielīmējiet to vēstulē uz " + ADMIN_EMAIL);
+        alert(
+          "Neizdevās atvērt e-pasta klientu. Pilnais pieteikuma teksts ir nokopēts starpliktuvē — ielīmējiet to vēstulē uz " +
+            ADMIN_EMAIL
+        );
         return;
       }
 
       alert(
-        "Atvērts e-pasta klients ar vēstuli uz " +
+        "Mēģināts atvērt e-pasta klientu ar vēstuli uz " +
           ADMIN_EMAIL +
-          ".\n\nPilnais pieteikuma teksts ir arī nokopēts starpliktuvē (Ctrl+V), ja vēstulē trūkst datu."
+          ".\n\nJa Outlook neatvērās, ielīmējiet tekstu manuāli (Ctrl+V).\n\nPilnais teksts ir arī starpliktuvē."
       );
     });
   }

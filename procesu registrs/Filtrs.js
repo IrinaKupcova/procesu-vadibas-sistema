@@ -170,10 +170,27 @@
     });
   }
 
+  function hasActiveFilters() {
+    const searchInput = document.getElementById("searchInput");
+    if (searchInput && norm(searchInput.value) !== "") return true;
+    if (Object.values(state.processHeader || {}).some((v) => norm(v) !== "")) return true;
+    if (Object.values(state.catalogHeader || {}).some((v) => norm(v) !== "")) return true;
+    return false;
+  }
+
+  function refreshClearFilterButtonActive() {
+    const btn = document.getElementById("clearFiltersBtn");
+    if (!btn) return;
+    const on = hasActiveFilters();
+    btn.classList.toggle("filter-active", on);
+    btn.setAttribute("aria-pressed", on ? "true" : "false");
+  }
+
   function applyAllFilters() {
     applyProcessFilters();
     applyCatalogFilters();
     autoOpenOnFilteredResult();
+    refreshClearFilterButtonActive();
   }
 
   function autoOpenOnFilteredResult() {
@@ -250,6 +267,7 @@
     document.querySelectorAll(".th-filter-btn.active").forEach((b) => b.classList.remove("active"));
 
     rerender();
+    refreshClearFilterButtonActive();
   }
 
   function setupRenderHook() {
@@ -271,8 +289,12 @@
     setupRenderHook();
     applyAllFilters();
     window.removeAllFilters = clearAllFilters;
+    window.refreshClearFilterButtonActive = refreshClearFilterButtonActive;
     const clearBtn = document.getElementById("clearFiltersBtn");
     if (clearBtn) clearBtn.addEventListener("click", clearAllFilters);
+    const searchInput = document.getElementById("searchInput");
+    if (searchInput) searchInput.addEventListener("input", refreshClearFilterButtonActive);
+    refreshClearFilterButtonActive();
   }
 
   function boot() {

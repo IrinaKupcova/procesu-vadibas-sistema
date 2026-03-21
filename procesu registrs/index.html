@@ -21,6 +21,12 @@
     #topToolbarCard input#searchInput::placeholder { color: #64748b; }
     #topToolbarCard select { background: #0f172a; color: #f1f5f9; border-color: #475569; }
     .toolbar-inline-control select { font-weight: 600; }
+    #clearFiltersBtn.filter-active { background: #dc2626 !important; color: #fff !important; border: 1px solid #b91c1c; }
+    #clearFiltersBtn.filter-active:hover { background: #b91c1c !important; }
+    #methodologyModalCard, #conceptModalCard { position: fixed; inset: 0; z-index: 10035; background: rgba(15, 23, 42, 0.55); display: flex; align-items: flex-start; justify-content: center; padding: 24px; overflow: auto; }
+    #methodologyModalCard.hidden, #conceptModalCard.hidden { display: none !important; }
+    .pv-modal-inner { max-width: 720px; width: 100%; margin-top: 36px; background: #fff; border-radius: 12px; padding: 18px 20px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25); color: #0f172a; }
+    .concept-pdf-slot { min-height: 220px; border: 2px dashed #94a3b8; border-radius: 10px; background: #f8fafc; display: flex; align-items: center; justify-content: center; padding: 16px; text-align: center; color: #64748b; font-size: 14px; margin-top: 10px; }
     .toolbar,.row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:space-between; }
     .left,.right { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
     table { width:100%; border-collapse:collapse; margin-top:8px; } th,td { border-bottom:1px solid #e5e7eb; padding:7px 8px; text-align:left; font-size:12px; vertical-align:top; }
@@ -65,6 +71,9 @@
     /* GP katalogs: paplašinātajā skatā redzama kolonna «Sensitīvitātes pakāpe» */
     #catalogTable.catalog-view--compact th.catalog-col-sensitivity,
     #catalogTable.catalog-view--compact td.catalog-col-sensitivity{display:none}
+    #topToolbarCard .top-toolbar-row2 { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin-top: 12px; padding-top: 12px; border-top: 1px solid #334155; box-sizing: border-box; }
+    #topToolbarCard .row2-left { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex: 1 1 auto; min-width: min(100%, 260px); }
+    #topToolbarCard .row2-right { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; margin-left: auto; }
   </style>
 </head>
 <body>
@@ -75,29 +84,35 @@
       <div class="left"><span id="dbStatus" class="status info"></span></div>
       <div class="right">
         <button type="button" id="changeRequestToggleBtn">Izmaiņu pieteikuma veidlapa</button>
-        <button type="button" id="shareBtn" class="secondary">Šērot</button>
         <button type="button" id="emailBtn" class="secondary">Sūtīt e-pastā</button>
+        <button type="button" id="methodologyOpenBtn" class="secondary">Procesu vadības metodika</button>
         <button type="button" id="faqOpenBtn" class="secondary">Biežāk uzdotie jautājumi un skaidrojumi</button>
-        <button type="button" id="helpAdminOpenBtn" class="secondary hidden">Skaidrojuma ievietošana</button>
       </div>
     </div>
-    <div class="row">
-      <label>Lietotājs <select id="userSelect"></select></label>
-      <label>Loma
-        <select id="roleSelect">
-          <option value="viewer">skatītājs</option>
-          <option value="admin_view">administrators (skatīt)</option>
-          <option value="admin_edit">administrators (labot)</option>
-        </select>
-      </label>
-      <button type="button" id="saveRoleBtn" class="secondary">Saglabāt manu lomu</button>
-      <span class="toolbar-inline-control" title="Pamatskats / Pilnais skats / Papildu datu sasaiste">
-        <select id="levelSelect" aria-label="Reģistra detalizācijas līmenis"><option value="1" selected>Pamatskats</option><option value="2">Pilnais skats</option><option value="3">Papildu/datu sasaiste</option></select>
-      </span>
-      <input id="searchInput" placeholder="Meklē pēc atslēgas vārdiem..." />
-      <button type="button" id="clearFiltersBtn" class="secondary">Noņemt filtru</button>
-      <button type="button" id="newBtn">Pievienot jaunu procesu</button>
-      <span id="modeHint"></span>
+    <div class="top-toolbar-row2">
+      <div class="row2-left">
+        <label>Lietotājs <select id="userSelect"></select></label>
+        <label>Loma
+          <select id="roleSelect">
+            <option value="viewer">skatītājs</option>
+            <option value="admin_view">administrators (skatīt)</option>
+            <option value="admin_edit">administrators (labot)</option>
+          </select>
+        </label>
+        <button type="button" id="saveRoleBtn" class="secondary hidden">Saglabāt manu lomu</button>
+        <span class="toolbar-inline-control" title="Pamatskats / Pilnais skats / Papildu datu sasaiste">
+          <select id="levelSelect" aria-label="Reģistra detalizācijas līmenis"><option value="1" selected>Pamatskats</option><option value="2">Pilnais skats</option><option value="3">Papildu/datu sasaiste</option></select>
+        </span>
+        <input id="searchInput" placeholder="Meklē pēc atslēgas vārdiem..." />
+        <button type="button" id="clearFiltersBtn" class="secondary">Noņemt filtru</button>
+        <button type="button" id="newBtn">Pievienot jaunu procesu</button>
+        <span id="modeHint"></span>
+      </div>
+      <div class="row2-right">
+        <button type="button" id="conceptOpenBtn" class="secondary">Koncepts</button>
+        <button type="button" id="helpAdminOpenBtn" class="secondary hidden">Skaidrojuma ievietošana</button>
+        <button type="button" id="shareBtn" class="secondary">Šērot</button>
+      </div>
     </div>
   </div>
 
@@ -146,6 +161,12 @@
       </div>
       <h3>Pamatojums un papildu informācija</h3>
       <div class="form-group">
+        <label>Pielikumi (augšupielāde uz Supabase)</label>
+        <input type="file" id="ch_attachments" multiple accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.txt" />
+        <p class="hint" style="margin-top:4px">Atlasiet vienu vai vairākus failus. Glabāšana: Supabase krātuve <strong>«Pieteikumu vesture»</strong> (bucket id: <code>pieteikumu-vesture</code>), mape <code>pielikumi_uz_pieteikumiem/</code>. Katrs nosūtītais pieteikums tiek pierakstīts kā JSON mapē <code>vesture/</code>. Nepieciešamas Storage politikas (sk. <code>SUPABASE_STORAGE_izmainu_pielikumi.md</code>).</p>
+        <p id="ch_attachments_status" class="hint" style="margin-top:4px;color:#0f766e"></p>
+      </div>
+      <div class="form-group">
         <label>Lietotājs — pamatojums un pieprasījuma apraksts</label>
         <textarea id="ch_reason_user" placeholder="Aprakstiet, kādas izmaiņas nepieciešamas un kāpēc."></textarea>
       </div>
@@ -158,6 +179,28 @@
         <button type="button" id="changeRequestCloseBtn" class="secondary">Aizvērt veidlapu</button>
       </div>
     </form>
+  </div>
+
+  <div id="methodologyModalCard" class="hidden" aria-hidden="true">
+    <div class="pv-modal-inner">
+      <div class="toolbar" style="margin-bottom:12px">
+        <h2 style="margin:0;font-size:18px">Procesu vadības metodika</h2>
+        <button type="button" id="methodologyCloseBtn" class="secondary">Aizvērt</button>
+      </div>
+      <p class="hint">Šeit būs īsceļš uz metodikas krātuvi. Iestatiet <code>window.PV_URLS.metodika</code> index.html skriptā (vai konsolē), tad atveriet logu atkārtoti.</p>
+      <p id="methodologyLinkWrap" class="hint"></p>
+    </div>
+  </div>
+
+  <div id="conceptModalCard" class="hidden" aria-hidden="true">
+    <div class="pv-modal-inner">
+      <div class="toolbar" style="margin-bottom:12px">
+        <h2 style="margin:0;font-size:18px">Koncepts</h2>
+        <button type="button" id="conceptCloseBtn" class="secondary">Aizvērt</button>
+      </div>
+      <p class="hint">Brīva vieta koncepta shēmai (PDF). Administratori vēlāk var ievietot PDF failu vai saiti.</p>
+      <div id="conceptPdfSlot" class="concept-pdf-slot">Šeit vēlāk tiks ievietots koncepta PDF (ievietošana — nākotnē).</div>
+    </div>
   </div>
 
   <div id="faqModalCard" class="hidden" aria-hidden="true">
@@ -184,7 +227,10 @@
   <div class="card section-block section-block--process" id="processListCard">
     <div class="toolbar">
       <div class="left"><div class="section-title">Procesu reģistrs</div></div>
-      <div class="right"><button type="button" id="toggleProcessBtn" class="secondary">Atvērt procesu reģistru</button></div>
+        <div class="right">
+          <button type="button" id="flowchartsRepoBtn" class="secondary">Atvērt plūsmas shēmu krātuvi</button>
+          <button type="button" id="toggleProcessBtn" class="secondary">Atvērt procesu reģistru</button>
+        </div>
     </div>
     <div id="processListBody">
       <table id="processTable" class="table-body-hidden"><thead><tr>
@@ -426,6 +472,7 @@
       }
       if (typeof window.renderExtraViews === "function") window.renderExtraViews();
       if (typeof window.refreshHelpIcons === "function") window.refreshHelpIcons();
+      if (typeof window.refreshClearFilterButtonActive === "function") window.refreshClearFilterButtonActive();
     }
 
     function rebuildMx(){ /* Matrica izņemta pēc prasības. */ }
@@ -485,12 +532,19 @@
       renderRoles();
     }
     function saveRoles(){ localStorage.setItem("roleMap",JSON.stringify(roles)); renderRoles(); }
+    function refreshSaveRoleBtnVisibility(){
+      const btn=$("saveRoleBtn"), rs=$("roleSelect");
+      if(!btn||!rs) return;
+      const isViewer=rs.value==="viewer";
+      btn.classList.toggle("hidden", isViewer);
+    }
     function renderRoles(){
       const us=Object.keys(roles).sort();
       if($("userSelect")) $("userSelect").innerHTML=us.map(u=>`<option value="${u}">${u}</option>`).join("");
       if(!us.includes(user)) user=us[0]||"daina";
       if($("userSelect")) $("userSelect").value=user;
       if($("roleSelect")) $("roleSelect").value=role();
+      refreshSaveRoleBtnVisibility();
       const roleTable=$("roleTable");
       if(!roleTable) return;
       const tb=roleTable.querySelector("tbody"); if(!tb) return;
@@ -611,10 +665,51 @@
     };
     $("shareBtn").onclick=async()=>{ const u=new URL(location.href); u.searchParams.set("user",user); u.searchParams.set("level",$("levelSelect").value); try{await navigator.clipboard.writeText(u.toString()); alert("Saite nokopēta.");}catch{alert("Neizdevās kopēt saiti.");}};
     $("emailBtn").onclick=()=>{ const u=new URL(location.href); u.searchParams.set("user",user); u.searchParams.set("level",$("levelSelect").value); location.href="mailto:?subject="+encodeURIComponent("Procesu vadības bloks")+"&body="+encodeURIComponent("Saite:\n"+u.toString()); };
-    if($("userSelect")) $("userSelect").onchange=()=>{ user=$("userSelect").value; if($("roleSelect")) $("roleSelect").value=role(); renderTable(); if(typeof window.refreshHelpAdminVisibility==="function")window.refreshHelpAdminVisibility(); };
-    if($("saveRoleBtn")) $("saveRoleBtn").onclick=()=>{ roles[user]=$("roleSelect").value; saveRoles(); renderTable(); if(typeof window.refreshHelpAdminVisibility==="function")window.refreshHelpAdminVisibility(); };
+    if($("userSelect")) $("userSelect").onchange=()=>{ user=$("userSelect").value; if($("roleSelect")) $("roleSelect").value=role(); refreshSaveRoleBtnVisibility(); renderTable(); if(typeof window.refreshHelpAdminVisibility==="function")window.refreshHelpAdminVisibility(); };
+    if($("roleSelect")) $("roleSelect").addEventListener("change", refreshSaveRoleBtnVisibility);
+    if($("saveRoleBtn")) $("saveRoleBtn").onclick=()=>{ roles[user]=$("roleSelect").value; saveRoles(); renderTable(); refreshSaveRoleBtnVisibility(); if(typeof window.refreshHelpAdminVisibility==="function")window.refreshHelpAdminVisibility(); };
     if($("assignRoleBtn")) $("assignRoleBtn").onclick=()=>{ const u=$("newUserInput").value.trim(); if(!u) return; roles[u]=$("newRoleSelect").value; saveRoles(); $("newUserInput").value=""; };
     if($("roleTable")) $("roleTable").onclick=(e)=>{ const b=e.target.closest("button[data-u]"); if(!b) return; const u=b.getAttribute("data-u"); if(u==="daina"){alert("Primāro admin lietotāju nedzēšam.");return;} delete roles[u]; saveRoles(); };
+
+    /* Īsceļi: iestatiet URL, piem.: window.PV_URLS.flowchartsRepo = "https://..."; window.PV_URLS.metodika = "https://..."; */
+    window.PV_URLS = window.PV_URLS || { flowchartsRepo: "", metodika: "" };
+    function openPvOverlay(id, show){
+      const el = $(id);
+      if(!el) return;
+      if(show){ el.classList.remove("hidden"); el.setAttribute("aria-hidden","false"); }
+      else { el.classList.add("hidden"); el.setAttribute("aria-hidden","true"); }
+    }
+    if($("flowchartsRepoBtn")) $("flowchartsRepoBtn").onclick=()=>{
+      const u = (window.PV_URLS && window.PV_URLS.flowchartsRepo) || "";
+      if(u) window.open(u,"_blank","noopener,noreferrer");
+      else alert("Īsceļš uz plūsmas shēmu krātuvi nav vēl iestatīts. Papildiniet window.PV_URLS.flowchartsRepo (index.html skriptā).");
+    };
+    if($("methodologyOpenBtn")) $("methodologyOpenBtn").onclick=()=>{
+      const wrap=$("methodologyLinkWrap");
+      const m = (window.PV_URLS && window.PV_URLS.metodika) || "";
+      if(wrap){
+        wrap.textContent="";
+        if(m){
+          const a=document.createElement("a");
+          a.href=m; a.target="_blank"; a.rel="noopener noreferrer";
+          a.textContent="Atvērt metodikas krātuvi";
+          wrap.appendChild(a);
+        }else{
+          const s=document.createElement("span");
+          s.className="hint";
+          s.textContent="Saite nav iestatīta (window.PV_URLS.metodika).";
+          wrap.appendChild(s);
+        }
+      }
+      openPvOverlay("methodologyModalCard", true);
+    };
+    if($("methodologyCloseBtn")) $("methodologyCloseBtn").onclick=()=>openPvOverlay("methodologyModalCard", false);
+    if($("conceptOpenBtn")) $("conceptOpenBtn").onclick=()=>openPvOverlay("conceptModalCard", true);
+    if($("conceptCloseBtn")) $("conceptCloseBtn").onclick=()=>openPvOverlay("conceptModalCard", false);
+    ["methodologyModalCard","conceptModalCard"].forEach((mid)=>{
+      const node=$(mid);
+      if(node) node.addEventListener("click",(e)=>{ if(e.target===node) openPvOverlay(mid, false); });
+    });
 
     (async function init(){
       const p=new URLSearchParams(location.search); if(p.get("user")) user=p.get("user"); if(["1","2","3"].includes(p.get("level"))) $("levelSelect").value=p.get("level");
