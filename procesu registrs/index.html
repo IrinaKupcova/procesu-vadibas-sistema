@@ -28,6 +28,8 @@
     .table-body-hidden tbody{display:none}
     .hint{font-size:12px;color:#475569}
     .search-hit{outline:2px solid #f59e0b;background:#fef3c7}
+    .gp-veidi-cell{display:flex;flex-direction:column;align-items:stretch;gap:6px;border:1px solid #cbd5e1;border-radius:6px;padding:6px;background:#fff}
+    .gp-veidi-cell input{width:100%;box-sizing:border-box}
     .section-title{margin:0;font-size:18px;font-weight:700}
   </style>
 </head>
@@ -91,7 +93,7 @@
         <div class="form-group"><label>Process</label><input id="eProcess" /></div>
         <div class="form-group"><label>Procesa īpašnieks</label><input id="eOwner" /></div>
         <div class="form-group"><label>Galaprodukti</label><input id="eLaws" /></div>
-        <div class="form-group"><label>Galaproduktu veidi</label><div style="display:flex;gap:6px;align-items:center"><input id="eDocs" /><button type="button" id="gotoCatalogBtn" class="catalog-jump">Pāriet uz katalogu</button></div></div>
+        <div class="form-group"><label>Galaproduktu veidi</label><div class="gp-veidi-cell"><input id="eDocs" /><button type="button" id="gotoCatalogBtn" class="catalog-jump" style="align-self:flex-start;margin-left:0">Pāriet uz katalogu</button></div></div>
       </div>
       <div class="form-row">
         <div class="form-group"><label>Procesa iniciātors (input)</label><input id="eInput" /></div>

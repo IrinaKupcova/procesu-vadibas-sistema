@@ -73,10 +73,10 @@
         </div>
       </div>
       <div id="tasksViewWrap" class="hidden">
-        <table id="tasksViewTable"><thead><tr><th>Uzdevums (Nr. un nosaukums)</th><th>Saistītie procesi (Nr. un nosaukumi)</th><th>Izpildītāji</th></tr></thead><tbody></tbody></table>
+        <table id="tasksViewTable"><thead><tr><th>Uzdevums (Nr. un nosaukums)</th><th>Procesi (Nr. un nosaukumi)</th><th>Izpildītāji</th></tr></thead><tbody></tbody></table>
       </div>
       <div id="ownersViewWrap">
-        <table id="ownersViewTable"><thead><tr><th>Izpildītājs</th><th>Saistītie uzdevumi (Nr. un nosaukumi)</th><th>Saistītie procesi (Nr. un nosaukumi)</th><th>GP veidi</th></tr></thead><tbody></tbody></table>
+        <table id="ownersViewTable"><thead><tr><th>Izpildītājs</th><th>Uzdevumi (Nr. un nosaukumi)</th><th>Procesi (Nr. un nosaukumi)</th><th>GP veidi</th></tr></thead><tbody></tbody></table>
       </div>
     `;
     const catalogEditorCard = $("catalogEditorCard");
@@ -96,20 +96,28 @@
   function renderTasksView(rows) {
     const tb = $("tasksViewTable") ? $("tasksViewTable").querySelector("tbody") : null;
     if (!tb) return;
+    const catalogRows = typeof window.getCatalogRows === "function" ? window.getCatalogRows() : [];
     const byTask = new Map();
     rows.forEach((r) => {
       const k = fmtPair(r.taskNo, r.task);
       if (!k) return;
-      if (!byTask.has(k)) byTask.set(k, { processes: [], owners: [] });
+      if (!byTask.has(k)) byTask.set(k, { processes: [], executors: [] });
       const x = byTask.get(k);
       x.processes.push(fmtPair(r.processNo, r.process));
-      x.owners.push(r.owner || "");
+      const rowKey = `${String(r.taskNo || "").trim()}|${String(r.processNo || "").trim()}`;
+      catalogRows.forEach((c) => {
+        const ck = `${String(c.taskNo || "").trim()}|${String(c.procNo || "").trim()}`;
+        if (ck === rowKey) {
+          const ex = String(c.unit || "").trim();
+          if (ex) x.executors.push(ex);
+        }
+      });
     });
     tb.innerHTML = "";
     Array.from(byTask.keys()).sort().forEach((task) => {
       const data = byTask.get(task);
       const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${task}</td><td>${uniq(data.processes).join("; ")}</td><td>${uniq(data.owners).join("; ")}</td>`;
+      tr.innerHTML = `<td>${task}</td><td>${uniq(data.processes).join("; ")}</td><td>${uniq(data.executors).join("; ")}</td>`;
       tb.appendChild(tr);
     });
   }
