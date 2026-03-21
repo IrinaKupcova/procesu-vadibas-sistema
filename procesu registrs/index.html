@@ -31,6 +31,10 @@
     .gp-veidi-cell{display:flex;flex-direction:column;align-items:stretch;gap:6px;border:1px solid #cbd5e1;border-radius:6px;padding:6px;background:#fff}
     .gp-veidi-cell input{width:100%;box-sizing:border-box}
     .section-title{margin:0;font-size:18px;font-weight:700}
+    .change-req-card h2{margin-top:0}
+    .change-req-card h3{margin:16px 0 8px;font-size:14px;color:#1e293b;border-bottom:1px solid #e2e8f0;padding-bottom:4px}
+    .change-req-card textarea{min-height:100px;font-size:13px;padding:8px;border:1px solid #cbd5e1;border-radius:4px;resize:vertical;width:100%;box-sizing:border-box;max-width:100%}
+    .change-req-hint{font-size:11px;color:#64748b;margin-top:4px;font-weight:normal;text-transform:none;letter-spacing:normal}
   </style>
 </head>
 <body>
@@ -40,6 +44,7 @@
     <div class="toolbar">
       <div class="left"><span id="dbStatus" class="status info"></span></div>
       <div class="right">
+        <button type="button" id="changeRequestToggleBtn" class="secondary">Izmaiņu pieteikuma veidlapa</button>
         <button type="button" id="shareBtn" class="secondary">Šērot</button>
         <button type="button" id="emailBtn" class="secondary">Sūtīt e-pastā</button>
       </div>
@@ -62,6 +67,65 @@
       <button type="button" id="newBtn">Pievienot jaunu procesu</button>
       <span id="modeHint"></span>
     </div>
+  </div>
+
+  <div class="card hidden change-req-card editor-frame" id="changeRequestCard">
+    <h2>Izmaiņu pieteikums</h2>
+    <p class="hint" style="margin-top:0">Aizpildiet laukus, kas attiecas uz jūsu pieprasījumu. Nosūtot tiks atvērts e-pasta klients ar sagatavotu vēstuli administratoram. Nākotnē šeit būs tieša saite ar personu datu bāzēm.</p>
+    <form id="changeRequestForm">
+      <h3>Iesniedzējs</h3>
+      <div class="form-row">
+        <div class="form-group"><label>Iesniedzēja vārds un uzvārds <span class="change-req-hint">(nākotnē — saite ar personu DB)</span></label><input name="ch_submitter" id="ch_submitter" autocomplete="name" /></div>
+        <div class="form-group"><label>Struktūrvienībā <span class="change-req-hint">(nākotnē — saite ar personu DB)</span></label><input name="ch_orgunit" id="ch_orgunit" /></div>
+      </div>
+      <h3>Procesu reģistrs (ieraksta dati, kurus vēlaties mainīt / pievienot)</h3>
+      <div class="form-row">
+        <div class="form-group"><label>Procesu grupa</label><select id="ch_pr_group"><option value=""></option><option>pamatdarbības procesi</option><option>atbalsta procesi</option><option>vadības procesi</option></select></div>
+        <div class="form-group"><label>Uzdevuma Nr.</label><input id="ch_pr_taskNo" /></div>
+        <div class="form-group"><label>Uzdevums</label><input id="ch_pr_task" /></div>
+        <div class="form-group"><label>Procesa Nr.</label><input id="ch_pr_processNo" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Process</label><input id="ch_pr_process" /></div>
+        <div class="form-group"><label>Procesa īpašnieks</label><input id="ch_pr_owner" /></div>
+        <div class="form-group"><label>Procesa iniciātors (input)</label><input id="ch_pr_input" /></div>
+        <div class="form-group"><label>Galaprodukti</label><input id="ch_pr_products" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Galaproduktu veidi</label><input id="ch_pr_productTypes" /></div>
+        <div class="form-group"><label>Saistītie procesi</label><input id="ch_pr_related" /></div>
+        <div class="form-group"><label>Pakalpojumi</label><input id="ch_pr_services" /></div>
+        <div class="form-group"><label>Plūsmas shēmas</label><input id="ch_pr_flow" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>IT resursi</label><input id="ch_pr_it" /></div>
+        <div class="form-group"><label>Optimizācija</label><input id="ch_pr_opt" /></div>
+        <div class="form-group"><label>Citi rādītāji</label><input id="ch_pr_other" /></div>
+      </div>
+      <h3>Galaproduktu veidu katalogs</h3>
+      <div class="form-row">
+        <div class="form-group"><label>Galaprodukta veida Nr.</label><input id="ch_gp_typeNo" /></div>
+        <div class="form-group"><label>Galaprodukta veids</label><input id="ch_gp_type" /></div>
+        <div class="form-group"><label>Strukturvieniba izpilditajs, kas rada galaprodukta veidu</label><input id="ch_gp_unit" /></div>
+      </div>
+      <div class="form-row">
+        <div class="form-group"><label>Uzdevuma Nr.</label><input id="ch_gp_taskNo" /></div>
+        <div class="form-group"><label>Procesa Nr.</label><input id="ch_gp_procNo" /></div>
+      </div>
+      <h3>Pamatojums un papildu informācija</h3>
+      <div class="form-group">
+        <label>Lietotājs — pamatojums un pieprasījuma apraksts</label>
+        <textarea id="ch_reason_user" placeholder="Aprakstiet, kādas izmaiņas nepieciešamas un kāpēc."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Administrators — piezīmes par izpildi vai atbildi</label>
+        <textarea id="ch_reason_admin" placeholder="Aizpilda administrators pēc izskatīšanas (var papildināt pirms/at pēc nosūtīšanas)."></textarea>
+      </div>
+      <div class="editor-actions">
+        <button type="submit">Nosūtīt pieteikumu administratoram</button>
+        <button type="button" id="changeRequestCloseBtn" class="secondary">Aizvērt veidlapu</button>
+      </div>
+    </form>
   </div>
 
   <div class="card" id="processListCard">
@@ -502,5 +566,6 @@
   <script src="Skata%20zona.js"></script>
   <script src="Pievienot%20jaunu%20procesu.js"></script>
   <script src="Procesa%20kartina.js"></script>
+  <script src="Izmainu_pieteikums.js"></script>
 </body>
 </html>

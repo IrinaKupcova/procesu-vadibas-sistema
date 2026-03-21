@@ -1,0 +1,9 @@
+Izmaiņu pieteikuma veidlapa (index.html + Izmainu_pieteikums.js)
+================================================================
+
+• Augšējā rīkjoslā: poga "Izmaiņu pieteikuma veidlapa" — atver / aizver bloku.
+• Nosūtot tiek izmantots jūsu e-pasta klients (mailto:) uz: irina.kupcova@vid.gov.lv
+• Pilns pieteikuma teksts tiek arī nokopēts starpliktuvē.
+• Pēdējie pieteikumi (līdz 20) tiek saglabāti pārlūkā: localStorage atslēga "change_request_log".
+
+Nākotnē: tieša e-pasta sūtīšana bez klienta un saites ar personu DB — nepieciešams backend (piem., Supabase Edge Function + SMTP).
