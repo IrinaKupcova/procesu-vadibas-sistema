@@ -71,18 +71,22 @@
   function ensureToolbar() {
     const card = document.getElementById("catalogListCard");
     if (!card || document.getElementById("gpCatalogViewToolbar")) return;
+    const mount = document.getElementById("gpCatalogViewMount");
     const tb = card.querySelector(".toolbar .right");
-    if (!tb) return;
+    const target = mount || tb;
+    if (!target) return;
     const wrap = document.createElement("div");
     wrap.id = "gpCatalogViewToolbar";
-    wrap.style.cssText =
-      "display:flex;align-items:center;gap:8px;margin-right:auto;flex-wrap:wrap";
+    wrap.style.cssText = mount
+      ? "display:flex;align-items:center;gap:8px;flex-wrap:wrap"
+      : "display:flex;align-items:center;gap:8px;margin-right:auto;flex-wrap:wrap";
     wrap.innerHTML =
       '<select id="gpCatalogViewSelect" style="font-weight:600;min-width:12rem" title="Pamatskats vai paplašinātais kataloga skats" aria-label="Kataloga skata veids">' +
       '<option value="compact">Pamatskats</option>' +
       '<option value="expanded">Paplašinātais skats</option>' +
       "</select>";
-    tb.insertBefore(wrap, tb.firstChild);
+    if (mount) target.appendChild(wrap);
+    else target.insertBefore(wrap, target.firstChild);
 
     const sel = document.getElementById("gpCatalogViewSelect");
     try {

@@ -225,6 +225,13 @@
       typeNo: gv(r, [key]),
       type: gv(r, ["Galaprodukta_veids"]),
       unit: gv(r, ["Strukturvieniba_izpilditajs_kas_rada_galaprodukta_veidu"]),
+      department: gv(r, [
+        "Dala_nodala",
+        "Dala,_nodala",
+        "Daļa,_nodaļa",
+        "Daļa_nodaļa",
+        "dala_nodala",
+      ]),
       taskNo: gv(r, ["Uzdevuma_Nr."]),
       procNo: gv(r, ["Procesa_Nr."]),
       /** Sensitīvitātes pakāpe / sasaiste ar korupcijas riskiem (ja kolonna ir DB) */

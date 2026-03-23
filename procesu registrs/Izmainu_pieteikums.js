@@ -38,7 +38,7 @@
     lines.push("Optimizācija: " + val("ch_pr_opt"));
     lines.push("Citi rādītāji: " + val("ch_pr_other"));
     lines.push("");
-    lines.push("--- GP katalogs ---");
+    lines.push("--- Galaproduktu veidu katalogs ---");
     lines.push("Galaprodukta veida Nr.: " + val("ch_gp_typeNo"));
     lines.push("Galaprodukta veids: " + val("ch_gp_type"));
     lines.push("Strukturvieniba izpilditajs: " + val("ch_gp_unit"));

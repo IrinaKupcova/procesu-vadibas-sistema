@@ -175,6 +175,7 @@
     if (searchInput && norm(searchInput.value) !== "") return true;
     if (Object.values(state.processHeader || {}).some((v) => norm(v) !== "")) return true;
     if (Object.values(state.catalogHeader || {}).some((v) => norm(v) !== "")) return true;
+    if (typeof window.hasActiveStatsFilters === "function" && window.hasActiveStatsFilters()) return true;
     return false;
   }
 
@@ -265,6 +266,7 @@
       s.value = "";
     });
     document.querySelectorAll(".th-filter-btn.active").forEach((b) => b.classList.remove("active"));
+    if (typeof window.clearStatsFilters === "function") window.clearStatsFilters();
 
     rerender();
     refreshClearFilterButtonActive();

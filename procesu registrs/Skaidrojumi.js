@@ -9,14 +9,14 @@
     { label: "— Izvēlēties sadaļu —", selector: "" },
     { label: "Augšējā vadības zona", selector: "#topToolbarCard" },
     { label: "Procesu reģistrs (bloks)", selector: "#processListCard" },
-    { label: "GP katalogs (bloks)", selector: "#catalogListCard" },
+    { label: "Galaproduktu veidu katalogs (bloks)", selector: "#catalogListCard" },
     { label: "Meklēšana", selector: "#searchInput" },
     { label: "Procesu tabula", selector: "#processTable" },
     { label: "Kataloga tabula", selector: "#catalogTable" },
-    { label: "Skata izvēle", selector: "#extraViewsCard" },
+    { label: "Pārskati", selector: "#reportsCard" },
     { label: "Izmaiņu pieteikuma veidlapa", selector: "#changeRequestCard" },
     { label: "Procesa kartiņa (forma)", selector: "#editorCard" },
-    { label: "GP kartiņa (forma)", selector: "#catalogEditorCard" },
+    { label: "Galaproduktu veida kartiņa (forma)", selector: "#catalogEditorCard" },
   ];
 
   const $ = (id) => document.getElementById(id);
@@ -383,6 +383,9 @@
     const show = isAdminEdit();
     if (adminBtn) adminBtn.classList.toggle("hidden", !show);
     if (!show && card) card.classList.add("hidden");
+    if (adminBtn && (!show || (card && card.classList.contains("hidden")))) {
+      adminBtn.classList.remove("nav-active");
+    }
     if (show) buildAdminUI();
   }
 
@@ -419,15 +422,25 @@
     if (helpOpen && helpCard) {
       helpOpen.addEventListener("click", () => {
         if (!isAdminEdit()) return;
-        buildAdminUI();
-        renderHelpIconsAdmin();
-        renderFaqAdmin();
-        helpCard.classList.remove("hidden");
-        helpCard.scrollIntoView({ behavior: "smooth", block: "start" });
+        const isHidden = helpCard.classList.contains("hidden");
+        if (isHidden) {
+          buildAdminUI();
+          renderHelpIconsAdmin();
+          renderFaqAdmin();
+          helpCard.classList.remove("hidden");
+          helpOpen.classList.add("nav-active");
+          helpCard.scrollIntoView({ behavior: "smooth", block: "start" });
+        } else {
+          helpCard.classList.add("hidden");
+          helpOpen.classList.remove("nav-active");
+        }
       });
     }
     if (helpClose && helpCard) {
-      helpClose.addEventListener("click", () => helpCard.classList.add("hidden"));
+      helpClose.addEventListener("click", () => {
+        helpCard.classList.add("hidden");
+        if (helpOpen) helpOpen.classList.remove("nav-active");
+      });
     }
 
     const rs = $("roleSelect");
