@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Galaproduktu veidu kataloga paplašinātais skats (līdzīgi kā procesu reģistra līmeņi):
  * — «Pamatskats» — standarta kolonnas;
  * — «Paplašinātais skats» — papildu kolonna «Sensitīvitātes pakāpe» (korupcijas risku sasaiste).
@@ -72,8 +72,10 @@
     const card = document.getElementById("catalogListCard");
     if (!card || document.getElementById("gpCatalogViewToolbar")) return;
     const mount = document.getElementById("gpCatalogViewMount");
+    const left = card.querySelector(".toolbar .left");
     const tb = card.querySelector(".toolbar .right");
-    const target = mount || tb;
+    const target = mount || left || tb;
+    const title = left ? left.querySelector(".section-title") : null;
     if (!target) return;
     const wrap = document.createElement("div");
     wrap.id = "gpCatalogViewToolbar";
@@ -86,6 +88,7 @@
       '<option value="expanded">Paplašinātais skats</option>' +
       "</select>";
     if (mount) target.appendChild(wrap);
+    else if (title && left) left.insertBefore(wrap, title.nextSibling);
     else target.insertBefore(wrap, target.firstChild);
 
     const sel = document.getElementById("gpCatalogViewSelect");
@@ -113,3 +116,4 @@
     boot();
   }
 })();
+

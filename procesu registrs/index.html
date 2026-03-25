@@ -1,4 +1,4 @@
-  <!DOCTYPE html>
+﻿  <!DOCTYPE html>
   <html lang="lv">
   <head>
     <meta charset="UTF-8" />
@@ -477,7 +477,12 @@
         <div class="form-row">
           <div class="form-group"><label>Sensitīvitātes pakāpe <span class="hint" style="font-weight:normal">(datu sasaiste ar korupcijas riskiem; redzama paplašinātajā katalogā)</span></label><input id="cSensitivity" placeholder="piem., zema / vidēja / augsta" /></div>
         </div>
-        <div class="editor-actions">
+        <div class="form-row">
+          <div class="form-group" style="flex:1 1 420px; min-width:280px;">
+            <label>Papildu informacija</label>
+            <textarea id="cAdditionalInfo" placeholder="Ievadiet jebkuru papildus informāciju par šo galaproduktu veidu."></textarea>
+          </div>
+        </div><div class="editor-actions">
           <button type="submit">Saglabāt</button>
           <button type="button" id="catalogDeleteBtn" class="danger hidden">Dzēst</button>
           <button type="button" id="catalogCloseBtn" class="secondary">Aizvērt</button>
@@ -711,6 +716,7 @@
         $("cProcNo").value = r ? (r.procNo || "") : "";
         if($("cDepartment")) $("cDepartment").value = r ? String(r.department || "").trim() : "";
         if ($("cSensitivity")) $("cSensitivity").value = r ? String(r.sensitivity || "").trim() : "";
+        if ($("cAdditionalInfo")) $("cAdditionalInfo").value = r ? String(r.additionalInfo || "").trim() : "";
         $("catalogDeleteBtn").classList.toggle("hidden", !r);
       }
       function catalogFormVals(){
@@ -722,6 +728,7 @@
           procNo: $("cProcNo").value.trim(),
           department: $("cDepartment") ? $("cDepartment").value.trim() : "",
           sensitivity: $("cSensitivity") ? $("cSensitivity").value.trim() : "",
+          additionalInfo: $("cAdditionalInfo") ? $("cAdditionalInfo").value.trim() : "",
         };
       }
       function formVals(){ return {group:$("eGroup").value.trim(),taskNo:$("eTaskNo").value.trim(),task:$("eTask").value.trim(),processNo:$("eProcNo").value.trim(),process:$("eProcess").value.trim(),
@@ -740,7 +747,7 @@
         $("catalogEditorTitle").textContent = r ? "Galaproduktu veida kartiņa (rediģēt)" : "Galaproduktu veida kartiņa (jauns)";
         fillCatalogForm(r);
         const e = canEdit();
-        $("catalogEditorForm").querySelectorAll("input,button").forEach(el=>{ if(el.id==="catalogCloseBtn") return; el.disabled=!e;});
+        $("catalogEditorForm").querySelectorAll("input,textarea,button").forEach(el=>{ if(el.id==="catalogCloseBtn") return; el.disabled=!e;});
       }
 
       function loadRoles(){
@@ -764,7 +771,7 @@
         let activeNavId = null;
         function closeAllMainSections(){
           // “Redz TIKAI vienu sadaļu”: paslēpjam visas kartītes, pēc tam openSectionById atvērs tikai vajadzīgo.
-          ["tasksViewCard","processListCard","catalogListCard","executorsCard","reportsCard","metricsCard","manualCard","skaidrojumiAdminCard"].forEach((id)=>{
+          ["tasksViewCard","processListCard","catalogListCard","executorsCard","reportsCard","metricsCard","manualCard","editorCard","catalogEditorCard","skaidrojumiAdminCard"].forEach((id)=>{
             const n = $(id);
             if(n) n.classList.add("hidden");
           });
@@ -1361,7 +1368,8 @@
       })();
       window.loadCatalog = loadCatalog;
     </script>
-    <script src="Filtrs.js"></script>
+    <script src="Izpilditaji.js"></script>
+<script src="Filtrs.js"></script>
     <script src="Pievienot%20jaunu%20procesu.js"></script>
     <script src="Procesa%20kartina.js"></script>
     <script src="Statistika.js"></script>
@@ -1369,3 +1377,6 @@
     <script src="Skaidrojumi.js"></script>
   </body>
   </html>
+
+
+

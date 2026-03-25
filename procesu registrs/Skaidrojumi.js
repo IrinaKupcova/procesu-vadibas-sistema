@@ -1,4 +1,4 @@
-/* Skaidrojumi: «i» pogas, BUJ, administrators — localStorage. */
+﻿/* Skaidrojumi: «i» pogas, BUJ, administrators — localStorage. */
 (function () {
   "use strict";
 
@@ -419,23 +419,8 @@
       });
     }
 
-    if (helpOpen && helpCard) {
-      helpOpen.addEventListener("click", () => {
-        if (!isAdminEdit()) return;
-        const isHidden = helpCard.classList.contains("hidden");
-        if (isHidden) {
-          buildAdminUI();
-          renderHelpIconsAdmin();
-          renderFaqAdmin();
-          helpCard.classList.remove("hidden");
-          helpOpen.classList.add("nav-active");
-          helpCard.scrollIntoView({ behavior: "smooth", block: "start" });
-        } else {
-          helpCard.classList.add("hidden");
-          helpOpen.classList.remove("nav-active");
-        }
-      });
-    }
+    // "Skaidrojuma ievietosana" atveram caur kreisas navigacijas vienoto logiku (index.html initLeftNav),
+    // lai pietiek ar VIENU klikšķi uz sadaļas. Šeit neatsevišķi netogglējam karti.
     if (helpClose && helpCard) {
       helpClose.addEventListener("click", () => {
         helpCard.classList.add("hidden");
@@ -473,3 +458,4 @@
     init();
   }
 })();
+

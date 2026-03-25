@@ -1,4 +1,4 @@
-/* DB slānis (frontendam): Supabase savienojums + CRUD + kolonu mapping.
+﻿/* DB slānis (frontendam): Supabase savienojums + CRUD + kolonu mapping.
    Pieņem, ka HTML jau ielādē @supabase/supabase-js (window.supabase). */
 (function () {
   "use strict";
@@ -241,6 +241,7 @@
         "sensitivitates_pakape",
         "Korupcijas_riska_sasaiste",
       ]),
+      additionalInfo: gv(r, ["Papildu informācija", "Papildu informācija", "additionalInfo"]),
       raw: r,
     };
   }
@@ -265,9 +266,9 @@
       "Galaproduktu_veida_Nr.": String(row.typeNo || "").trim(),
       "Galaprodukta_veids": String(row.type || "").trim(),
       "Strukturvieniba_izpilditajs_kas_rada_galaprodukta_veidu": String(row.unit || "").trim(),
-      "Dala_nodala": String(row.department || "").trim(),
       "Uzdevuma_Nr.": String(row.taskNo || "").trim(),
       "Procesa_Nr.": String(row.procNo || "").trim(),
+      "Papildu informācija": String(row.additionalInfo || "").trim(),
     };
     if (!payload["Galaproduktu_veida_Nr."] || !payload["Galaprodukta_veids"]) {
       throw new Error("Galaproduktu veida Nr. un Galaprodukta veids ir obligāti.");
@@ -290,9 +291,9 @@
     const payload = {
       "Galaprodukta_veids": String(row.type || "").trim(),
       "Strukturvieniba_izpilditajs_kas_rada_galaprodukta_veidu": String(row.unit || "").trim(),
-      "Dala_nodala": String(row.department || "").trim(),
       "Uzdevuma_Nr.": String(row.taskNo || "").trim(),
       "Procesa_Nr.": String(row.procNo || "").trim(),
+      "Papildu informācija": String(row.additionalInfo || "").trim(),
     };
     if (!payload["Galaprodukta_veids"]) {
       throw new Error("Galaprodukta veids ir obligāts.");
@@ -457,3 +458,7 @@
     STORAGE_PREFIX_VESTURE,
   };
 })();
+
+
+
+
