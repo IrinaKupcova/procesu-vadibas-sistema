@@ -27,7 +27,6 @@
     lines.push("Uzdevums: " + val("ch_pr_task"));
     lines.push("Procesa Nr.: " + val("ch_pr_processNo"));
     lines.push("Process: " + val("ch_pr_process"));
-    lines.push("Procesa īpašnieks: " + val("ch_pr_owner"));
     lines.push("Procesa iniciātors (input): " + val("ch_pr_input"));
     lines.push("Galaprodukti: " + val("ch_pr_products"));
     lines.push("Galaproduktu veidi: " + val("ch_pr_productTypes"));

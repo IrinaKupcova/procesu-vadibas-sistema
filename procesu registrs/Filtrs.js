@@ -2,7 +2,7 @@
   "use strict";
 
   const state = {
-    quick: { process: "", task: "", owner: "", output: "" },
+    quick: { process: "", task: "", output: "" },
     processHeader: {},
     catalogHeader: {}
   };
@@ -106,8 +106,8 @@
     const level = document.getElementById("levelSelect");
     if (!level) return;
 
-    const hasOutput = norm(state.quick.output) !== "" || Object.keys(state.processHeader).some((k) => Number(k) >= 9 && norm(state.processHeader[k]) !== "");
-    const hasMain = norm(state.quick.process) !== "" || norm(state.quick.task) !== "" || norm(state.quick.owner) !== "";
+    const hasOutput = norm(state.quick.output) !== "" || Object.keys(state.processHeader).some((k) => Number(k) >= 8 && norm(state.processHeader[k]) !== "");
+    const hasMain = norm(state.quick.process) !== "" || norm(state.quick.task) !== "";
 
     let target = null;
     if (hasOutput) target = "3";
@@ -129,13 +129,11 @@
       const tds = Array.from(tr.children);
       const taskText = `${tds[1]?.textContent || ""} ${tds[2]?.textContent || ""}`;
       const processText = `${tds[3]?.textContent || ""} ${tds[4]?.textContent || ""}`;
-      const ownerText = tds[5]?.textContent || "";
-      const outputText = tds[8]?.textContent || "";
+      const outputText = tds[7]?.textContent || "";
 
       let show =
         contains(processText, state.quick.process) &&
         contains(taskText, state.quick.task) &&
-        contains(ownerText, state.quick.owner) &&
         contains(outputText, state.quick.output);
 
       if (show) {
@@ -255,7 +253,7 @@
   }
 
   function clearAllFilters() {
-    state.quick = { process: "", task: "", owner: "", output: "" };
+    state.quick = { process: "", task: "", output: "" };
     state.processHeader = {};
     state.catalogHeader = {};
 

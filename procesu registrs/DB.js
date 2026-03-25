@@ -265,6 +265,7 @@
       "Galaproduktu_veida_Nr.": String(row.typeNo || "").trim(),
       "Galaprodukta_veids": String(row.type || "").trim(),
       "Strukturvieniba_izpilditajs_kas_rada_galaprodukta_veidu": String(row.unit || "").trim(),
+      "Dala_nodala": String(row.department || "").trim(),
       "Uzdevuma_Nr.": String(row.taskNo || "").trim(),
       "Procesa_Nr.": String(row.procNo || "").trim(),
     };
@@ -289,6 +290,7 @@
     const payload = {
       "Galaprodukta_veids": String(row.type || "").trim(),
       "Strukturvieniba_izpilditajs_kas_rada_galaprodukta_veidu": String(row.unit || "").trim(),
+      "Dala_nodala": String(row.department || "").trim(),
       "Uzdevuma_Nr.": String(row.taskNo || "").trim(),
       "Procesa_Nr.": String(row.procNo || "").trim(),
     };
