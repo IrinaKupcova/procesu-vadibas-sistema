@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vadības sistēmas kopskats</title>
+  <style>
+    :root {
+      --bg: #f4f6f9;
+      --card: #ffffff;
+      --text: #1a1d26;
+      --muted: #5c6370;
+      --accent: #2563eb;
+      --accent-soft: #eff6ff;
+      --shadow: 0 4px 14px rgba(15, 23, 42, 0.08);
+      --shadow-hover: 0 12px 28px rgba(15, 23, 42, 0.12);
+      --radius: 14px;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    .page {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2.5rem 1.25rem 3rem;
+    }
+
+    header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    h1 {
+      font-size: clamp(1.5rem, 4vw, 2rem);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin: 0 0 0.5rem;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.95rem;
+      margin: 0;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.25rem;
+    }
+
+    .card-link {
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      border-radius: var(--radius);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .card-link:focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 3px;
+    }
+
+    .card-link:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-hover);
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 1.5rem 1.35rem;
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(15, 23, 42, 0.06);
+      height: 100%;
+      transition: border-color 0.2s ease, background 0.2s ease;
+    }
+
+    .card-link:hover .card {
+      border-color: rgba(37, 99, 235, 0.25);
+      background: var(--accent-soft);
+    }
+
+    .card h2 {
+      font-size: 1.15rem;
+      margin: 0 0 0.65rem;
+      color: var(--accent);
+    }
+
+    .card p {
+      margin: 0;
+      font-size: 0.92rem;
+      color: var(--muted);
+    }
+
+    .card .arrow {
+      display: inline-block;
+      margin-top: 1rem;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--accent);
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header>
+      <h1>Vadības sistēmas kopskats</h1>
+      <p class="subtitle">Izvēlieties moduli, lai turpinātu darbu.</p>
+    </header>
+
+    <nav class="cards" aria-label="Sistēmas moduļi">
+      <a class="card-link" href="../procesu registrs/">
+        <article class="card">
+          <h2>Procesu vadības bloks</h2>
+          <p>Piekļuve procesu reģistram, filtriem un saistītajiem rīkiem.</p>
+          <span class="arrow">Atvērt →</span>
+        </article>
+      </a>
+
+      <a class="card-link" href="../pakalpojumu vadība/">
+        <article class="card">
+          <h2>Pakalpojumu vadības bloks</h2>
+          <p>Pakalpojumu plānošana un pārvaldība (modulis tiek papildināts).</p>
+          <span class="arrow">Atvērt →</span>
+        </article>
+      </a>
+    </nav>
+  </div>
+</body>
+</html>
