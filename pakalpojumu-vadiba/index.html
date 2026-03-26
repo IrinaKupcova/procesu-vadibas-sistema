@@ -5,7 +5,26 @@
     <title>Pakalpojumu vadība</title>
 </head>
 <body>
+    <button type="button" id="backToOverviewBtn">⬅ Atgriezties uz Kopskatu</button>
     <h1>Pakalpojumu vadības bloks</h1>
     <p>Šī sadaļa vēl tiek izstrādāta.</p>
+
+    <script>
+      (function(){
+        function computeOverviewUrl(){
+          var path = String(location.pathname || "").replace(/\\\\/g, "/");
+          var m = path.match(/^(.*)\\/(procesu-registrs|pakalpojumu-vadiba)(?:\\/|$)/);
+          if(m && m[1]) return m[1] + "/";
+          return "./";
+        }
+        function goToOverview(){
+          var p = computeOverviewUrl();
+          if(String(location.origin || "") && location.origin !== "null") location.href = location.origin + p;
+          else location.href = p;
+        }
+        var btn = document.getElementById("backToOverviewBtn");
+        if(btn) btn.addEventListener("click", goToOverview);
+      })();
+    </script>
 </body>
 </html>

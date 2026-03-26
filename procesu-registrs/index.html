@@ -1,4 +1,4 @@
-﻿  <!DOCTYPE html>
+  <!DOCTYPE html>
   <html lang="lv">
   <head>
     <meta charset="UTF-8" />
@@ -192,6 +192,7 @@
       <aside class="card side-panel" id="leftSidePanel">
         <div class="section-title">Navigācija</div>
         <div class="side-nav-list">
+          <button type="button" class="secondary" id="backToOverviewBtn" title="Atgriezties uz kopskatu">⬅ Atgriezties uz Kopskatu</button>
           <button type="button" class="secondary" data-scroll-target="__home">Pamatskats</button>
           <button type="button" class="secondary" data-scroll-target="processListCard">Procesu reģistrs</button>
           <button type="button" class="secondary" data-scroll-target="catalogListCard">Galaproduktu veidu katalogs</button>
@@ -979,6 +980,22 @@
           btn.textContent = open ? "✕ Aizvērt navigāciju" : "☰ Navigācija";
         });
       }
+      function computeOverviewUrl(){
+        const path = String(location.pathname || "").replace(/\\\\/g, "/");
+        const m = path.match(/^(.*)\\/(procesu-registrs|pakalpojumu-vadiba)(?:\\/|$)/);
+        if(m && m[1]) return m[1] + "/";
+        return "./";
+      }
+      function goToOverview(){
+        const p = computeOverviewUrl();
+        if(String(location.origin || "") && location.origin !== "null") location.href = location.origin + p;
+        else location.href = p;
+      }
+      function initBackToOverview(){
+        const btn = $("backToOverviewBtn");
+        if(!btn) return;
+        btn.addEventListener("click", goToOverview);
+      }
       function initSettingsToggle(){
         const btn = $("settingsToggleBtn");
         const inner = $("settingsInner");
@@ -1344,6 +1361,7 @@
       (async function init(){
         initLeftNav();
         initMobileNavToggle();
+        initBackToOverview();
         initSettingsToggle();
         initThemeToggle();
         const p=new URLSearchParams(location.search); if(p.get("user")) user=p.get("user"); if(["1","2","3"].includes(p.get("level"))) $("levelSelect").value=p.get("level");
