@@ -680,7 +680,7 @@
       function renderTable(){
         const q=$("searchInput").value.trim().toLowerCase(), gf=($("groupFilter")?$("groupFilter").value:"");
         const tb=$("processTable").querySelector("tbody"); tb.innerHTML="";
-        const matchedRows = processRows.filter(r=>(!gf||r.group===gf)&&(!q||[r.group,r.taskNo,r.task,r.processNo,r.process,r.products,r.productTypes,r.relatedProcesses,r.services,r.flowcharts,r.itResources,r.optimization,r.otherMetrics].join(" ").toLowerCase().includes(q)));
+        const matchedRows = processRows.filter(r=>(!gf||r.group===gf)&&(!q||[r.group,r.taskNo,r.task,r.processNo,r.process,r.executorPatstaviga,r.products,r.productTypes,r.relatedProcesses,r.services,r.flowcharts,r.itResources,r.optimization,r.otherMetrics].join(" ").toLowerCase().includes(q)));
         matchedRows
         .forEach(r=>{
           const tr=document.createElement("tr"); const c=(t,cls)=>{const td=document.createElement("td"); if(cls) td.classList.add(cls); td.textContent=t||""; tr.appendChild(td);};

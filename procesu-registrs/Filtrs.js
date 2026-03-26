@@ -371,7 +371,11 @@
     const execTimer = setInterval(() => {
       const table = document.getElementById("executorsTable");
       if (!table) return;
-      if (table.dataset.filtersReady === "1") return;
+      if (table.dataset.filtersReady === "1") {
+        const hasSelects = table.querySelector("thead tr .th-filter-box select[data-col-index]");
+        if (hasSelects) return;
+      }
+      // Būvējam filtrus tikai tad, kad tiešām vajag (tabula/tst. tika ģenerēta dinamiski).
       ensureHeaderFilters("executorsTable", "executorsHeader", true);
       refreshHeaderFilterOptions("executorsTable", "executorsHeader");
       table.dataset.filtersReady = "1";
