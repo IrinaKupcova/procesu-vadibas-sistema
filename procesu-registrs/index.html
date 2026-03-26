@@ -982,7 +982,7 @@
       }
       function computeOverviewUrl(){
         const path = String(location.pathname || "").replace(/\\\\/g, "/");
-        const m = path.match(/^(.*)\\/(procesu-registrs|pakalpojumu-vadiba)(?:\\/|$)/);
+        const m = path.match(/^(.*)\/(procesu-registrs|pakalpojumu-vadiba)(?:\/|$)/);
         if(m && m[1]) return m[1] + "/";
         return "./";
       }
