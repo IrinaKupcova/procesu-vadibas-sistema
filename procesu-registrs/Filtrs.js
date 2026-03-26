@@ -4,7 +4,9 @@
   const state = {
     quick: { process: "", task: "", output: "" },
     processHeader: {},
-    catalogHeader: {}
+    catalogHeader: {},
+    tasksHeader: {},
+    executorsHeader: {}
   };
 
   function norm(v) {
@@ -25,7 +27,7 @@
       .main-filter-wrap select,.main-filter-wrap input{font-size:12px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:4px}
       .th-filter-wrap{display:flex;align-items:center;gap:4px;justify-content:space-between}
       .th-filter-btn{font-size:10px;padding:2px 5px;border:1px solid #94a3b8;border-radius:999px;background:#fff;color:#334155;cursor:pointer;line-height:1}
-      .th-filter-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
+      .th-filter-btn.active{background:#dc2626;color:#fff;border-color:#dc2626;box-shadow:0 0 14px rgba(220,38,38,.45)}
       .th-filter-box{display:none;margin-top:4px}
       .th-filter-box.open{display:block}
       .th-filter-box select{width:100%;font-size:11px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px;background:#fff}
@@ -168,11 +170,49 @@
     });
   }
 
+  function applyTasksFilters() {
+    const tbody = document.querySelector("#tasksSummaryTable tbody");
+    if (!tbody) return;
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+    rows.forEach((tr) => {
+      const tds = Array.from(tr.children);
+      let show = true;
+      for (const col in state.tasksHeader) {
+        const term = state.tasksHeader[col];
+        if (!contains(tds[Number(col)]?.textContent || "", term)) {
+          show = false;
+          break;
+        }
+      }
+      tr.style.display = show ? "" : "none";
+    });
+  }
+
+  function applyExecutorsFilters() {
+    const tbody = document.querySelector("#executorsTable tbody");
+    if (!tbody) return;
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+    rows.forEach((tr) => {
+      const tds = Array.from(tr.children);
+      let show = true;
+      for (const col in state.executorsHeader) {
+        const term = state.executorsHeader[col];
+        if (!contains(tds[Number(col)]?.textContent || "", term)) {
+          show = false;
+          break;
+        }
+      }
+      tr.style.display = show ? "" : "none";
+    });
+  }
+
   function hasActiveFilters() {
     const searchInput = document.getElementById("searchInput");
     if (searchInput && norm(searchInput.value) !== "") return true;
     if (Object.values(state.processHeader || {}).some((v) => norm(v) !== "")) return true;
     if (Object.values(state.catalogHeader || {}).some((v) => norm(v) !== "")) return true;
+    if (Object.values(state.tasksHeader || {}).some((v) => norm(v) !== "")) return true;
+    if (Object.values(state.executorsHeader || {}).some((v) => norm(v) !== "")) return true;
     if (typeof window.hasActiveStatsFilters === "function" && window.hasActiveStatsFilters()) return true;
     return false;
   }
@@ -188,8 +228,11 @@
   function applyAllFilters() {
     applyProcessFilters();
     applyCatalogFilters();
+    applyTasksFilters();
+    applyExecutorsFilters();
     autoOpenOnFilteredResult();
     refreshClearFilterButtonActive();
+    if (typeof window.renderReports === "function") window.renderReports();
   }
 
   function autoOpenOnFilteredResult() {
@@ -213,6 +256,26 @@
         const b = document.getElementById("toggleCatalogBtn");
         if (b) b.textContent = "Aizvērt katalogu";
       }
+    }
+
+    const tasksTable = document.getElementById("tasksSummaryTable");
+    const tasksHasFilter = Object.values(state.tasksHeader || {}).some((v) => norm(v) !== "");
+    if (tasksTable && tasksHasFilter) {
+      const taskCard = document.getElementById("tasksViewCard");
+      const hasVisible = Array.from(tasksTable.querySelectorAll("tbody tr")).some((tr) => tr.style.display !== "none");
+      if (taskCard && hasVisible) taskCard.classList.remove("hidden");
+      if (tasksTable.classList.contains("table-body-hidden")) {
+        tasksTable.classList.remove("table-body-hidden");
+        if (document.getElementById("toggleTasksBtn")) document.getElementById("toggleTasksBtn").textContent = "Aizvērt uzdevumu skatu";
+      }
+    }
+
+    const execCard = document.getElementById("executorsCard");
+    const execTable = document.getElementById("executorsTable");
+    const execHasFilter = Object.values(state.executorsHeader || {}).some((v) => norm(v) !== "");
+    if (execCard && execTable && execHasFilter) {
+      const hasVisible = Array.from(execTable.querySelectorAll("tbody tr")).some((tr) => tr.style.display !== "none");
+      if (hasVisible) execCard.classList.remove("hidden");
     }
   }
 
@@ -256,6 +319,8 @@
     state.quick = { process: "", task: "", output: "" };
     state.processHeader = {};
     state.catalogHeader = {};
+    state.tasksHeader = {};
+    state.executorsHeader = {};
 
     const searchInput = document.getElementById("searchInput");
     if (searchInput) searchInput.value = "";
@@ -275,6 +340,9 @@
     window.__afterTableRenderFilters = function () {
       refreshHeaderFilterOptions("processTable", "processHeader");
       refreshHeaderFilterOptions("catalogTable", "catalogHeader");
+      refreshHeaderFilterOptions("tasksSummaryTable", "tasksHeader");
+      // executorsTable ir dinamiska; refreshHeaderFilterOptions droši ignorēs, ja nav
+      refreshHeaderFilterOptions("executorsTable", "executorsHeader");
       applyAllFilters();
     };
   }
@@ -284,8 +352,10 @@
     ensureQuickFilters();
     ensureHeaderFilters("processTable", "processHeader", true);
     ensureHeaderFilters("catalogTable", "catalogHeader", false);
+    ensureHeaderFilters("tasksSummaryTable", "tasksHeader", true);
     refreshHeaderFilterOptions("processTable", "processHeader");
     refreshHeaderFilterOptions("catalogTable", "catalogHeader");
+    refreshHeaderFilterOptions("tasksSummaryTable", "tasksHeader");
     setupRenderHook();
     applyAllFilters();
     window.removeAllFilters = clearAllFilters;
@@ -295,6 +365,20 @@
     const searchInput = document.getElementById("searchInput");
     if (searchInput) searchInput.addEventListener("input", refreshClearFilterButtonActive);
     refreshClearFilterButtonActive();
+
+    // executors table ir dinamiska (tiek ģenerēta Izpilditaji.js laikā),
+    // tāpēc mēģinām piesaistīt kolonnu filtrus, kad tā parādās.
+    const execTimer = setInterval(() => {
+      const table = document.getElementById("executorsTable");
+      if (!table) return;
+      if (table.dataset.filtersReady === "1") return;
+      ensureHeaderFilters("executorsTable", "executorsHeader", true);
+      refreshHeaderFilterOptions("executorsTable", "executorsHeader");
+      table.dataset.filtersReady = "1";
+      applyAllFilters();
+      refreshClearFilterButtonActive();
+      clearInterval(execTimer);
+    }, 400);
   }
 
   function boot() {

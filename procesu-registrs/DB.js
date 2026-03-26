@@ -1,4 +1,4 @@
-﻿/* DB slānis (frontendam): Supabase savienojums + CRUD + kolonu mapping.
+/* DB slānis (frontendam): Supabase savienojums + CRUD + kolonu mapping.
    Pieņem, ka HTML jau ielādē @supabase/supabase-js (window.supabase). */
 (function () {
   "use strict";
@@ -21,6 +21,7 @@
   let pollTimer = null;
 
   let dbCols = new Set();
+  let catalogCols = new Set();
 
   const fk = (o, a) => a.find((k) => Object.prototype.hasOwnProperty.call(o, k));
   const gv = (o, a) => {
@@ -68,6 +69,15 @@
     return choices.find((c) => dbCols.size === 0 || dbCols.has(c)) || choices[0] || null;
   }
 
+  function pickCatalogCol(candidates, fallback) {
+    if (catalogCols && catalogCols.size) {
+      for (const c of candidates || []) {
+        if (catalogCols.has(c)) return c;
+      }
+    }
+    return fallback || (candidates && candidates.length ? candidates[0] : null);
+  }
+
   const aliasMap = {
     group: ["Procesu_grupa", "procesu_grupa", "Procesu grupa", "group", "procGroup", "procesuGrupa"],
     taskNo: ["Uzdevuma_Nr.", "uzdevuma_nr", "Uzdevuma Nr.", "taskNo"],
@@ -83,6 +93,12 @@
     flowcharts: ["plusmas_shemas", "plūsmas_shēmas", "flowcharts", "kpi"],
     itResources: ["it_resursi", "itResources", "riski", "riskInfo"],
     optimization: ["optimizacija", "optimization"],
+    executorPatstaviga: [
+      "Procesa_izpilditajs-patstaviga_strukturvieniba",
+      "procesa_izpilditajs-patstaviga_strukturvieniba",
+      "Procesa_izpilditajs_patstaviga_strukturvieniba",
+      "procesa_izpilditajs_patstaviga_strukturvieniba",
+    ],
     otherMetrics: ["citi_raditaji", "otherMetrics"],
   };
 
@@ -118,6 +134,20 @@
       if (!candidate && !Object.prototype.hasOwnProperty.call(p, "Uzdevuma_Nr.")) p["Uzdevuma_Nr."] = formVals.taskNo;
     }
 
+    // Procesa Nr. ir obligāts (analogs kā ar Uzdevuma Nr.), jo aliasMap var nepareizi izvēlēties kolonnas nosaukumu.
+    if (formVals.processNo) {
+      const candidate =
+        dbCols.has("Procesa_Nr.") ? "Procesa_Nr." :
+        dbCols.has("procesa_nr") ? "procesa_nr" :
+        dbCols.has("Procesa Nr.") ? "Procesa Nr." :
+        dbCols.has("processNo") ? "processNo" :
+        dbCols.has("Procesa_numurs") ? "Procesa_numurs" :
+        dbCols.has("procesa_numurs") ? "procesa_numurs" :
+        null;
+      if (candidate && !Object.prototype.hasOwnProperty.call(p, candidate)) p[candidate] = formVals.processNo;
+      if (!candidate && !Object.prototype.hasOwnProperty.call(p, "Procesa_Nr.")) p["Procesa_Nr."] = formVals.processNo;
+    }
+
     return p;
   }
 
@@ -142,6 +172,12 @@
       process: gv(d, ["Procesi, kas nodrošina uzdevuma dzīves ciklu", "procesi_dzives_ciklam", "processLife", "Process"]),
       owner: gv(d, ["procesa_ipasnieks", "Procesa_ipasnieks", "Procesa_īpašnieks", "Procesa īpašnieks", "processOwner"]),
       input: gv(d, ["procesa_iniciators", "Procesa_iniciators", "input"]),
+      executorPatstaviga: gv(d, [
+        "Procesa_izpilditajs-patstaviga_strukturvieniba",
+        "procesa_izpilditajs-patstaviga_strukturvieniba",
+        "Procesa_izpilditajs_patstaviga_strukturvieniba",
+        "procesa_izpilditajs_patstaviga_strukturvieniba",
+      ]),
       products: gv(d, ["galaprodukti", "outputProducts", "normativie_akti", "Normatīvie akti", "laws", "Procesa_galaprodukti"]),
       productTypes: gv(d, ["galaproduktu_veidi", "outputTypes", "procesa_dokumentacija", "Procesa dokumentācija", "docs", "Procesa_galaproduktu_veidi"]),
       relatedProcesses: gv(d, ["saistitie_procesi", "Saistitie_procesi", "relatedProcesses", "galaproduktu_skaits", "outputCount", "Procesa_galaproduktu_skaits"]),
@@ -224,11 +260,20 @@
       id: gv(r, [key]),
       typeNo: gv(r, [key]),
       type: gv(r, ["Galaprodukta_veids"]),
-      unit: gv(r, ["Strukturvieniba_izpilditajs_kas_rada_galaprodukta_veidu"]),
+      unit: gv(r, [
+        "Procesa_izpilditajs-patstaviga_strukturvieniba",
+        "Procesa_izpilditajs_patstaviga_strukturvieniba",
+        "procesa_izpilditajs-patstaviga_strukturvieniba",
+        "Strukturvieniba_izpilditajs_kas_rada_galaprodukta_veidu",
+      ]),
       department: gv(r, [
         "Dala_nodala",
         "Dala,_nodala",
+        "Dala, nodala",
+        "Dala, nodaļa",
         "Daļa,_nodaļa",
+        "Daļa, nodala",
+        "Daļa, nodaļa",
         "Daļa_nodaļa",
         "dala_nodala",
       ]),
@@ -258,16 +303,41 @@
     }
     if (error) throw error;
 
+    catalogCols = new Set();
+    (data || []).forEach((r) => {
+      Object.keys(r || {}).forEach((k) => catalogCols.add(k));
+    });
+
     return (data || []).map(mapCatalogRow);
   }
 
   async function insertCatalog(row) {
+    const unitCandidates = [
+      "Procesa_izpilditajs-patstaviga_strukturvieniba",
+      "Procesa_izpilditajs_patstaviga_strukturvieniba",
+      "Strukturvieniba_izpilditajs_kas_rada_galaprodukta_veidu",
+    ];
+    const deptCandidates = [
+      "Daļa,_nodaļa",
+      "Daļa_nodaļa",
+      "Daļa, nodala",
+      "Daļa, nodaļa",
+      "Dala_nodala",
+      "Dala,_nodala",
+      "Dala, nodala",
+      "Dala, nodaļa",
+      "dala_nodala",
+    ];
+    const unitCol = pickCatalogCol(unitCandidates, "Procesa_izpilditajs-patstaviga_strukturvieniba");
+    const deptCol = pickCatalogCol(deptCandidates, "Dala_nodala");
+
     const payload = {
       "Galaproduktu_veida_Nr.": String(row.typeNo || "").trim(),
       "Galaprodukta_veids": String(row.type || "").trim(),
-      "Strukturvieniba_izpilditajs_kas_rada_galaprodukta_veidu": String(row.unit || "").trim(),
+      [unitCol]: String(row.unit || "").trim(),
       "Uzdevuma_Nr.": String(row.taskNo || "").trim(),
       "Procesa_Nr.": String(row.procNo || "").trim(),
+      [deptCol]: String(row.department || "").trim(),
       "Papildu informācija": String(row.additionalInfo || "").trim(),
     };
     if (!payload["Galaproduktu_veida_Nr."] || !payload["Galaprodukta_veids"]) {
@@ -288,11 +358,31 @@
     const id = current ? current.id : null;
     if (!id) throw new Error("Nav kataloga primārās atslēgas.");
 
+    const unitCandidates = [
+      "Procesa_izpilditajs-patstaviga_strukturvieniba",
+      "Procesa_izpilditajs_patstaviga_strukturvieniba",
+      "Strukturvieniba_izpilditajs_kas_rada_galaprodukta_veidu",
+    ];
+    const deptCandidates = [
+      "Daļa,_nodaļa",
+      "Daļa_nodaļa",
+      "Daļa, nodala",
+      "Daļa, nodaļa",
+      "Dala_nodala",
+      "Dala,_nodala",
+      "Dala, nodala",
+      "Dala, nodaļa",
+      "dala_nodala",
+    ];
+    const unitCol = pickCatalogCol(unitCandidates, "Procesa_izpilditajs-patstaviga_strukturvieniba");
+    const deptCol = pickCatalogCol(deptCandidates, "Dala_nodala");
+
     const payload = {
       "Galaprodukta_veids": String(row.type || "").trim(),
-      "Strukturvieniba_izpilditajs_kas_rada_galaprodukta_veidu": String(row.unit || "").trim(),
+      [unitCol]: String(row.unit || "").trim(),
       "Uzdevuma_Nr.": String(row.taskNo || "").trim(),
       "Procesa_Nr.": String(row.procNo || "").trim(),
+      [deptCol]: String(row.department || "").trim(),
       "Papildu informācija": String(row.additionalInfo || "").trim(),
     };
     if (!payload["Galaprodukta_veids"]) {
@@ -432,6 +522,60 @@
     }, pollMs);
   }
 
+  function getTaskNoCol() {
+    if (dbCols && dbCols.size) {
+      if (dbCols.has("Uzdevuma_Nr.")) return "Uzdevuma_Nr.";
+      if (dbCols.has("uzdevuma_nr")) return "uzdevuma_nr";
+      if (dbCols.has("Uzdevuma Nr.")) return "Uzdevuma Nr.";
+      if (dbCols.has("taskNo")) return "taskNo";
+    }
+    return "Uzdevuma_Nr.";
+  }
+
+  function getTaskNameCol() {
+    if (dbCols && dbCols.size) {
+      if (dbCols.has("Uzdevums")) return "Uzdevums";
+      if (dbCols.has("uzdevums")) return "uzdevums";
+      if (dbCols.has("task")) return "task";
+    }
+    return "Uzdevums";
+  }
+
+  async function updateTaskByNo(oldTaskNo, updates) {
+    const taskNoCol = getTaskNoCol();
+    const taskNameCol = getTaskNameCol();
+    const oldNo = String(oldTaskNo || "").trim();
+    if (!oldNo) throw new Error("Uzdevuma Nr. (oldTaskNo) nav norādīts.");
+
+    const payload = {};
+    if (updates && updates.taskNo != null) payload[taskNoCol] = String(updates.taskNo || "").trim();
+    if (updates && updates.task != null) payload[taskNameCol] = String(updates.task || "").trim();
+
+    if (!Object.keys(payload).length) return null;
+
+    let q = supabaseClient.from(TABLE).update(payload);
+    q = qeq(q, taskNoCol, oldNo);
+
+    const { data, error } = await q.select("*");
+    if (error) throw error;
+    emitSync("process", "html");
+    return data;
+  }
+
+  async function removeTaskByNo(taskNo) {
+    const taskNoCol = getTaskNoCol();
+    const oldNo = String(taskNo || "").trim();
+    if (!oldNo) throw new Error("Uzdevuma Nr. nav norādīts.");
+
+    let q = supabaseClient.from(TABLE).delete();
+    q = qeq(q, taskNoCol, oldNo);
+
+    const { data, error } = await q.select("*");
+    if (error) throw error;
+    emitSync("process", "html");
+    return data;
+  }
+
   window.DB = {
     TABLE,
     load,
@@ -442,6 +586,8 @@
     insertCatalog,
     updateCatalog,
     removeCatalog,
+    updateTaskByNo,
+    removeTaskByNo,
     startSync,
     stopSync,
     mapDbError,

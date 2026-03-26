@@ -37,7 +37,8 @@
       table.innerHTML = `
         <thead>
           <tr>
-              <th>Izpildītājs - Strukturvienība izpildītājs, kas rada galaproduktu veidu</th>
+              <th>Procesa_izpilditajs-patstaviga_strukturvieniba</th>
+              <th>Dala, nodala</th>
             <th>Uzdevuma Nr.</th>
             <th>Uzdevums</th>
             <th>Procesa Nr.</th>
@@ -48,6 +49,7 @@
             <th>GP veida skaits</th>
             <th>GP veida vidējais izpildes laiks</th>
             <th>Pakalpojums</th>
+            <th>Procesa kartiņa</th>
           </tr>
         </thead>
         <tbody id="${ROWS_ID}"></tbody>
@@ -129,6 +131,7 @@
 
       for (const c of linked) {
         const executor = getText(c.unit);
+        const department = getText(c.department);
         const typeNo = getText(c.typeNo);
         const type = getText(c.type);
 
@@ -148,6 +151,7 @@
 
         rows.push({
           executor,
+          department,
           taskNo,
           task,
           procNo,
@@ -190,6 +194,7 @@
     for (const r of finalRows) {
       const key = [
         r.executor,
+        r.department,
         r.taskNo,
         r.task,
         r.procNo,
@@ -204,8 +209,8 @@
     }
 
     dedup.sort((a, b) => {
-      const x = `${a.executor} ${a.taskNo} ${a.procNo} ${a.typeNo}`.toLowerCase();
-      const y = `${b.executor} ${b.taskNo} ${b.procNo} ${b.typeNo}`.toLowerCase();
+      const x = `${a.executor} ${a.department} ${a.taskNo} ${a.procNo} ${a.typeNo}`.toLowerCase();
+      const y = `${b.executor} ${b.department} ${b.taskNo} ${b.procNo} ${b.typeNo}`.toLowerCase();
       return x.localeCompare(y, "lv");
     });
 
@@ -230,19 +235,37 @@
     tb.innerHTML = "";
     for (const r of rows) {
       const tr = document.createElement("tr");
-      tr.innerHTML = `
-        <td>${r.executor || ""}</td>
-        <td>${r.taskNo || ""}</td>
-        <td>${r.task || ""}</td>
-        <td>${r.procNo || ""}</td>
-        <td>${r.proc || ""}</td>
-        <td>${r.products || ""}</td>
-        <td>${r.typeNo || ""}</td>
-        <td>${r.type || ""}</td>
-        <td>${r.gpCount ?? 0}</td>
-        <td>${r.avgTimeText || ""}</td>
-        <td>${r.servicesText || ""}</td>
-      `;
+      const td = (txt) => {
+        const el = document.createElement("td");
+        el.textContent = txt == null ? "" : String(txt);
+        return el;
+      };
+      tr.appendChild(td(r.executor || ""));
+      tr.appendChild(td(r.department || ""));
+      tr.appendChild(td(r.taskNo || ""));
+      tr.appendChild(td(r.task || ""));
+      tr.appendChild(td(r.procNo || ""));
+      tr.appendChild(td(r.proc || ""));
+      tr.appendChild(td(r.products || ""));
+      tr.appendChild(td(r.typeNo || ""));
+      tr.appendChild(td(r.type || ""));
+      tr.appendChild(td(r.gpCount ?? 0));
+      tr.appendChild(td(r.avgTimeText || ""));
+      tr.appendChild(td(r.servicesText || ""));
+
+      const tdBtn = document.createElement("td");
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "secondary";
+      btn.textContent = "Atvērt kartiņu";
+      btn.addEventListener("click", () => {
+        if (typeof window.openProcessEditorByTaskProcNos === "function") {
+          window.openProcessEditorByTaskProcNos(r.taskNo, r.procNo);
+        }
+      });
+      tdBtn.appendChild(btn);
+      tr.appendChild(tdBtn);
+
       tb.appendChild(tr);
     }
   }
