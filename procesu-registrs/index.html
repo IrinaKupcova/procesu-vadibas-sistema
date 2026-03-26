@@ -1089,8 +1089,8 @@
         function getTheme(){
           try{
             const v = localStorage.getItem(KEY);
-            return v==="light" ? "light" : "dark";
-          }catch(_){ return "dark"; }
+            return v==="dark" ? "dark" : "light";
+          }catch(_){ return "light"; }
         }
         function setTheme(theme){
           const isLight = theme==="light";
