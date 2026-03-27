@@ -173,10 +173,11 @@
   function applyTasksFilters() {
     const tbody = document.querySelector("#tasksSummaryTable tbody");
     if (!tbody) return;
+    const globalTerm = norm(document.getElementById("searchInput")?.value || "");
     const rows = Array.from(tbody.querySelectorAll("tr"));
     rows.forEach((tr) => {
       const tds = Array.from(tr.children);
-      let show = true;
+      let show = !globalTerm || contains(tds.map((td) => td.textContent || "").join(" "), globalTerm);
       for (const col in state.tasksHeader) {
         const term = state.tasksHeader[col];
         if (!contains(tds[Number(col)]?.textContent || "", term)) {
@@ -191,10 +192,11 @@
   function applyExecutorsFilters() {
     const tbody = document.querySelector("#executorsTable tbody");
     if (!tbody) return;
+    const globalTerm = norm(document.getElementById("searchInput")?.value || "");
     const rows = Array.from(tbody.querySelectorAll("tr"));
     rows.forEach((tr) => {
       const tds = Array.from(tr.children);
-      let show = true;
+      let show = !globalTerm || contains(tds.map((td) => td.textContent || "").join(" "), globalTerm);
       for (const col in state.executorsHeader) {
         const term = state.executorsHeader[col];
         if (!contains(tds[Number(col)]?.textContent || "", term)) {
@@ -347,6 +349,15 @@
     };
   }
 
+  function refreshExtraTableFilters() {
+    ensureHeaderFilters("tasksSummaryTable", "tasksHeader", true);
+    refreshHeaderFilterOptions("tasksSummaryTable", "tasksHeader");
+    ensureHeaderFilters("executorsTable", "executorsHeader", true);
+    refreshHeaderFilterOptions("executorsTable", "executorsHeader");
+    applyAllFilters();
+    refreshClearFilterButtonActive();
+  }
+
   function init() {
     injectFilterStyles();
     ensureQuickFilters();
@@ -360,6 +371,7 @@
     applyAllFilters();
     window.removeAllFilters = clearAllFilters;
     window.refreshClearFilterButtonActive = refreshClearFilterButtonActive;
+    window.refreshExtraTableFilters = refreshExtraTableFilters;
     const clearBtn = document.getElementById("clearFiltersBtn");
     if (clearBtn) clearBtn.addEventListener("click", clearAllFilters);
     const searchInput = document.getElementById("searchInput");

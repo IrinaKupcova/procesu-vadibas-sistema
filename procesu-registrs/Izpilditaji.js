@@ -268,6 +268,10 @@
 
       tb.appendChild(tr);
     }
+
+    if (typeof window.refreshExtraTableFilters === "function") {
+      window.refreshExtraTableFilters();
+    }
   }
 
   // publiskais API

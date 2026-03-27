@@ -1139,6 +1139,9 @@
             tr.append(tdNo, tdTask, tdCnt, tdProc, tdSvc, tdTaskCard);
             tb.appendChild(tr);
           });
+        if (typeof window.refreshExtraTableFilters === "function") {
+          window.refreshExtraTableFilters();
+        }
       }
       function renderReports(){
         const processCount = processRows.length;
