@@ -706,6 +706,7 @@
           const firstHit = tb.querySelector("tr.search-hit");
           if(firstHit) firstHit.scrollIntoView({behavior:"smooth", block:"center"});
         }
+        renderTasksView();
         if (typeof window.__afterTableRenderFilters === "function") {
           window.__afterTableRenderFilters();
         }
@@ -713,7 +714,6 @@
         if (typeof window.refreshHelpIcons === "function") window.refreshHelpIcons();
         if (typeof window.refreshClearFilterButtonActive === "function") window.refreshClearFilterButtonActive();
         renderReports();
-        renderTasksView();
       }
 
       function rebuildMx(){ /* Matrica izņemta pēc prasības. */ }
@@ -801,7 +801,8 @@
         const t = task || null;
         editingTaskNo = t && t.no != null ? String(t.no) : "";
         $("taskEditorCard").classList.remove("hidden");
-        $("taskEditorTitle").textContent = "Uzdevuma kartiņa";
+        const isNew = !editingTaskNo;
+        $("taskEditorTitle").textContent = isNew ? "Pievienot jaunu uzdevumu" : "Uzdevuma kartiņa";
 
         const e = canEdit();
         const originalNo = editingTaskNo || "";
@@ -812,6 +813,7 @@
 
         const hasTask = !!originalNo;
         $("taskDeleteBtn").classList.toggle("hidden", !(hasTask && e));
+        if($("taskSaveBtn")) $("taskSaveBtn").textContent = hasTask ? "Saglabāt" : "Pievienot uzdevumu";
 
         $("taskEditorForm").querySelectorAll("input,button").forEach((el)=>{
           if(el.id === "taskCloseBtn") return;
@@ -1213,8 +1215,11 @@
         us.forEach(u=>{ const tr=document.createElement("tr"); tr.innerHTML=`<td>${u}</td><td>${roles[u]}</td><td><button type="button" class="secondary" data-u="${u}">Dzēst</button></td>`; tb.appendChild(tr); });
       }
 
-      // events
-      $("searchInput").oninput=renderTable; if($("groupFilter")) $("groupFilter").onchange=renderTable; $("levelSelect").onchange=()=>{applyLevel(); rebuildMx(); renderReports();};
+      // events — kopējais meklētājs: lūpa vai Enter (Filtrs.js); rakstot tikai atjaunojam pogu „Noņemt filtru”.
+      if($("searchInput")) $("searchInput").oninput=()=>{ if(typeof window.refreshClearFilterButtonActive==="function") window.refreshClearFilterButtonActive(); };
+      window.runGlobalSearch = ()=>{ renderTable(); };
+      if($("groupFilter")) $("groupFilter").onchange=renderTable;
+      $("levelSelect").onchange=()=>{applyLevel(); rebuildMx(); renderReports();};
       if($("toggleProcessBtn")) $("toggleProcessBtn").onclick=()=>{
         const table=$("processTable");
         table.classList.toggle("table-body-hidden");
@@ -1287,36 +1292,9 @@
         }
       };
       if($("newTaskBtn")) $("newTaskBtn").onclick=()=>{
-        const tno = prompt("Uzdevuma Nr. (piem., 1, 2, 3...)"); 
-        if(tno === null) return;
-        const tname = prompt("Uzdevums (nosaukums)");
-        if(tname === null) return;
-        const taskNo = String(tno || "").trim();
-        const task = String(tname || "").trim();
-        if(!taskNo || !task){
-          alert("Jānorāda gan Uzdevuma Nr., gan Uzdevuma nosaukums.");
-          return;
-        }
-        const procNo = prompt("Procesa Nr. (nepieciešams, lai varētu saglabāt uzdevumu DB)"); 
-        if(procNo === null) return;
-        const procName = prompt("Procesa nosaukums"); 
-        if(procName === null) return;
-        const processNo = String(procNo || "").trim();
-        const process = String(procName || "").trim();
-        if(!processNo || !process){
-          alert("Jānorāda gan Procesa Nr., gan Procesa nosaukums.");
-          return;
-        }
-        openEditor(null);
-        $("eTaskNo").value = taskNo;
-        $("eTask").value = task;
-        $("eProcNo").value = processNo;
-        $("eProcess").value = process;
-        const editor = $("editorCard");
-        if(editor){
-          editor.classList.remove("hidden");
-          if(editor.scrollIntoView) editor.scrollIntoView({behavior:"smooth", block:"start"});
-        }
+        openTaskEditor({ no: "", name: "" });
+        const card = $("taskEditorCard");
+        if(card && card.scrollIntoView) card.scrollIntoView({behavior:"smooth", block:"start"});
       };
       $("newBtn").onclick=()=>openEditor(null); $("closeBtn").onclick=()=>{$("editorCard").classList.add("hidden"); editingRow=null;};
       $("newCatalogBtn").onclick=()=>openCatalogEditor(null);
@@ -1328,16 +1306,32 @@
         const oldNo = String($("tOriginalTaskNo").value || "").trim();
         const newNo = String($("tTaskNo").value || "").trim();
         const newTaskName = String($("tTask").value || "").trim();
-        if(!oldNo){ alert("Nevar noteikt uzdevumu (Uzdevuma Nr.)."); return; }
         if(!newNo){ status("Lauks 'Uzdevuma Nr.' ir obligāts.","error"); return; }
         if(!newTaskName){ status("Lauks 'Uzdevums' ir obligāts.","error"); return; }
         try{
           const api = window.DB;
-          if(!api || typeof api.updateTaskByNo !== "function"){
-            alert("DB API nav pieejams: updateTaskByNo.");
-            return;
+          if(!oldNo){
+            if(!api || typeof api.insert !== "function"){
+              alert("DB API nav pieejams: insert.");
+              return;
+            }
+            const syntheticProcNo = `UZD-${newNo}`;
+            await api.insert({
+              group: "pamatdarbības procesi",
+              taskNo: newNo,
+              task: newTaskName,
+              processNo: syntheticProcNo,
+              process: newTaskName,
+              products: "", productTypes: "", input: "", executorPatstaviga: "",
+              relatedProcesses: "", services: "", flowcharts: "", itResources: "", optimization: "", otherMetrics: ""
+            });
+          } else {
+            if(!api || typeof api.updateTaskByNo !== "function"){
+              alert("DB API nav pieejams: updateTaskByNo.");
+              return;
+            }
+            await api.updateTaskByNo(oldNo, { taskNo: newNo, task: newTaskName });
           }
-          await api.updateTaskByNo(oldNo, { taskNo: newNo, task: newTaskName });
           $("taskEditorCard").classList.add("hidden");
           editingTaskNo = null;
           await loadDb();
@@ -1345,7 +1339,7 @@
           renderReports();
           renderTasksView();
           rebuildMx();
-          status("Uzdevums saglabāts.","ok");
+          status(oldNo ? "Uzdevums saglabāts." : "Jauns uzdevums pievienots.","ok");
         }catch(err){
           const msg = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError(err) : String(err && err.message ? err.message : err);
           alert("DB kļūda: " + msg);

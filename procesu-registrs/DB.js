@@ -60,13 +60,17 @@
   }
 
   function pickKey(raw, choices) {
-    // update gadījumā mums biežāk ir `raw` ar precīzām kolonnām.
+    if (!choices || !choices.length) return null;
+    // update: izmantojam kolonnas nosaukumu no esošā ieraksta
     if (raw) {
       const k = fk(raw, choices);
       if (k) return k;
     }
-    // insert gadījumā izvēlamies tikai tos kandidātus, kas parādās shēmā (no iepriekš ielādētajiem datiem).
-    return choices.find((c) => dbCols.size === 0 || dbCols.has(c)) || choices[0] || null;
+    // insert: tikai kolonnas, kas patiešām ir tabulā (citādi PGRST204 / nepareizs nosaukums)
+    if (dbCols && dbCols.size > 0) {
+      return choices.find((c) => dbCols.has(c)) || null;
+    }
+    return choices[0] || null;
   }
 
   function pickCatalogCol(candidates, fallback) {
@@ -126,15 +130,18 @@
       if (key) p[key] = formVals[logicalKey] || "";
     });
 
-    // Obligātais lauks (jo DB rāda NOT NULL tieši `Uzdevuma_Nr.`):
+    // Obligātie lauki — tikai reālās kolonnas no dbCols (bez „minētas” kolonnas, kuras tabulā nav).
     if (formVals.taskNo) {
       const candidate =
-        dbCols.has("Uzdevuma_Nr.") ? "Uzdevuma_Nr." : dbCols.has("uzdevuma_nr") ? "uzdevuma_nr" : null;
+        dbCols.has("Uzdevuma_Nr.") ? "Uzdevuma_Nr." :
+        dbCols.has("uzdevuma_nr") ? "uzdevuma_nr" :
+        dbCols.has("Uzdevuma Nr.") ? "Uzdevuma Nr." :
+        dbCols.has("taskNo") ? "taskNo" :
+        null;
       if (candidate && !Object.prototype.hasOwnProperty.call(p, candidate)) p[candidate] = formVals.taskNo;
-      if (!candidate && !Object.prototype.hasOwnProperty.call(p, "Uzdevuma_Nr.")) p["Uzdevuma_Nr."] = formVals.taskNo;
+      else if (!dbCols.size && !Object.prototype.hasOwnProperty.call(p, "Uzdevuma_Nr.")) p["Uzdevuma_Nr."] = formVals.taskNo;
     }
 
-    // Procesa Nr. ir obligāts (analogs kā ar Uzdevuma Nr.), jo aliasMap var nepareizi izvēlēties kolonnas nosaukumu.
     if (formVals.processNo) {
       const candidate =
         dbCols.has("Procesa_Nr.") ? "Procesa_Nr." :
@@ -145,7 +152,7 @@
         dbCols.has("procesa_numurs") ? "procesa_numurs" :
         null;
       if (candidate && !Object.prototype.hasOwnProperty.call(p, candidate)) p[candidate] = formVals.processNo;
-      if (!candidate && !Object.prototype.hasOwnProperty.call(p, "Procesa_Nr.")) p["Procesa_Nr."] = formVals.processNo;
+      else if (!dbCols.size && !Object.prototype.hasOwnProperty.call(p, "Procesa_Nr.")) p["Procesa_Nr."] = formVals.processNo;
     }
 
     return p;
@@ -203,7 +210,15 @@
   }
 
   async function insert(formVals) {
-    const payload = toPayload(formVals, null);
+    let payload = toPayload(formVals, null);
+    // Dubulta drošība: neinsertējam laukus, ko shēmā nav (pēc pirmā load dbCols)
+    if (dbCols && dbCols.size > 0) {
+      const cleaned = {};
+      Object.keys(payload).forEach((k) => {
+        if (dbCols.has(k)) cleaned[k] = payload[k];
+      });
+      payload = cleaned;
+    }
     const { data, error } = await supabaseClient.from(TABLE).insert(payload).select("*").single();
     if (error) throw error;
     emitSync("process", "html");

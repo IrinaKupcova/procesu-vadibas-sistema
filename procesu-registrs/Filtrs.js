@@ -24,6 +24,7 @@
     s.id = "filtersCss";
     s.textContent = `
       .main-filter-wrap{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+      .search-icon-badge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid #94a3b8;border-radius:999px;background:#fff;color:#334155;font-size:13px;cursor:pointer;flex-shrink:0}
       .main-filter-wrap select,.main-filter-wrap input{font-size:12px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:4px}
       .th-filter-wrap{display:flex;align-items:center;gap:4px;justify-content:space-between}
       .th-filter-btn{font-size:10px;padding:2px 5px;border:1px solid #94a3b8;border-radius:999px;background:#fff;color:#334155;cursor:pointer;line-height:1}
@@ -38,8 +39,31 @@
   function ensureQuickFilters() {
     const searchInput = document.getElementById("searchInput");
     if (!searchInput) return;
-    // Galvenais filtrs ir pārvaldīts index/Procesu registrs.js pusē.
-    // Te neatstājam otru (dublējošu) filtra UI.
+    if (!document.getElementById("searchIconBadge")) {
+      const icon = document.createElement("span");
+      icon.id = "searchIconBadge";
+      icon.className = "search-icon-badge";
+      icon.title = "Meklēt (vai Enter)";
+      icon.textContent = "🔍";
+      searchInput.insertAdjacentElement("afterend", icon);
+    }
+    const icon = document.getElementById("searchIconBadge");
+    if (icon && !icon.dataset.boundSearchClick) {
+      icon.dataset.boundSearchClick = "1";
+      icon.addEventListener("click", () => {
+        if (typeof window.runGlobalSearch === "function") window.runGlobalSearch();
+      });
+    }
+    if (!searchInput.dataset.boundSearchEnter) {
+      searchInput.dataset.boundSearchEnter = "1";
+      searchInput.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          if (typeof window.runGlobalSearch === "function") window.runGlobalSearch();
+        }
+      });
+    }
+    searchInput.placeholder = "Meklē visās sadaļās...";
   }
 
   function ensureHeaderFilters(tableId, key, skipLast) {
@@ -155,10 +179,11 @@
   function applyCatalogFilters() {
     const tbody = document.querySelector("#catalogTable tbody");
     if (!tbody) return;
+    const globalTerm = norm(document.getElementById("searchInput")?.value || "");
     const rows = Array.from(tbody.querySelectorAll("tr"));
     rows.forEach((tr) => {
       const tds = Array.from(tr.children);
-      let show = true;
+      let show = !globalTerm || contains(tds.map((td) => td.textContent || "").join(" "), globalTerm);
       for (const col in state.catalogHeader) {
         const term = state.catalogHeader[col];
         if (!contains(tds[Number(col)]?.textContent || "", term)) {
@@ -385,9 +410,11 @@
       if (!table) return;
       if (table.dataset.filtersReady === "1") {
         const hasSelects = table.querySelector("thead tr .th-filter-box select[data-col-index]");
-        if (hasSelects) return;
+        if (hasSelects) {
+          clearInterval(execTimer);
+          return;
+        }
       }
-      // Būvējam filtrus tikai tad, kad tiešām vajag (tabula/tst. tika ģenerēta dinamiski).
       ensureHeaderFilters("executorsTable", "executorsHeader", true);
       refreshHeaderFilterOptions("executorsTable", "executorsHeader");
       table.dataset.filtersReady = "1";
