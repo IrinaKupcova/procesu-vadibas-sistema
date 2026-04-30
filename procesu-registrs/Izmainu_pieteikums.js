@@ -22,14 +22,12 @@
     lines.push("Struktūrvienībā: " + val("ch_orgunit"));
     lines.push("");
     lines.push("--- Procesu reģistrs ---");
-    lines.push("Procesu grupa: " + val("ch_pr_group"));
-    lines.push("Uzdevuma Nr.: " + val("ch_pr_taskNo"));
-    lines.push("Uzdevums: " + val("ch_pr_task"));
+    lines.push("Procesa grupa: " + val("ch_pr_group"));
     lines.push("Procesa Nr.: " + val("ch_pr_processNo"));
     lines.push("Process: " + val("ch_pr_process"));
     lines.push("Procesa iniciātors (input): " + val("ch_pr_input"));
-    lines.push("Galaprodukti: " + val("ch_pr_products"));
-    lines.push("Galaproduktu veidi: " + val("ch_pr_productTypes"));
+    lines.push("Procesa galaprodukts: " + val("ch_pr_products"));
+    lines.push("Galaprodukta kartiņa: " + val("ch_pr_productTypes"));
     lines.push("Saistītie procesi: " + val("ch_pr_related"));
     lines.push("Pakalpojumi: " + val("ch_pr_services"));
     lines.push("Plūsmas shēmas: " + val("ch_pr_flow"));
@@ -37,11 +35,10 @@
     lines.push("Optimizācija: " + val("ch_pr_opt"));
     lines.push("Citi rādītāji: " + val("ch_pr_other"));
     lines.push("");
-    lines.push("--- Galaproduktu veidu katalogs ---");
-    lines.push("Galaprodukta veida Nr.: " + val("ch_gp_typeNo"));
-    lines.push("Galaprodukta veids: " + val("ch_gp_type"));
-    lines.push("Strukturvieniba izpilditajs: " + val("ch_gp_unit"));
-    lines.push("Uzdevuma Nr.: " + val("ch_gp_taskNo"));
+    lines.push("--- Galaproduktu katalogs ---");
+    lines.push("Procesa galaprodukta Nr.: " + val("ch_gp_typeNo"));
+    lines.push("Procesa galaprodukts: " + val("ch_gp_type"));
+    lines.push("Procesa izpildītājs, pārvalde: " + val("ch_gp_unit"));
     lines.push("Procesa Nr.: " + val("ch_gp_procNo"));
     lines.push("");
     if (uploadedFiles && uploadedFiles.length) {

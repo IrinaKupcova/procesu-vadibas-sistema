@@ -15,15 +15,6 @@
     return v === null || v === undefined ? "" : String(v).trim();
   }
 
-  function extractFirstNumber(s) {
-    const t = getText(s);
-    // atbalstām gan 1,23 gan 1.23
-    const m = t.match(/-?\d+(?:[.,]\d+)?/);
-    if (!m) return NaN;
-    const num = Number(m[0].replace(",", "."));
-    return Number.isFinite(num) ? num : NaN;
-  }
-
   function ensureTable(card) {
     if (!card) return null;
 
@@ -37,19 +28,11 @@
       table.innerHTML = `
         <thead>
           <tr>
-              <th>Procesa_izpilditajs-patstaviga_strukturvieniba</th>
-              <th>Dala, nodala</th>
-            <th>Uzdevuma Nr.</th>
-            <th>Uzdevums</th>
-            <th>Procesa Nr.</th>
+            <th>Procesa izpildītājs, pārvalde</th>
+            <th>Procesa izpildītājs, daļa</th>
             <th>Process</th>
-            <th>Galaproduks</th>
-            <th>Galaprodukta veida Nr</th>
-            <th>Galaprodukta veids</th>
-            <th>GP veida skaits</th>
-            <th>GP veida vidējais izpildes laiks</th>
-            <th>Pakalpojums</th>
             <th>Procesa kartiņa</th>
+            <th>Procesa galaprodukts (GP)</th>
           </tr>
         </thead>
         <tbody id="${ROWS_ID}"></tbody>
@@ -74,147 +57,56 @@
     return table;
   }
 
+  function splitValues(v) {
+    return String(v || "")
+      .split(/[;,\n]/)
+      .map((x) => String(x || "").trim())
+      .filter(Boolean);
+  }
+
   function computeRows(processRows, catalogRows) {
-    function pickTimeRaw(procRow) {
-      // Supabase "laika" lauks (vidējais izpildes laiks) dažreiz atnāk ar citu nosaukumu.
-      // Tava norāde: laika nosaukums = "Papildu informācija".
-      const candidates = [
-        procRow?.services,
-        procRow?.outputAvgTime,
-        procRow?.videjais_izpildes_laiks,
-        procRow?.["Papildu informācija"],
-        procRow?.["Papildu informacija"],
-        procRow?.papilduInformacija,
-        procRow?.additionalInfo,
-        procRow?.additionalInformation,
-      ];
-      for (const c of candidates) {
-        const t = getText(c);
-        if (t) return t;
-      }
-      return "";
-    }
-
-    const linkedByProcessKey = (p) => {
-      const t = getText(p.taskNo);
-      const pn = getText(p.processNo);
-      if (!t && !pn) return [];
-      return catalogRows.filter((c) => {
-        const ct = getText(c.taskNo);
-        const cp = getText(c.procNo);
-        if (t && pn) return ct === t && cp === pn;
-        if (t) return ct === t;
-        return cp === pn;
-      });
-    };
-
-    // agregācija pēc (unit=izpildītājs, typeNo=GP veids)
-    const agg = new Map(); // key -> {count, timeSum, timeN, servicesSet}
-    const rows = []; // sīkās rindas
-
-    const ensureAgg = (executor, typeNo) => {
-      const k = `${executor}|${typeNo}`;
-      if (!agg.has(k)) agg.set(k, { count: 0, timeSum: 0, timeN: 0, servicesSet: new Set() });
-      return agg.get(k);
-    };
-
+    const rows = [];
+    const byProcNo = new Map();
+    (catalogRows || []).forEach((c) => {
+      const pn = getText(c.procNo);
+      if (!pn) return;
+      if (!byProcNo.has(pn)) byProcNo.set(pn, []);
+      byProcNo.get(pn).push(c);
+    });
     for (const p of processRows) {
-      const executorCandidate = null;
-      const linked = linkedByProcessKey(p);
-      const taskNo = getText(p.taskNo);
-      const task = getText(p.task);
       const procNo = getText(p.processNo);
+      if (!procNo) continue;
       const proc = getText(p.process);
-      const products = getText(p.products);
-
-      if (!linked.length) continue;
-
-      for (const c of linked) {
-        const executor = getText(c.unit);
-        const department = getText(c.department);
-        const typeNo = getText(c.typeNo);
-        const type = getText(c.type);
-
-        const a = ensureAgg(executor, typeNo);
-        a.count += 1;
-
-        // vidējais izpildes laiks
-        const svcRaw = getText(p.services); // pakalpojuma/teksta heuristikai
-        const timeRaw = pickTimeRaw(p);
-        const num = extractFirstNumber(timeRaw);
-        if (!Number.isNaN(num)) {
-          a.timeSum += num;
-          a.timeN += 1;
-        } else if (svcRaw) {
-          a.servicesSet.add(svcRaw);
-        }
-
+      const linked = byProcNo.get(procNo) || [];
+      const unitsFromProcess = splitValues(p.executorPatstaviga);
+      const departmentsFromProcess = splitValues(p.executorDala);
+      const unitsFromCatalog = Array.from(new Set(linked.map((c) => getText(c.unit)).filter(Boolean)));
+      const departmentsFromCatalog = Array.from(new Set(linked.map((c) => getText(c.department)).filter(Boolean)));
+      const units = Array.from(new Set([].concat(unitsFromProcess, unitsFromCatalog))).filter(Boolean);
+      const departments = Array.from(new Set([].concat(departmentsFromProcess, departmentsFromCatalog))).filter(Boolean);
+      const normalizedUnits = units.length ? units : [""];
+      const departmentText = departments.join(", ");
+      const gpFromProc = splitValues(p.products);
+      normalizedUnits.forEach((unit) => {
+        const gpSet = new Set();
+        linked.forEach((c) => {
+          const cUnit = getText(c.unit);
+          if (!cUnit || !unit || cUnit.toLowerCase() === unit.toLowerCase()) {
+            const t = getText(c.type);
+            if (t) gpSet.add(t);
+          }
+        });
+        gpFromProc.forEach((t) => gpSet.add(t));
         rows.push({
-          executor,
-          department,
-          taskNo,
-          task,
+          executor: unit,
+          department: departmentText,
           procNo,
           proc,
-          products,
-          typeNo,
-          type,
-          aggKey: `${executor}|${typeNo}`,
-          svcRaw,
+          gpList: Array.from(gpSet),
         });
-      }
+      });
     }
-
-    // finālie rindas objekti ar agregātiem
-    const finalRows = rows.map((r) => {
-      const a = agg.get(r.aggKey);
-      const avg = a && a.timeN ? a.timeSum / a.timeN : NaN;
-      const avgText = Number.isNaN(avg) ? "" : (Math.round(avg * 100) / 100).toString();
-
-      // pakalpojums: ja svcRaw nav skaitlis -> rādām; ja ir skaitlis -> mēģinam no set
-      let servicesText = "";
-      const num = extractFirstNumber(r.svcRaw);
-      if (r.svcRaw && Number.isNaN(num)) {
-        servicesText = r.svcRaw;
-      } else if (a && a.servicesSet.size) {
-        servicesText = Array.from(a.servicesSet).slice(0, 5).join("; ");
-      }
-
-      return {
-        ...r,
-        gpCount: a ? a.count : 0,
-        avgTimeText: avgText,
-        servicesText,
-      };
-    });
-
-    // deduplēšana (lai nerastos pārāk daudz identisku rindu vienādu atslēgu dēļ)
-    const seen = new Set();
-    const dedup = [];
-    for (const r of finalRows) {
-      const key = [
-        r.executor,
-        r.department,
-        r.taskNo,
-        r.task,
-        r.procNo,
-        r.proc,
-        r.products,
-        r.typeNo,
-        r.type,
-      ].join("|");
-      if (seen.has(key)) continue;
-      seen.add(key);
-      dedup.push(r);
-    }
-
-    dedup.sort((a, b) => {
-      const x = `${a.executor} ${a.department} ${a.taskNo} ${a.procNo} ${a.typeNo}`.toLowerCase();
-      const y = `${b.executor} ${b.department} ${b.taskNo} ${b.procNo} ${b.typeNo}`.toLowerCase();
-      return x.localeCompare(y, "lv");
-    });
-
-    return dedup;
+    return rows.sort((a, b) => `${a.executor} ${a.department} ${a.procNo} ${a.proc}`.localeCompare(`${b.executor} ${b.department} ${b.procNo} ${b.proc}`, "lv"));
   }
 
   function renderExecutorsView() {
@@ -242,16 +134,7 @@
       };
       tr.appendChild(td(r.executor || ""));
       tr.appendChild(td(r.department || ""));
-      tr.appendChild(td(r.taskNo || ""));
-      tr.appendChild(td(r.task || ""));
-      tr.appendChild(td(r.procNo || ""));
-      tr.appendChild(td(r.proc || ""));
-      tr.appendChild(td(r.products || ""));
-      tr.appendChild(td(r.typeNo || ""));
-      tr.appendChild(td(r.type || ""));
-      tr.appendChild(td(r.gpCount ?? 0));
-      tr.appendChild(td(r.avgTimeText || ""));
-      tr.appendChild(td(r.servicesText || ""));
+      tr.appendChild(td([r.procNo, r.proc].filter(Boolean).join(" - ")));
 
       const tdBtn = document.createElement("td");
       const btn = document.createElement("button");
@@ -260,11 +143,36 @@
       btn.textContent = "Atvērt kartiņu";
       btn.addEventListener("click", () => {
         if (typeof window.openProcessEditorByTaskProcNos === "function") {
-          window.openProcessEditorByTaskProcNos(r.taskNo, r.procNo);
+          window.openProcessEditorByTaskProcNos("", r.procNo);
         }
       });
       tdBtn.appendChild(btn);
       tr.appendChild(tdBtn);
+
+      const tdGp = document.createElement("td");
+      if (Array.isArray(r.gpList) && r.gpList.length) {
+        r.gpList.forEach((gp) => {
+          const line = document.createElement("div");
+          line.style.display = "flex";
+          line.style.alignItems = "center";
+          line.style.gap = "6px";
+          const txt = document.createElement("span");
+          txt.textContent = gp;
+          const gpBtn = document.createElement("button");
+          gpBtn.type = "button";
+          gpBtn.className = "secondary";
+          gpBtn.textContent = "GP kartiņa";
+          gpBtn.addEventListener("click", () => {
+            if (typeof window.openCatalogByProcessGp === "function") {
+              window.openCatalogByProcessGp(r.procNo, gp);
+            }
+          });
+          line.appendChild(txt);
+          line.appendChild(gpBtn);
+          tdGp.appendChild(line);
+        });
+      }
+      tr.appendChild(tdGp);
 
       tb.appendChild(tr);
     }

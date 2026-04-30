@@ -11,9 +11,9 @@
   const TABLE = "procesu_registrs";
   const CATALOG_TABLE = "Procesu_galaproduktu_veidu_katalogs";
   const GROUPS = new Set([
-    "pamatdarbības procesi",
-    "atbalsta procesi",
-    "vadības procesi",
+    "pamatdarbība",
+    "atbalsts",
+    "pārvaldība",
   ]);
 
   const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -31,7 +31,11 @@
   const gid = (o) => fk(o, ["id", "ID", "Id"]) || null;
   const normGroup = (g) => {
     const t = String(g || "").trim().toLowerCase();
-    return GROUPS.has(t) ? t : "pamatdarbības procesi";
+    if (GROUPS.has(t)) return t;
+    if (t.includes("pamatdarb")) return "pamatdarbība";
+    if (t.includes("atbal")) return "atbalsts";
+    if (t.includes("vad") || t.includes("pārvald")) return "pārvaldība";
+    return "pamatdarbība";
   };
   const pgCol = (name) => {
     const s = String(name || "");
@@ -81,9 +85,16 @@
     }
     return fallback || (candidates && candidates.length ? candidates[0] : null);
   }
+  function pickCatalogRowCol(raw, candidates, fallback) {
+    if (raw) {
+      const k = fk(raw, candidates || []);
+      if (k) return k;
+    }
+    return pickCatalogCol(candidates || [], fallback);
+  }
 
   const aliasMap = {
-    group: ["Procesu_grupa", "procesu_grupa", "Procesu grupa", "group", "procGroup", "procesuGrupa"],
+    group: ["Procesa_grupa", "procesa_grupa", "Procesu_grupa", "procesu_grupa", "Procesu grupa", "group", "procGroup", "procesuGrupa"],
     taskNo: ["Uzdevuma_Nr.", "uzdevuma_nr", "Uzdevuma Nr.", "taskNo"],
     task: ["Uzdevums", "uzdevums", "task"],
     processNo: ["Procesa_Nr.", "procesa_nr", "Procesa Nr.", "processNo"],
@@ -172,7 +183,7 @@
       idKey,
       matchKeys,
       raw: d,
-      group: normGroup(gv(d, ["procesu_grupa", "Procesu grupa", "group", "procGroup", "procesuGrupa"])),
+      group: normGroup(gv(d, ["Procesa_grupa", "procesa_grupa", "procesu_grupa", "Procesu grupa", "group", "procGroup", "procesuGrupa"])),
       taskNo: gv(d, ["Uzdevuma_Nr.", "uzdevuma_nr", "Uzdevuma Nr.", "taskNo"]),
       task: gv(d, ["Uzdevums", "uzdevums", "task"]),
       processNo: gv(d, ["procesa_nr", "Procesa_Nr.", "Procesa Nr.", "processNo", "Procesa_numurs", "procesa_numurs"]),
@@ -197,9 +208,18 @@
   }
 
   async function load() {
-    const { data, error } = await supabaseClient.from(TABLE).select("*");
-    if (error) throw error;
-    const rows = data || [];
+    const chunk = 1000;
+    let from = 0;
+    let rows = [];
+    while (true) {
+      const to = from + chunk - 1;
+      const { data, error } = await supabaseClient.from(TABLE).select("*").range(from, to);
+      if (error) throw error;
+      const part = data || [];
+      rows = rows.concat(part);
+      if (part.length < chunk) break;
+      from += chunk;
+    }
 
     dbCols = new Set();
     rows.forEach((r) => {
@@ -269,12 +289,21 @@
   }
 
   function mapCatalogRow(r) {
-    const key = "Galaproduktu_veida_Nr.";
+    const key = pickCatalogRowCol(
+      r,
+      ["Procesa_galaprodukta_Nr.", "Galaproduktu_veida_Nr."],
+      "Procesa_galaprodukta_Nr."
+    );
+    const typeCol = pickCatalogRowCol(
+      r,
+      ["Procesa_galaprodukti", "Galaprodukta_veids"],
+      "Procesa_galaprodukti"
+    );
     return {
       key,
       id: gv(r, [key]),
-      typeNo: gv(r, [key]),
-      type: gv(r, ["Galaprodukta_veids"]),
+      typeNo: gv(r, ["Procesa_galaprodukta_Nr.", "Galaproduktu_veida_Nr."]),
+      type: gv(r, [typeCol, "Procesa_galaprodukti", "Galaprodukta_veids"]),
       unit: gv(r, [
         "Procesa_izpilditajs-patstaviga_strukturvieniba",
         "Procesa_izpilditajs_patstaviga_strukturvieniba",
@@ -294,6 +323,9 @@
       ]),
       taskNo: gv(r, ["Uzdevuma_Nr."]),
       procNo: gv(r, ["Procesa_Nr."]),
+      process: gv(r, ["Process", "Procesi, kas nodrošina uzdevuma dzīves ciklu", "processLife"]),
+      group: gv(r, ["Procesa_grupa", "Procesu_grupa", "procesa_grupa", "procesu_grupa", "group"]),
+      darbibasJoma: gv(r, ["Darbibas_joma", "darbibas_joma", "Darbības joma", "darbibasJoma"]),
       /** Sensitīvitātes pakāpe / sasaiste ar korupcijas riskiem (ja kolonna ir DB) */
       sensitivity: gv(r, [
         "Sensitivitates_pakape",
@@ -345,18 +377,26 @@
     ];
     const unitCol = pickCatalogCol(unitCandidates, "Procesa_izpilditajs-patstaviga_strukturvieniba");
     const deptCol = pickCatalogCol(deptCandidates, "Dala_nodala");
+    const typeNoCol = pickCatalogCol(["Procesa_galaprodukta_Nr.", "Galaproduktu_veida_Nr."], "Procesa_galaprodukta_Nr.");
+    const typeCol = pickCatalogCol(["Procesa_galaprodukti", "Galaprodukta_veids"], "Procesa_galaprodukti");
+    const processCol = pickCatalogCol(["Process", "process", "Procesi, kas nodrošina uzdevuma dzīves ciklu"], null);
+    const groupCol = pickCatalogCol(["Procesa_grupa", "Procesu_grupa", "procesa_grupa", "procesu_grupa", "group"], null);
+    const jomaCol = pickCatalogCol(["Darbibas_joma", "darbibas_joma", "Darbības joma", "darbibasJoma"], null);
 
     const payload = {
-      "Galaproduktu_veida_Nr.": String(row.typeNo || "").trim(),
-      "Galaprodukta_veids": String(row.type || "").trim(),
+      [typeNoCol]: String(row.typeNo || "").trim(),
+      [typeCol]: String(row.type || "").trim(),
       [unitCol]: String(row.unit || "").trim(),
       "Uzdevuma_Nr.": String(row.taskNo || "").trim(),
       "Procesa_Nr.": String(row.procNo || "").trim(),
       [deptCol]: String(row.department || "").trim(),
       "Papildu informācija": String(row.additionalInfo || "").trim(),
     };
-    if (!payload["Galaproduktu_veida_Nr."] || !payload["Galaprodukta_veids"]) {
-      throw new Error("Galaproduktu veida Nr. un Galaprodukta veids ir obligāti.");
+    if (processCol) payload[processCol] = String(row.process || "").trim();
+    if (groupCol) payload[groupCol] = String(row.group || "").trim();
+    if (jomaCol) payload[jomaCol] = String(row.darbibasJoma || "").trim();
+    if (!String(payload[typeCol] || "").trim()) {
+      throw new Error("Galaprodukta veids ir obligāts.");
     }
     const { data, error } = await supabaseClient
       .from(CATALOG_TABLE)
@@ -369,7 +409,9 @@
   }
 
   async function updateCatalog(current, row) {
-    const key = current && current.key ? current.key : "Galaproduktu_veida_Nr.";
+    const key = current && current.key
+      ? current.key
+      : pickCatalogCol(["Procesa_galaprodukta_Nr.", "Galaproduktu_veida_Nr."], "Procesa_galaprodukta_Nr.");
     const id = current ? current.id : null;
     if (!id) throw new Error("Nav kataloga primārās atslēgas.");
 
@@ -391,16 +433,23 @@
     ];
     const unitCol = pickCatalogCol(unitCandidates, "Procesa_izpilditajs-patstaviga_strukturvieniba");
     const deptCol = pickCatalogCol(deptCandidates, "Dala_nodala");
+    const typeCol = pickCatalogCol(["Procesa_galaprodukti", "Galaprodukta_veids"], "Procesa_galaprodukti");
+    const processCol = pickCatalogCol(["Process", "process", "Procesi, kas nodrošina uzdevuma dzīves ciklu"], null);
+    const groupCol = pickCatalogCol(["Procesa_grupa", "Procesu_grupa", "procesa_grupa", "procesu_grupa", "group"], null);
+    const jomaCol = pickCatalogCol(["Darbibas_joma", "darbibas_joma", "Darbības joma", "darbibasJoma"], null);
 
     const payload = {
-      "Galaprodukta_veids": String(row.type || "").trim(),
+      [typeCol]: String(row.type || "").trim(),
       [unitCol]: String(row.unit || "").trim(),
       "Uzdevuma_Nr.": String(row.taskNo || "").trim(),
       "Procesa_Nr.": String(row.procNo || "").trim(),
       [deptCol]: String(row.department || "").trim(),
       "Papildu informācija": String(row.additionalInfo || "").trim(),
     };
-    if (!payload["Galaprodukta_veids"]) {
+    if (processCol) payload[processCol] = String(row.process || "").trim();
+    if (groupCol) payload[groupCol] = String(row.group || "").trim();
+    if (jomaCol) payload[jomaCol] = String(row.darbibasJoma || "").trim();
+    if (!String(payload[typeCol] || "").trim()) {
       throw new Error("Galaprodukta veids ir obligāts.");
     }
     const { data, error } = await supabaseClient
@@ -415,7 +464,9 @@
   }
 
   async function removeCatalog(current) {
-    const key = current && current.key ? current.key : "Galaproduktu_veida_Nr.";
+    const key = current && current.key
+      ? current.key
+      : pickCatalogCol(["Procesa_galaprodukta_Nr.", "Galaproduktu_veida_Nr."], "Procesa_galaprodukta_Nr.");
     const id = current ? current.id : null;
     if (!id) throw new Error("Nav kataloga primārās atslēgas dzēšanai.");
     const { data, error } = await supabaseClient

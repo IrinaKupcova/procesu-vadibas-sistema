@@ -173,13 +173,13 @@
       processCard.id = "processOutputStatsCard";
       processCard.style.cssText = "margin-top:12px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:14px;";
       processCard.innerHTML =
-        '<h3 id="processOutputStatsTitle" style="margin:0 0 8px;font-size:16px;color:#0f172a;cursor:pointer;user-select:none">Galaproduktu veidi procesos</h3>' +
+        '<h3 id="processOutputStatsTitle" style="margin:0 0 8px;font-size:16px;color:#0f172a;cursor:pointer;user-select:none">Procesa galaprodukti procesos</h3>' +
         '<div id="processOutputStatsBody" class="hidden"></div>';
       reportsWrap.appendChild(processCard);
     }
     const processTitle = $("processOutputStatsTitle");
     const processBody = $("processOutputStatsBody");
-    if (processTitle && !processTitle.dataset.baseTitle) processTitle.dataset.baseTitle = "Galaproduktu veidi procesos";
+    if (processTitle && !processTitle.dataset.baseTitle) processTitle.dataset.baseTitle = "Procesa galaprodukti procesos";
     if (processTitle && !processTitle.dataset.toggleBound) {
       processTitle.addEventListener("click", () => {
         processOpen = !processOpen;
@@ -198,8 +198,8 @@
     if (!orgBody) return;
     const processIndex = new Map();
     processRows.forEach((r) => {
-      const k = `${String((r && r.taskNo) || "").trim()}|${String((r && r.processNo) || "").trim()}`;
-      if (k !== "|") processIndex.set(k, r);
+      const k = String((r && r.processNo) || "").trim();
+      if (k) processIndex.set(k, r);
     });
 
     const byUnit = new Map();
@@ -207,14 +207,12 @@
       const unit = String((c && c.unit) || "").trim();
       if (!unit) return;
       if (!byUnit.has(unit)) {
-        byUnit.set(unit, { tasks: new Set(), processGroupPairs: [], services: new Set(), pamat: 0, atbalsta: 0, vadibas: 0 });
+        byUnit.set(unit, { processGroupPairs: [], services: new Set(), pamat: 0, atbalsta: 0, vadibas: 0 });
       }
       const row = byUnit.get(unit);
-      const taskNo = String((c && c.taskNo) || "").trim();
       const procNo = String((c && c.procNo) || "").trim();
-      const key = `${taskNo}|${procNo}`;
+      const key = procNo;
       const p = processIndex.get(key);
-      if (taskNo) row.tasks.add(taskNo);
       if (p) {
         const procLabel = String((p && p.processNo) || "").trim() || procNo || "(bez procesa Nr.)";
         const g = normalizeGroup(p.group);
@@ -234,7 +232,7 @@
     const tbl = document.createElement("table");
     tbl.id = "orgStatsTable";
     tbl.innerHTML =
-      "<thead><tr><th>Struktūrvienība izpildītājs</th><th>Uzdevumi</th><th>Procesi</th><th>pamatdarbības procesi</th><th>atbalsta procesi</th><th>Vadības procesi</th><th>Pakalpojumi</th></tr></thead><tbody></tbody>";
+      "<thead><tr><th>Procesa izpildītājs, pārvalde</th><th>Procesi</th><th>Pamatdarbības procesi</th><th>Atbalsta procesi</th><th>Vadības procesi</th><th>Pakalpojumi</th></tr></thead><tbody></tbody>";
     const tb = tbl.querySelector("tbody");
     Array.from(byUnit.keys()).sort((a, b) => a.localeCompare(b, "lv")).forEach((unit) => {
       const x = byUnit.get(unit);
@@ -242,11 +240,11 @@
       const groupedList = `<strong>Procesi kopā: ${processUnique.size}</strong>`;
       const tr = document.createElement("tr");
       tr.innerHTML =
-        `<td>${unit}</td><td>${x.tasks.size}</td><td>${groupedList || "-"}</td><td>${x.pamat}</td><td>${x.atbalsta}</td><td>${x.vadibas}</td><td>${x.services.size}</td>`;
+        `<td>${unit}</td><td>${groupedList || "-"}</td><td>${x.pamat}</td><td>${x.atbalsta}</td><td>${x.vadibas}</td><td>${x.services.size}</td>`;
       tb.appendChild(tr);
     });
     const hint = $("orgStatsHint");
-    if (hint) hint.textContent = "Statistika pēc struktūrvienības izpildītāja (no Galaproduktu veidu kataloga).";
+    if (hint) hint.textContent = "Statistika pēc procesa izpildītāja, pārvaldes (no Galaproduktu kataloga).";
     orgBody.appendChild(tbl);
     ensureHeaderFilters("orgStatsTable", "org");
     refreshFilterOptions("orgStatsTable", "org");
@@ -257,9 +255,8 @@
     if (!processBody) return;
     const byProc = new Map();
     processRows.forEach((r) => {
-      const taskNo = String((r && r.taskNo) || "").trim();
       const procNo = String((r && r.processNo) || "").trim();
-      const key = `${taskNo}|${procNo}`;
+      const key = procNo;
       if (!byProc.has(key)) {
         byProc.set(key, {
           processLabel: [procNo, String((r && r.process) || "").trim()].filter(Boolean).join(" - ") || procNo || "(bez procesa)",
@@ -269,7 +266,7 @@
       }
     });
     catalogRows.forEach((c) => {
-      const key = `${String((c && c.taskNo) || "").trim()}|${String((c && c.procNo) || "").trim()}`;
+      const key = String((c && c.procNo) || "").trim();
       if (!byProc.has(key)) {
         byProc.set(key, { processLabel: String((c && c.procNo) || "").trim() || "(bez procesa)", outputs: new Set(), executors: new Set() });
       }
@@ -284,7 +281,7 @@
     if (old && old.parentElement) old.parentElement.removeChild(old);
     const tbl = document.createElement("table");
     tbl.id = "processOutputStatsTable";
-    tbl.innerHTML = "<thead><tr><th>Process</th><th>Galaproduktu veidi (skaits)</th><th>Izpildītāji (skaits)</th></tr></thead><tbody></tbody>";
+    tbl.innerHTML = "<thead><tr><th>Process</th><th>Procesa galaprodukti (skaits)</th><th>Procesa izpildītāji, pārvaldes (skaits)</th></tr></thead><tbody></tbody>";
     const tb = tbl.querySelector("tbody");
     Array.from(byProc.values()).sort((a, b) => a.processLabel.localeCompare(b.processLabel, "lv")).forEach((x) => {
       const tr = document.createElement("tr");

@@ -1,0 +1,689 @@
+Procesa_grupa,Darbibas_joma,Process,Procesa_galaprodukti,Procesa_izpilditajs-patstaviga_strukturvieniba
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Reģistrēts/ nav reģistrēts saimnieciskās darbības veicējs,NP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Izslēgta NM saimnieciskā darbība,NP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Apturēta  NM saimnieciskā darbība,NNVP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Atjaunota NM saimnieciskā darbība,NNVP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Reģistrēta/ nav reģistrēta struktūrvienība,NP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Izslēgta/ nav izslēgta struktūrvienība no reģistra,NP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Reģistrēts/ nav reģistrēts mikrouzņēmumu nodokļa maksātājs,NP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,"Reģistrēta ""Paziņotā saimnieciskā darbība""",NP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Reģistrēts/ nav reģistrēts samazinātās patentmaksas maksātājs,NP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Veiktas izmaiņas samazinātās patentmaksas maksātāja datos,NP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,NM reģistrēts/ nav reģistrēts PVN maksātāju reģistrā,NP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,NM izslēgts no PVN maksātāju reģistra,NP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,NM izslēgts no PVN maksātāju reģistra,NNVP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Reģistrēts kā NILLTPFN likuma subjekts,NSUP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Reģistrēt/ nav reģistrēts azartspēļu automāts un iekārta,NSUP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Reģistrēts/ nav reģistrēts stipendijas nolikums,NP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Reģistrēta/ nav reģistrēta elektroniskā ierīce vai iekārta,NNVP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Noņemta no uzskaites elektroniskā ierīce vai iekārta,NNVP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Reģistrēts/ nav reģistrēts elektronisko ierīču un iekārtu apkalpojošais dienests,NNVP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Elektronisko ierīču un iekārtu apkalpojošais dienests izslēgts no reģistra,NNVP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Reģistrēta/ nav reģistrēta atbilstības pārbaudes institūcija,NNVP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Atbilstības pārbaudes institūcija izslēgta no reģistra,NNVP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Reģistrētas kvītis un biļetes,NP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Persona iekļauta riska personu sarakstā,NP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Persona izslēgta no VID riska personu saraksta,NP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Adrese iekļauta VID riska adrešu sarakstā,NP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Adrese izslēgta no riska adrešu saraksta,NP
+Pamatdarbība,Muitas lietu administrēšana,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Reģistrēts EORI un hoc numurs,MP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Reģistrētas stingrās uzskaites plombas ,NP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Mainīts rezidenta statuss,NP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Reģistrēts/ nav reģistrēts NM norēķinu konts,NP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Slēgts NM norēķinu konts,NP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Reģistrēts SDI konts ,NP
+Pamatdarbība,Reģistri un datu uzskaite,Subjektu un objektu reģistrēšana un to datu izmaiņu veikšana,Slēgts SDI konts,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Algas nodokļa grāmatiņu administrēšana,Piešķirta algas nodokļa grāmatiņa,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Algas nodokļa grāmatiņu administrēšana,Piešķirta algas nodokļa grāmatiņa,SNASLD
+Pamatdarbība,Nodokļu un nodevu administrēšana,Algas nodokļa grāmatiņu administrēšana,Veiktas izmaiņas par galveno ienākumu gūšanas vietu,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Algas nodokļa grāmatiņu administrēšana,Veiktas izmaiņas par galveno ienākumu gūšanas vietu,SNASLD
+Pamatdarbība,Nodokļu un nodevu administrēšana,Algas nodokļa grāmatiņu administrēšana,Veiktas izmaiņas par apgādāmajiem,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Algas nodokļa grāmatiņu administrēšana,Veiktas izmaiņas par apgādāmajiem,SNASLD
+Pamatdarbība,Nodokļu un nodevu administrēšana,Algas nodokļa grāmatiņu administrēšana,Veiktas izmaiņas par speciālajiem nosacījumiem,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Algas nodokļa grāmatiņu administrēšana,Veiktas izmaiņas par speciālajiem nosacījumiem,SNASLD
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta UIN deklarācija,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemts/ nav pieņemts darba devēja ziņojums,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta GID,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemts/ nav pieņemts paziņojums par FP izmaksātajām summām,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta PVN deklarācija par taksācijas gadu,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta PVN deklarācija par taksācijas periodu,NP
+Pamatdarbība,Akcīzes preču aprites administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta akcīzes nodokļa deklarācija,NP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Deklarāciju administrēšana,Pieņemta/ nav pieņemta valsts amatpersonu deklarācija,NP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Deklarāciju administrēšana,Pieņemta/ nav pieņemta valsts amatpersonu deklarācija,SNASLD
+Pamatdarbība,Administratīvā atbildība un sankcijas,Deklarāciju administrēšana,Pieņemts/ nav pieņemts valsts amatpersonu saraksts,NP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Deklarāciju administrēšana,Pieņemts/ nav pieņemts valsts amatpersonu saraksts,SNASLD
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemts/ nav pieņemts zinojums par sezonas laukstrādniekiem,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemts/ nav pieņemts pašnodarbinātā ziņojums,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemts/ nav pieņemts pārskats par aprēķināto azartspēļu nodokli,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemts/ nav pieņemts pārskats par aprēķināto izložu nodokli,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta pārskata perioda deklarācija par ienākumu no kapitāla pieauguma,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta gada kapitāla pieauguma ienākuma precizēšanas deklarācija,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,"Pieņemta/ nav pieņemta informācija par darījumiem, kas uzsākti, bet nav pabeigti vienā taksācijas gadā",NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemts/ nav pieņemts UIN pārskats par nerezidenta gūtajiem ienākumiem un samaksāto nodokli LR,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemts/ nav pieņemts IIN pārskats par FP – nerezidenta gūtajiem ienākumiem un samaksāto nodokli LR,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta numerācijas lietošanas tiesību ikgadējās valsts nodevas deklarācija,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemts/ nav pieņemts dabas resursu nodokļa pārskats,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta autoratlīdzības deklarācija,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemts/ nav pieņemts UIN piemaksas aprēķins kredītiestādēm un patērētāju kreditēšanas pakalpojumu sniedzējiem,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta maksāšanas perioda solidaritātes iemaksas deklarācija,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta solidaritātes iemaksas avansa maksāšanas  deklarācija,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Peņemts/ nav pieņemts paziņojums par PVN,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemts/ nav pieņemts paziņojums par valsts kapitāla izmantošanu,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta tonnāžas nodokļa deklarācija,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta elektroenerģijas nodokļa deklarācija,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemtas ziņas par darba ņēmējiem,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta mikrouzņēmumu nodokļa deklarācija,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta finanšu stabilitātes nodevas deklarācija,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta informācija par akciju pirmpirkuma tiesībām,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta informācija par aizdevumiem FP,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta mantiskā stāvokļa deklarācija,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta informācija no LAD par atbalsta maksājumiem JP,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemts/ nav pieņemts pārskats par nodokļa atlaižu summu,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemts/ nav pieņemts uzņēmumu gada pārskats,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta deklarācija par skaidrā naudā veiktajiem darījumiem,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemts/ nav pieņemts paziņojums par PVN par izmaksām trešajām valstīm,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemts/ nav pieņemts labojumu pārskats par preču piegādēm un sniegtajiem pakalpojumiem ES teritorijā,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemts/ nav pieņemts pārskats par numurēto un VID reģistrēto kvīšu izlietojumu,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemts/ nav pieņemts pārskats par numurēto un VID reģistrēto biļešu izlietojumu,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemts/ nav pieņemts pārskats par stingrās uzsaites plombu izlietojumu,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta informācija par tirdzniecības dalībniekiem,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemta/ nav pieņemta informācija par izsniegtajām atļaujām ielu tirdzniecībai un ielu tirdzniecības organizēšanai,NP
+Pamatdarbība,Akcīzes preču aprites administrēšana,Deklarāciju administrēšana,Pieņemti/ nav pieņemti akcīzes preču aprites pārskati,NP
+Pamatdarbība,Akcīzes preču aprites administrēšana,Deklarāciju administrēšana,Pieņemti/ nav pieņemti akcīzes nodokļa marku aprites pārskati,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,"Pieņemta/ nav pieņemta informatīvā deklarācija (ziņas, ziņojums, paziņojums)",NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemts/ nav pieņemts pārskats par nekustamā īpašuma nodokļa atlaižu piemērošanu,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Pieņemts/ nav pieņemts pārskats par tiešo nodokļu atlaižu summu piemērošanu,NP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Konsultāciju sniegšana  klientam,Sniegta konsultācija pa tālruni nodokļu jautājumos,NP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Konsultāciju sniegšana klientam,Sniegta konsultācija pa tālruni muitas jautājumos,MP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Konsultāciju sniegšana klientam,Sniegta konsultācija klātienē VID KAC ,NP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Konsultāciju sniegšana klientam,Sniegta konsultācija rakstiski,MP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Konsultāciju sniegšana klientam,Sniegta konsultācija rakstiski,NP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Konsultāciju sniegšana klientam,Sniegta konsultācija rakstiski,NSUP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Konsultāciju sniegšana klientam,Sniegta konsultācija rakstiski,NNVP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Konsultāciju sniegšana klientam,Sniegta konsultācija rakstiski,SNASLD
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Konsultāciju sniegšana klientam,Sniegta padziļinātā konsultācija par DK,NP
+Pamatdarbība,"Komunikācija, konsultēšana, informēšana un iesniegumu izskatīšana",Iesniegumu izskatīšana,Sniegta atbilde uz iesniegumu,NP
+Pamatdarbība,"Komunikācija, konsultēšana, informēšana un iesniegumu izskatīšana",Iesniegumu izskatīšana,Sniegta atbilde uz iesniegumu,MP
+Pamatdarbība,"Komunikācija, konsultēšana, informēšana un iesniegumu izskatīšana",Iesniegumu izskatīšana,Sniegta atbilde uz iesniegumu,NNVP
+Pamatdarbība,"Komunikācija, konsultēšana, informēšana un iesniegumu izskatīšana",Iesniegumu izskatīšana,Sniegta atbilde uz iesniegumu,NSUP
+Pamatdarbība,"Komunikācija, konsultēšana, informēšana un iesniegumu izskatīšana",Iesniegumu izskatīšana,Sniegta atbilde uz iesniegumu,NMUAPP
+Pamatdarbība,"Komunikācija, konsultēšana, informēšana un iesniegumu izskatīšana",Iesniegumu izskatīšana,Sniegta atbilde uz iesniegumu,JPSIP
+Pamatdarbība,"Komunikācija, konsultēšana, informēšana un iesniegumu izskatīšana",Iesniegumu izskatīšana,Sniegta atbilde uz iesniegumu,SNASLD
+Pamatdarbība,"Komunikācija, konsultēšana, informēšana un iesniegumu izskatīšana",Iesniegumu izskatīšana,Sniegta atbilde uz iesniegumu,AP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavots metodiskais/ informatīvais materiāls klientiem,NP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavots metodiskais/ informatīvais materiāls klientiem,NSUP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavots metodiskais/ informatīvais materiāls klientiem,NNVP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavots metodiskais/ informatīvais materiāls klientiem,MP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavota informācija ievietošanai VID ārējā tīmekļvietnē,NP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavota informācija ievietošanai VID ārējā tīmekļvietnē,MP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavota informācija ievietošanai VID ārējā tīmekļvietnē,NNVP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavota informācija ievietošanai VID ārējā tīmekļvietnē,NSUP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavota informācija ievietošanai VID ārējā tīmekļvietnē,NMUAPP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavota informācija ievietošanai VID ārējā tīmekļvietnē,JPSIP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavota informācija ievietošanai VID ārējā tīmekļvietnē,APP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavota informācija ievietošanai VID ārējā tīmekļvietnē,AP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavota informācija ievietošanai VID ārējā tīmekļvietnē,IKD
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavota informācija publicēšanai citos informācijas avotos,NP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavota informācija publicēšanai citos informācijas avotos,MP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavota informācija publicēšanai citos informācijas avotos,NNVP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavota informācija publicēšanai citos informācijas avotos,NSUP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavota informācija publicēšanai citos informācijas avotos,NMUAPP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavota informācija publicēšanai citos informācijas avotos,JPSIP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavota informācija publicēšanai citos informācijas avotos,APP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavota informācija publicēšanai citos informācijas avotos,AP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavota informācija publicēšanai citos informācijas avotos,IKD
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavota informācija čatbotam Tomam,NP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Sagatavota informācija čatbotam Tomam,MP
+Pamatdarbība,"Komunikācija, konsultēšana un informēšana",Informācijas nodrošināšana klientiem,Novadīts klientiem seminārs/ mācības,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,NM maksājumu administrēšana ,Veikta/ nav veikta maksājumu (neieskaitot muitas maksājumus) atmaksa,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,NM maksājumu administrēšana ,Veikta/ nav veikta maksājumu (neieskaitot muitas maksājumus) atmaksa,SNASLD
+Pamatdarbība,Muitas lietu administrēšana,NM maksājumu administrēšana ,Veikta muitas maksājumu atmaksa,MP
+Pamatdarbība,Nodokļu un nodevu administrēšana,NM maksājumu administrēšana ,Dzēsta pārmaksa,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,NM maksājumu administrēšana ,Dzēsta pārmaksa,MP
+Pamatdarbība,Nodokļu un nodevu administrēšana,NM maksājumu administrēšana ,Maksājums novirzīts parādu saistību segšanai,NP
+Pamatdarbība,"Politika, metodika, analītika un regulējums",Datu analizēšana,Veikts PVN plaisas aprēķins,NMUAPP
+Pamatdarbība,"Politika, metodika, analītika un regulējums",Datu analizēšana,Veikts VSAOI plaisas aprēķins,NMUAPP
+Pamatdarbība,"Politika, metodika, analītika un regulējums",Datu analizēšana,Veikts IIN plaisas aprēķins,NMUAPP
+Pamatdarbība,"Politika, metodika, analītika un regulējums",Datu analizēšana,Aktualizēts NM reitinga novērtējums,NMUAPP
+Pamatdarbība,"Politika, metodika, analītika un regulējums",Datu analizēšana,Aktualizēti NM segmenti,NMUAPP
+Pamatdarbība,"Politika, metodika, analītika un regulējums",Datu analizēšana,Veikts ceturkšņa monitorings,NMUAPP
+Pamatdarbība,"Politika, metodika, analītika un regulējums",Datu analizēšana,Veikta nokavēto maksājumu apjoma un struktūras analīze,NNVP
+Pamatdarbība,"Politika, metodika, analītika un regulējums",Datu analizēšana,Veikts normatīvā akta projekta fiskālās ietekmes novērtējums,NMUAPP
+Pamatdarbība,"Politika, metodika, analītika un regulējums",Datu analizēšana,Veikta VID administrēto kopbudžeta ieņēmumu analīze,NMUAPP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Atļauju un licenču administrēšana,Izsniegta/ nav izsniegta atļauja par UIN nepiemērošanu darījumiem,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Atļauju un licenču administrēšana,Veiktas izmaiņas atļaujā par UIN nepiemērošanu darījumiem,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Atļauju un licenču administrēšana,Izsniegta/ nav izsniegta atļauja īpaša PVN režīma piemērošanai un PVN atmaksāšanai 3.valsts FP,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Atļauju un licenču administrēšana,Veiktas izmaiņas atļaujā īpaša PVN režīma piemērošanai un PVN atmaksāšanai 3.valsts FP,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Atļauju un licenču administrēšana,Izsniegta/ nav izsniegta ārpakalpojuma grāmatveža licence,NSUP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Atļauju un licenču administrēšana,Veiktas izmaiņas ārpakalpojuma grāmatveža licencē,NSUP
+Pamatdarbība,Nenodokļu maksājumi un īpaši regulētās jomas,Atļauju un licenču administrēšana,Izsniegta/ nav izsniegta atļauja preču un pakalpojumu loterijai,NSUP
+Pamatdarbība,Nenodokļu maksājumi un īpaši regulētās jomas,Atļauju un licenču administrēšana,Veiktas izmaiņas atļaujā preču un pakalpojumu loterijai,NSUP
+Pamatdarbība,Nenodokļu maksājumi un īpaši regulētās jomas,Atļauju un licenču administrēšana,Izsniegta/ nav izsniegta azartspēļu un izložu licence,NSUP
+Pamatdarbība,Nenodokļu maksājumi un īpaši regulētās jomas,Atļauju un licenču administrēšana,Veiktas izmaiņas azartspēļu un izložu licencē,NSUP
+Pamatdarbība,Akcīzes preču aprites administrēšana,Atļauju un licenču administrēšana,Izsniegta/ nav izsniegta atļauja vai licence darbībām ar akcīzes precēm,NP
+Pamatdarbība,Akcīzes preču aprites administrēšana,Atļauju un licenču administrēšana,Veiktas izmaiņas atļaujā vai licencē darbībām ar akcīzes precēm,NP
+Pamatdarbība,Muitas lietu administrēšana,Atļauju un licenču administrēšana,Izsniegta/ nav izsniegta vispārējā galvojumu un atzītā uzņēmēju atļauja,MP
+Pamatdarbība,Muitas lietu administrēšana,Atļauju un licenču administrēšana,Veiktas izmaiņas vispārējo galvojumu un atzīto uzņēmēju atļaujā,MP
+Pamatdarbība,Muitas lietu administrēšana,Atļauju un licenču administrēšana,Izsniegta/ nav izsniegta īpašo procedūru un  vienkāršojumu atļauja,MP
+Pamatdarbība,Muitas lietu administrēšana,Atļauju un licenču administrēšana,Veiktas izmaiņas īpašo procedūru un  vienkāršojumu atļaujā,MP
+Pamatdarbība,"Komunikācija, konsultēšana, informēšana un iesniegumu izskatīšana",Dokumentu ar juridisku spēku izsniegšana,Izsniegta/ nav izsniegta izziņa,NP
+Pamatdarbība,"Komunikācija, konsultēšana, informēšana un iesniegumu izskatīšana",Dokumentu ar juridisku spēku izsniegšana,Izsniegta/ nav izsniegta izziņa,SNASLD
+Pamatdarbība,"Komunikācija, konsultēšana, informēšana un iesniegumu izskatīšana",Dokumentu ar juridisku spēku izsniegšana,Izsniegta/ nav izsniegta uzziņa,JPSIP
+Pamatdarbība,"Komunikācija, konsultēšana, informēšana un iesniegumu izskatīšana",Dokumentu ar juridisku spēku izsniegšana,Izsniegta/ nav izsniegta uzziņa,MP
+Pamatdarbība,"Komunikācija, konsultēšana, informēšana un iesniegumu izskatīšana",Dokumentu ar juridisku spēku izsniegšana,Izsniegta/ nav izsniegta uzziņa,NP
+Pamatdarbība,"Komunikācija, konsultēšana, informēšana un iesniegumu izskatīšana",Dokumentu ar juridisku spēku izsniegšana,Izsniegta/ nav izsniegta uzziņa,NSUP
+Pamatdarbība,"Komunikācija, konsultēšana, informēšana un iesniegumu izskatīšana",Dokumentu ar juridisku spēku izsniegšana,Izsniegta/ nav izsniegta uzziņa,NNVP
+Pamatdarbība,"Komunikācija, konsultēšana, informēšana un iesniegumu izskatīšana",Dokumentu ar juridisku spēku izsniegšana,Izsniegts/ nav izsniegts apliecinājums,NP
+Pamatdarbība,"Komunikācija, konsultēšana, informēšana un iesniegumu izskatīšana",Dokumentu ar juridisku spēku izsniegšana,Izsniegts/ nav izsniegts apliecinājums,SNASLD
+Pamatdarbība,Juridiskās funkcijas un tiesvedība,Pirmstiesas strīdu lietu izskatīšana,Pārsūdzēts lēmums,JPSIP
+Pamatdarbība,Juridiskās funkcijas un tiesvedība,Pirmstiesas strīdu lietu izskatīšana,Pārsūdzēts lēmums,SNASLD
+Pamatdarbība,Juridiskās funkcijas un tiesvedība,Pirmstiesas strīdu lietu izskatīšana,Lēmums atstāts negrozīts,JPSIP
+Pamatdarbība,Juridiskās funkcijas un tiesvedība,Pirmstiesas strīdu lietu izskatīšana,Lēmums atstāts negrozīts,SNASLD
+Pamatdarbība,Muitas lietu administrēšana,Muitas tarifu un nodokļu maksājumu piemērošana,Noteikta preču izcelsme,MP
+Pamatdarbība,Muitas lietu administrēšana,Muitas tarifu un nodokļu maksājumu piemērošana,Klasificēta prece,MP
+Pamatdarbība,Muitas lietu administrēšana,Muitas tarifu un nodokļu maksājumu piemērošana,Noteikta preču muitas vērtība,MP
+Pamatdarbība,Muitas lietu administrēšana,Muitas tarifu un nodokļu maksājumu piemērošana,Noteikts muitas maksājums,MP
+Pamatdarbība,Akcīzes preču aprites administrēšana,Akcīzes nodokļa nodrošinājuma administrēšana,Administrēts akcīzes nodokļa vienreizējais nodrošinājums,NP
+Pamatdarbība,Akcīzes preču aprites administrēšana,Akcīzes nodokļa nodrošinājuma administrēšana,Administrēts akcīzes nodokļa vispārējais nodrošinājums,NP
+Pamatdarbība,Akcīzes preču aprites administrēšana,Akcīzes nodokļa nodrošinājuma administrēšana,Piešķirts nodrošinātāja statuss kredītistādēm,NP
+Pamatdarbība,Akcīzes preču aprites administrēšana,Akcīzes nodokļa nodrošinājuma administrēšana,Veikta akcīzes nodokļa nodrošinājumam iemaksātās drošības naudas atmaksa,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,"Saistību izpildes veicināšana 
+",Pagarināts/ nav pagarināts deklarāciju iesniegšanas termiņš,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,"Saistību izpildes veicināšana 
+",Pagarināts/ nav pagarināts deklarāciju iesniegšanas termiņš,SNASLD
+Pamatdarbība,Nodokļu un nodevu administrēšana,"Saistību izpildes veicināšana 
+",Pagarināts/ nav pagarināts nodokļu maksāšanas termiņš ,NNVP
+Pamatdarbība,Nodokļu un nodevu administrēšana,"Saistību izpildes veicināšana 
+",Pagarināts/ nav pagarināts nodokļu maksāšanas termiņš ,SNASLD
+Pamatdarbība,Muitas lietu administrēšana,"Saistību izpildes veicināšana 
+",Pagarināts/ nav pagarināts muitas maksājumu maksāšanas termiņš ,MP
+Pamatdarbība,Nodokļu un nodevu administrēšana,"Saistību izpildes veicināšana 
+",Noslēgts/ nav noslēgts vienošanās līgums un cits administratīvais līgums ar NM,NNVP
+Pamatdarbība,Nodokļu un nodevu administrēšana,"Saistību izpildes veicināšana 
+",Noslēgts/ nav noslēgts vienošanās līgums un cits administratīvais līgums ar NM,JPSIP
+Pamatdarbība,Nodokļu un nodevu administrēšana,"Saistību izpildes veicināšana 
+",Noslēgts/ nav noslēgts vienošanās līgums un cits administratīvais līgums ar NM,SNASLD
+Pamatdarbība,Nodokļu un nodevu administrēšana,"Saistību izpildes veicināšana 
+",Veikts darbs ar nodokļu un informatīvo deklarāciju neiesniedzējiem,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,"Saistību izpildes veicināšana 
+",Veikts darbs ar nodokļu un informatīvo deklarāciju neiesniedzējiem,SNASLD
+Pamatdarbība,Nodokļu un nodevu administrēšana,"Saistību izpildes veicināšana 
+",Veikts darbs ar nodokļu un informatīvo deklarāciju neiesniedzējiem,NSUP
+Pamatdarbība,Akcīzes preču aprites administrēšana,"Saistību izpildes veicināšana 
+",Veikts darbs ar akcīzes nodokļa deklarāciju neiesniedzējiem,NP
+Pamatdarbība,Administratīvā atbildība un sankcijas,"Saistību izpildes veicināšana 
+",Veikts darbs ar valsts amatpersonu deklarāciju neiesniedzējiem,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,"Saistību izpildes veicināšana 
+",Veikts darbs ar NM par labprātīgu parādu samaksu līdz bezstrīda piedziņas uzsākšanai ,NNVP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Saistību izpildes veicināšana ,Ķīlas līgumu noslēgšana,NP
+Pamatdarbība,Akcīzes preču aprites administrēšana,Uzraudzības un kontroles veikšana,Veikta uzraudzība/ kontrole akcīzes jomā,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Uzraudzības un kontroles veikšana,Organizēta komercreģistrā ierakstītas sabiedrības darbības izbeigšana,NNVP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Uzraudzības un kontroles veikšana,Veikta pārbaude publiskas personas institūcijā,NP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Uzraudzības un kontroles veikšana,Veikta pārbaude publiskas personas institūcijā,SNASLD
+Pamatdarbība,Nenodokļu maksājumi un īpaši regulētās jomas,Uzraudzības un kontroles veikšana,"Organizēta biedrības, nodibinājuma darbības izbeigšana ",NP
+Pamatdarbība,Nenodokļu maksājumi un īpaši regulētās jomas,Deklarāciju administrēšana,Veikta valsts ametpersonu deklarācijas datu atbilstības pārbaude,NP
+Pamatdarbība,Iestādes pārvaldība un iekšējā kontrole,Deklarāciju administrēšana,Veikta valsts ametpersonu deklarāciju datu atbilstības pārbaude iestādes pārvaldības ietvaros ,IDP
+Pamatdarbība,Akcīzes preču aprites administrēšana,Deklarāciju administrēšana,Veikta valsts akcīzes nodokļa deklarācijas datu atbilstības pārbaude,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Deklarāciju administrēšana,Veikta nodokļu deklarācijas datu atbilstības pārbaude,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Uzraudzības un kontroles veikšana,Veikts nodokļu audits,NNVP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Uzraudzības un kontroles veikšana,Veikts nodokļu audits,SNASLD
+Pamatdarbība,Nodokļu un nodevu administrēšana,Uzraudzības un kontroles veikšana,Veikta nodokļu kontrole,NNVP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Uzraudzības un kontroles veikšana,Veikta nodokļu kontrole,SNASLD
+Pamatdarbība,Administratīvā atbildība un sankcijas,Uzraudzības un kontroles veikšana,NM domēna vārdu atslēgšana un piekļuves tiesību ierobežošana,NNVP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Uzraudzības un kontroles veikšana,Lēmumu administratīvo pārkāpumu lietās izpildes uzraudzība ,NNVP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Uzraudzības un kontroles veikšana,Pārbaužu veikšana un sankciju piemērošana finanšu iestādēm,NP
+Pamatdarbība,Finanšu noziegumu novēršana,Uzraudzības un kontroles veikšana,Pārbaužu veikšana NILLTPF novēršanas jomā,NSUP
+Pamatdarbība,Nenodokļu maksājumi un īpaši regulētās jomas,Uzraudzības un kontroles veikšana,"Pārbaužu veikšana azartspēļu, t.sk. nelicencēto interaktīvo azartspēļu, izložu, preču un pakalpojumu loteriju jomā",NSUP
+Pamatdarbība,Nenodokļu maksājumi un īpaši regulētās jomas,Uzraudzības un kontroles veikšana,VID administrēto valsts atbalstu piešķiršana un kontrole ,NNVP
+Pamatdarbība,Nenodokļu maksājumi un īpaši regulētās jomas,Sabiedriskā labuma organizācijas statusa administrēšana,Piešķirts/ nav piešķirts SLO statuss,NP
+Pamatdarbība,Nenodokļu maksājumi un īpaši regulētās jomas,Sabiedriskā labuma organizācijas statusa administrēšana,Atņemts SLO statuss,NP
+Pamatdarbība,Nenodokļu maksājumi un īpaši regulētās jomas,Sabiedriskā labuma organizācijas statusa administrēšana,Piešķirta/ nav piešķirta papildu darbības joma,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Nodokļu un tiem pielīdzināto maksājumu  piedziņa,Dzēsts nodokļa parāds,NNVP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Nodokļu un tiem pielīdzināto maksājumu  piedziņa,Piedzīts/ nav piedzīts maksājums,NNVP
+Pamatdarbība,Juridiskās funkcijas un tiesvedība,Procesuālo darbību veikšana NM maksātnespējas un tiesiskās aizsardzības procesos,Reģistrēts kreditoru prasījums,NNVP
+Pamatdarbība,Juridiskās funkcijas un tiesvedība,Procesuālo darbību veikšana NM maksātnespējas un tiesiskās aizsardzības procesos,Iesniegts maksātnespējas procesa pieteikums,NNVP
+Pamatdarbība,Muitas lietu administrēšana,Uzraudzības un kontroles veikšana,Veikts muitas fiziskās kontroles pasākums,MP
+Pamatdarbība,Muitas lietu administrēšana,Uzraudzības un kontroles veikšana,Veikta muitas operācija,MP
+Pamatdarbība,Muitas lietu administrēšana,Uzraudzības un kontroles veikšana,Veikts intelektuālā īpašuma aizsardzības pasākums,MP
+Pamatdarbība,Muitas lietu administrēšana,Uzraudzības un kontroles veikšana,Veikts muitas kontroles pasākums ar darba suni,MP
+Pamatdarbība,Muitas lietu administrēšana,Uzraudzības un kontroles veikšana,"Veikts uzraudzības pasākums precēm, uz kurām attiecināmi pārvietošanas ierobežojumi un aizliegumi",MP
+Pamatdarbība,Muitas lietu administrēšana,Uzraudzības un kontroles veikšana,Veikta kontrole skaidras naudas pārvietošanai pāri muitas robežai,MP
+Pamatdarbība,Muitas lietu administrēšana,Uzraudzības un kontroles veikšana,Veikta aizdomīgu pasta sūtījumu kontrole,MP
+Pamatdarbība,Muitas lietu administrēšana,Uzraudzības un kontroles veikšana,Veikts kontroles pasākums ES kopējās lauksaimniecības politikas ietvaros ,MP
+Pamatdarbība,Muitas lietu administrēšana,Uzraudzības un kontroles veikšana,Veikta muitošanas dokumentu kontrole,MP
+Pamatdarbība,Muitas lietu administrēšana,Uzraudzības un kontroles veikšana,Veikta autopārvadājumu kontrole,MP
+Pamatdarbība,Muitas lietu administrēšana,Uzraudzības un kontroles veikšana,Veikta īpašo procedūru (izņemot tranzīts) un atļauju izpildes uzraudzība,MP
+Pamatdarbība,Muitas lietu administrēšana,Uzraudzības un kontroles veikšana,Veikta eksporta un reeksporta procedūras izpildes  uzraudzība,MP
+Pamatdarbība,Muitas lietu administrēšana,Uzraudzības un kontroles veikšana,Veikta pēcmuitošanas pārbaude un nodokļu kontrole pēc preču laišanas brīvā apgrozībā,MP
+Pamatdarbība,Muitas lietu administrēšana,Uzraudzības un kontroles veikšana,Veikts muitas audits,MP
+Pamatdarbība,Muitas lietu administrēšana,Uzraudzības un kontroles veikšana,Veikta importētāja un atzītā OIM deklarētāja pienākumu izpildes  uzraudzība,MP
+Pamatdarbība,Muitas lietu administrēšana,Uzraudzības un kontroles veikšana,Veikta tranzīta procedūras izpildes uzraudzība ,MP
+Pamatdarbība,Muitas lietu administrēšana,Uzraudzības un kontroles veikšana,Veikta deklarāciju datu atbilstības kontrole muitas informācijas sistēmās,MP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Administratīvā pārkāpuma procesa īstenošana,Pabeigts AP process bez AP lietas uzsākšanas,NP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Administratīvā pārkāpuma procesa īstenošana,Pabeigts AP process bez AP lietas uzsākšanas,MP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Administratīvā pārkāpuma procesa īstenošana,Pabeigts AP process bez AP lietas uzsākšanas,NNVP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Administratīvā pārkāpuma procesa īstenošana,Pabeigts AP process bez AP lietas uzsākšanas,NSUP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Administratīvā pārkāpuma procesa īstenošana,Pabeigts AP process bez AP lietas uzsākšanas,SNASLD
+Pamatdarbība,Administratīvā atbildība un sankcijas,Administratīvā pārkāpuma procesa īstenošana,Pieņemts lēmums par AP procesa izbeigšanu,NP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Administratīvā pārkāpuma procesa īstenošana,Pieņemts lēmums par AP procesa izbeigšanu,MP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Administratīvā pārkāpuma procesa īstenošana,Pieņemts lēmums par AP procesa izbeigšanu,NNVP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Administratīvā pārkāpuma procesa īstenošana,Pieņemts lēmums par AP procesa izbeigšanu,NSUP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Administratīvā pārkāpuma procesa īstenošana,Pieņemts lēmums par AP procesa izbeigšanu,SNASLD
+Pamatdarbība,Administratīvā atbildība un sankcijas,Administratīvā pārkāpuma procesa īstenošana,Pienemts lēmums par soda uzlikšanu/ procesuālo izdevumu piedziņu,NP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Administratīvā pārkāpuma procesa īstenošana,Pienemts lēmums par soda uzlikšanu/ procesuālo izdevumu piedziņu,MP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Administratīvā pārkāpuma procesa īstenošana,Pienemts lēmums par soda uzlikšanu/ procesuālo izdevumu piedziņu,NNVP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Administratīvā pārkāpuma procesa īstenošana,Pienemts lēmums par soda uzlikšanu/ procesuālo izdevumu piedziņu,NSUP
+Pamatdarbība,Administratīvā atbildība un sankcijas,Administratīvā pārkāpuma procesa īstenošana,Pienemts lēmums par soda uzlikšanu/ procesuālo izdevumu piedziņu,SNASLD
+Pamatdarbība,Nenodokļu maksājumi un īpaši regulētās jomas,Fizikālās un fizikāli ķīmiskās ekspertīzes veikšana ,Sniegts eksperta atzinums,MP
+Pamatdarbība,Nodokļu un nodevu administrēšana,VID administrēto maksājumu grāmatvedības uzskaites īstenošana,Sagatavots gada pārskats,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Starptautiskas savstarpējās saskaņošanas procedūras nodrošināšana,Pabeigta starptautiskas savstarpējās saskaņošanas procedūra,NP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Starptautiskas savstarpējās saskaņošanas procedūras nodrošināšana,Pabeigta starptautiskas savstarpējās saskaņošanas procedūra,NNVP
+Pamatdarbība,Nodokļu un nodevu administrēšana,Starptautiskas savstarpējās saskaņošanas procedūras nodrošināšana,Pabeigta starptautiskas savstarpējās saskaņošanas procedūra,JPSIP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Darba aizsardzības nodrošināšana,Nodrošināta darba aizsardzība,APP
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegti priekšlikumi grozījumiem ārējā normatīvajā dokumentā,ITP
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegti priekšlikumi grozījumiem ārējā normatīvajā dokumentā,ISDPD
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegti priekšlikumi grozījumiem ārējā normatīvajā dokumentā,JPSIP
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegti priekšlikumi grozījumiem ārējā normatīvajā dokumentā,MP
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegti priekšlikumi grozījumiem ārējā normatīvajā dokumentā,NNVP
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegti priekšlikumi grozījumiem ārējā normatīvajā dokumentā,NP
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegti priekšlikumi grozījumiem ārējā normatīvajā dokumentā,NSUP
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegti priekšlikumi grozījumiem ārējā normatīvajā dokumentā,NMUAPP
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegti priekšlikumi grozījumiem ārējā normatīvajā dokumentā,IKD
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegti priekšlikumi grozījumiem ārējā normatīvajā dokumentā,SNASLD
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegti priekšlikumi grozījumiem ārējā normatīvajā dokumentā,APP
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegti priekšlikumi grozījumiem ārējā normatīvajā dokumentā,AP
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegts atzinums par ārējā normatīvā dokumenta projektu,ITP
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegts atzinums par ārējā normatīvā dokumenta projektu,ISDPD
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegts atzinums par ārējā normatīvā dokumenta projektu,JPSIP
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegts atzinums par ārējā normatīvā dokumenta projektu,MP
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegts atzinums par ārējā normatīvā dokumenta projektu,NNVP
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegts atzinums par ārējā normatīvā dokumenta projektu,NP
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegts atzinums par ārējā normatīvā dokumenta projektu,NSUP
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegts atzinums par ārējā normatīvā dokumenta projektu,NMUAPP
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegts atzinums par ārējā normatīvā dokumenta projektu,IKD
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegts atzinums par ārējā normatīvā dokumenta projektu,SNASLD
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegts atzinums par ārējā normatīvā dokumenta projektu,APP
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Sniegts atzinums par ārējā normatīvā dokumenta projektu,AP
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Izstrādāts ārējā normatīvā akta vai tā grozījumu projekts,JPSIP
+Atbalsts,"Politika, metodika, analītika un regulējums",Līdzdalības ārējo normatīvo dokumentu izstrādē nodrošināšana,Izstrādāts ārējā normatīvā akta vai tā grozījumu projekts,NP
+Atbalsts,Juridiskās funkcijas un tiesvedība,"VID pārstāvības tiesvedības procesā nodrošināšana
+",Nodrošināta pārstāvība tiesvedības procesā,JPSIP
+Atbalsts,Juridiskās funkcijas un tiesvedība,"VID pārstāvības tiesvedības procesā nodrošināšana
+",Nodrošināta pārstāvība tiesvedības procesā,NP
+Atbalsts,Juridiskās funkcijas un tiesvedība,"VID pārstāvības tiesvedības procesā nodrošināšana
+",Nodrošināta pārstāvība tiesvedības procesā,NNVP
+Atbalsts,Juridiskās funkcijas un tiesvedība,"VID pārstāvības tiesvedības procesā nodrošināšana
+",Nodrošināta pārstāvība tiesvedības procesā,NSUP
+Atbalsts,Juridiskās funkcijas un tiesvedība,"VID pārstāvības tiesvedības procesā nodrošināšana
+",Nodrošināta pārstāvība tiesvedības procesā,SNASLD
+Atbalsts,Juridiskās funkcijas un tiesvedība,"VID pārstāvības tiesvedības procesā nodrošināšana
+",Nodrošināta pārstāvība tiesvedības procesā,APP
+Atbalsts,Juridiskās funkcijas un tiesvedība,"VID pārstāvības tiesvedības procesā nodrošināšana
+",Nodrošināta pārstāvība tiesvedības procesā,IKD
+Atbalsts,Juridiskās funkcijas un tiesvedība,"VID pārstāvības tiesvedības procesā nodrošināšana
+",Nodrošināta pārstāvība tiesvedības procesā,AP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,VID publisko iepirkumu organizēšana,Realizēts/ nav realizēts publiskais iepirkums,NP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,VID publisko iepirkumu organizēšana,Realizēts/ nav realizēts publiskais iepirkums,ITP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,VID publisko iepirkumu organizēšana,Realizēts/ nav realizēts publiskais iepirkums,MP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,VID publisko iepirkumu organizēšana,Realizēts/ nav realizēts publiskais iepirkums,ISDPD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,VID publisko iepirkumu organizēšana,Realizēts/ nav realizēts publiskais iepirkums,AP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,VID publisko iepirkumu organizēšana,Realizēts/ nav realizēts publiskais iepirkums,APP
+Atbalsts,Starpinstitucionālā sadarbība,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgta vai aktualizēta starpresoru vienošanās,MP
+Atbalsts,Starpinstitucionālā sadarbība,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgta vai aktualizēta starpresoru vienošanās,NNVP
+Atbalsts,Starpinstitucionālā sadarbība,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgta vai aktualizēta starpresoru vienošanās,NP
+Atbalsts,Starpinstitucionālā sadarbība,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgta vai aktualizēta starpresoru vienošanās,ITP
+Atbalsts,Starpinstitucionālā sadarbība,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgta vai aktualizēta starpresoru vienošanās,ISDPD
+Atbalsts,Starpinstitucionālā sadarbība,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgta vai aktualizēta starpresoru vienošanās,NSUP
+Atbalsts,Starpinstitucionālā sadarbība,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgta vai aktualizēta starpresoru vienošanās,IKD
+Atbalsts,Starpinstitucionālā sadarbība,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgta vai aktualizēta starpresoru vienošanās,NMUAPP
+Atbalsts,Starpinstitucionālā sadarbība,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgta vai aktualizēta starpresoru vienošanās,SNASLD
+Atbalsts,Starpinstitucionālā sadarbība,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgta vai aktualizēta starpresoru vienošanās,AP
+Atbalsts,Starpinstitucionālā sadarbība,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgts vai aktualizēts sadarbības līgums,MP
+Atbalsts,Starpinstitucionālā sadarbība,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgts vai aktualizēts sadarbības līgums,NNVP
+Atbalsts,Starpinstitucionālā sadarbība,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgts vai aktualizēts sadarbības līgums,NP
+Atbalsts,Starpinstitucionālā sadarbība,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgts vai aktualizēts sadarbības līgums,ITP
+Atbalsts,Starpinstitucionālā sadarbība,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgts vai aktualizēts sadarbības līgums,ISDPD
+Atbalsts,Starpinstitucionālā sadarbība,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgts vai aktualizēts sadarbības līgums,NSUP
+Atbalsts,Starpinstitucionālā sadarbība,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgts vai aktualizēts sadarbības līgums,IKD
+Atbalsts,Starpinstitucionālā sadarbība,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgts vai aktualizēts sadarbības līgums,NMUAPP
+Atbalsts,Starpinstitucionālā sadarbība,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgts vai aktualizēts sadarbības līgums,SNASLD
+Atbalsts,Starpinstitucionālā sadarbība,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgts vai aktualizēts sadarbības līgums,AP
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Sagatavots statistikas pārskats,NP
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Sagatavots statistikas pārskats,NSUP
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Sagatavots statistikas pārskats,MP
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Nodrošināta datu apmaiņa starptautiskā mērogā ,NP
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Nodrošināta datu apmaiņa starptautiskā mērogā ,NNVP
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Nodrošināta datu apmaiņa starptautiskā mērogā ,NSUP
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Nodrošināta datu apmaiņa Latvijas starpiestāžu mērogā,NP
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Nodrošināta datu apmaiņa Latvijas starpiestāžu mērogā,NSUP
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Nodrošināta datu apmaiņa Latvijas starpiestāžu mērogā,NMUAPP
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Nodrošināta datu apmaiņa Latvijas starpiestāžu mērogā,SNASLD
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Sniegta informācija citai iestādei/ organizācijai tās funkciju nodrošināšanai,AP
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Sniegta informācija citai iestādei/ organizācijai tās funkciju nodrošināšanai,APP
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Sniegta informācija citai iestādei/ organizācijai tās funkciju nodrošināšanai,IAD
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Sniegta informācija citai iestādei/ organizācijai tās funkciju nodrošināšanai,IKD
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Sniegta informācija citai iestādei/ organizācijai tās funkciju nodrošināšanai,ITP
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Sniegta informācija citai iestādei/ organizācijai tās funkciju nodrošināšanai,ISDPD
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Sniegta informācija citai iestādei/ organizācijai tās funkciju nodrošināšanai,JPSIP
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Sniegta informācija citai iestādei/ organizācijai tās funkciju nodrošināšanai,MP
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Sniegta informācija citai iestādei/ organizācijai tās funkciju nodrošināšanai,NSUP
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Sniegta informācija citai iestādei/ organizācijai tās funkciju nodrošināšanai,NMUAPP
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Sniegta informācija citai iestādei/ organizācijai tās funkciju nodrošināšanai,NNVP
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Sniegta informācija citai iestādei/ organizācijai tās funkciju nodrošināšanai,NP
+Atbalsts,Starpinstitucionālā sadarbība,Informācijas aprites vai datu apmaiņas nodrošināšana,Sniegta informācija citai iestādei/ organizācijai tās funkciju nodrošināšanai,SNASLD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgti vai aktualizēti saimnieciskie līgumi,ITP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgti vai aktualizēti saimnieciskie līgumi,NNVP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgti vai aktualizēti saimnieciskie līgumi,NP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgti vai aktualizēti saimnieciskie līgumi,MP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgti vai aktualizēti saimnieciskie līgumi,ISDPD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgti vai aktualizēti saimnieciskie līgumi,NMUAPP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgti vai aktualizēti saimnieciskie līgumi,SNASLD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgti vai aktualizēti saimnieciskie līgumi,APP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,"Līguma, starpresoru vienošanās un sadarbības līguma administrēšana",Noslēgti vai aktualizēti saimnieciskie līgumi,AP
+Atbalsts,Juridiskās funkcijas un tiesvedība,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts juridisks atbalsts,JPSIP
+Atbalsts,Juridiskās funkcijas un tiesvedība,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts juridisks atbalsts,NP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts metodiskais atbalsts,AP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts metodiskais atbalsts,APP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts metodiskais atbalsts,IAD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts metodiskais atbalsts,IKD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts metodiskais atbalsts,ITP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts metodiskais atbalsts,ISDPD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts metodiskais atbalsts,JPSIP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts metodiskais atbalsts,MP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts metodiskais atbalsts,NSUP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts metodiskais atbalsts,NMUAPP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts metodiskais atbalsts,NNVP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts metodiskais atbalsts,NP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts metodiskais atbalsts,SNASLD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts cits atbalsts/ informācija procesu izpildei,AP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts cits atbalsts/ informācija procesu izpildei,APP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts cits atbalsts/ informācija procesu izpildei,IAD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts cits atbalsts/ informācija procesu izpildei,IKD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts cits atbalsts/ informācija procesu izpildei,ITP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts cits atbalsts/ informācija procesu izpildei,ISDPD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts cits atbalsts/ informācija procesu izpildei,JPSIP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts cits atbalsts/ informācija procesu izpildei,MP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts cits atbalsts/ informācija procesu izpildei,NSUP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts cits atbalsts/ informācija procesu izpildei,NMUAPP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts cits atbalsts/ informācija procesu izpildei,NNVP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts cits atbalsts/ informācija procesu izpildei,NP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts cits atbalsts/ informācija procesu izpildei,SNASLD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts atbalsts dokumentu izstrādē,AP
+Atbalsts,IT pārvaldība,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts atbalsts IS izstrādē (līdzdarbošanās),AP
+Atbalsts,IT pārvaldība,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts atbalsts IS izstrādē (līdzdarbošanās),APP
+Atbalsts,IT pārvaldība,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts atbalsts IS izstrādē (līdzdarbošanās),IAD
+Atbalsts,IT pārvaldība,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts atbalsts IS izstrādē (līdzdarbošanās),IKD
+Atbalsts,IT pārvaldība,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts atbalsts IS izstrādē (līdzdarbošanās),ITP
+Atbalsts,IT pārvaldība,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts atbalsts IS izstrādē (līdzdarbošanās),ISDPD
+Atbalsts,IT pārvaldība,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts atbalsts IS izstrādē (līdzdarbošanās),JPSIP
+Atbalsts,IT pārvaldība,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts atbalsts IS izstrādē (līdzdarbošanās),MP
+Atbalsts,IT pārvaldība,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts atbalsts IS izstrādē (līdzdarbošanās),NSUP
+Atbalsts,IT pārvaldība,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts atbalsts IS izstrādē (līdzdarbošanās),NMUAPP
+Atbalsts,IT pārvaldība,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts atbalsts IS izstrādē (līdzdarbošanās),NNVP
+Atbalsts,IT pārvaldība,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts atbalsts IS izstrādē (līdzdarbošanās),NP
+Atbalsts,IT pārvaldība,Metodiska un juridiska atbalsta nodrošināšana ,Sniegts atbalsts IS izstrādē (līdzdarbošanās),SNASLD
+Atbalsts,IT pārvaldība,Iestādes darbības atbalsta nodrošināšana,Sniegts atbalsts IS lietošanā,ITP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Iestādes darbības atbalsta nodrošināšana,Nodrošināta dokumentu/ mutvārdu tulkošana,APP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Iestādes darbības atbalsta nodrošināšana,Nodrošināta dokumentu/ mutvārdu tulkošana,AP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Iestādes darbības atbalsta nodrošināšana,Nodrošināta dokumentu/ mutvārdu tulkošana,MP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Iestādes darbības atbalsta nodrošināšana,Organizēts ārvalstu komandējums,APP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Iestādes darbības atbalsta nodrošināšana,Organizēti pasākumi iekšējai un ārējai sadarbībai,APP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Iestādes darbības atbalsta nodrošināšana,Organizēti pasākumi iekšējai un ārējai sadarbībai,…
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Iestādes darbības atbalsta nodrošināšana,Novadītas mācības VID nodarbinātajiem,AP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Iestādes darbības atbalsta nodrošināšana,Novadītas mācības VID nodarbinātajiem,APP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Iestādes darbības atbalsta nodrošināšana,Novadītas mācības VID nodarbinātajiem,IAD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Iestādes darbības atbalsta nodrošināšana,Novadītas mācības VID nodarbinātajiem,IKD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Iestādes darbības atbalsta nodrošināšana,Novadītas mācības VID nodarbinātajiem,ITP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Iestādes darbības atbalsta nodrošināšana,Novadītas mācības VID nodarbinātajiem,ISDPD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Iestādes darbības atbalsta nodrošināšana,Novadītas mācības VID nodarbinātajiem,JPSIP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Iestādes darbības atbalsta nodrošināšana,Novadītas mācības VID nodarbinātajiem,MP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Iestādes darbības atbalsta nodrošināšana,Novadītas mācības VID nodarbinātajiem,NSUP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Iestādes darbības atbalsta nodrošināšana,Novadītas mācības VID nodarbinātajiem,NMUAPP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Iestādes darbības atbalsta nodrošināšana,Novadītas mācības VID nodarbinātajiem,NNVP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Iestādes darbības atbalsta nodrošināšana,Novadītas mācības VID nodarbinātajiem,NP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Iestādes darbības atbalsta nodrošināšana,Novadītas mācības VID nodarbinātajiem,SNASLD
+Atbalsts,Starpinstitucionālā sadarbība,Starptautiskās sadarbības nodrošināšana,Nodrošināta dalība starptautiskajās organizācijās,MP
+Atbalsts,Starpinstitucionālā sadarbība,Starptautiskās sadarbības nodrošināšana,Nodrošināta dalība starptautiskajās organizācijās,NP
+Atbalsts,Starpinstitucionālā sadarbība,Starptautiskās sadarbības nodrošināšana,Nodrošināta dalība starptautiskajās organizācijās,NSUP
+Atbalsts,Starpinstitucionālā sadarbība,Starptautiskās sadarbības nodrošināšana,Nodrošināta dalība starptautiskajās organizācijās,NMUAPP
+Atbalsts,Starpinstitucionālā sadarbība,Starptautiskās sadarbības nodrošināšana,Nodrošināta dalība starptautiskajās organizācijās,APP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Dokumentu pārvaldības īstenošana,Nodrošināta iestādes lietvedība,AP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Dokumentu pārvaldības īstenošana,VID arhīva administrēšana,AP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Dokumentu pārvaldības īstenošana,Nodrošināta NM lietu administrēšana,NP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Dokumentu pārvaldības īstenošana,Nodrošināta NM lietu administrēšana,AP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Dokumentu pārvaldības īstenošana,Nodrošināta NM lietu administrēšana,SNASLD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Dokumentu pārvaldības īstenošana,Nodrošināta trauksmes cēlēju ziņojumu administrēšana,Eksperts administratīvajos jautājumos
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Dokumentu pārvaldības īstenošana,Nodrošināta iestādes sevišķā lietvedība,SNASLD
+Atbalsts,IT pārvaldība,VID IS pilnveidošana,Izstrādāta IS,ITP
+Atbalsts,IT pārvaldība,VID IS pilnveidošana,Pieteikti ziņojumi (RZ) IS pilnveidei,AP
+Atbalsts,IT pārvaldība,VID IS pilnveidošana,Pieteikti ziņojumi (RZ) IS pilnveidei,APP
+Atbalsts,IT pārvaldība,VID IS pilnveidošana,Pieteikti ziņojumi (RZ) IS pilnveidei,IAD
+Atbalsts,IT pārvaldība,VID IS pilnveidošana,Pieteikti ziņojumi (RZ) IS pilnveidei,IKD
+Atbalsts,IT pārvaldība,VID IS pilnveidošana,Pieteikti ziņojumi (RZ) IS pilnveidei,ITP
+Atbalsts,IT pārvaldība,VID IS pilnveidošana,Pieteikti ziņojumi (RZ) IS pilnveidei,ISDPD
+Atbalsts,IT pārvaldība,VID IS pilnveidošana,Pieteikti ziņojumi (RZ) IS pilnveidei,JPSIP
+Atbalsts,IT pārvaldība,VID IS pilnveidošana,Pieteikti ziņojumi (RZ) IS pilnveidei,MP
+Atbalsts,IT pārvaldība,VID IS pilnveidošana,Pieteikti ziņojumi (RZ) IS pilnveidei,NSUP
+Atbalsts,IT pārvaldība,VID IS pilnveidošana,Pieteikti ziņojumi (RZ) IS pilnveidei,NMUAPP
+Atbalsts,IT pārvaldība,VID IS pilnveidošana,Pieteikti ziņojumi (RZ) IS pilnveidei,NNVP
+Atbalsts,IT pārvaldība,VID IS pilnveidošana,Pieteikti ziņojumi (RZ) IS pilnveidei,NP
+Atbalsts,IT pārvaldība,VID IS pilnveidošana,Pieteikti ziņojumi (RZ) IS pilnveidei,SNASLD
+Atbalsts,IT pārvaldība,VID IS pilnveidošana,Realizēts/ nav realizēts ziņojums (RZ),ITP
+Atbalsts,"Komunikācija, konsultēšana un informēšana",Komunikācijas nodrošināšana,Nodrošināta ārējā komunikācija dažādos kanālos un veidos,APP
+Atbalsts,"Komunikācija, konsultēšana un informēšana",Komunikācijas nodrošināšana,Nodrošināta iekšējā komunikācija dažādos kanālos un veidos,APP
+Atbalsts,IT pārvaldība,VID IS administrēšana,Administrētas piekļuves tiesības,ITP
+Atbalsts,IT pārvaldība,VID IS administrēšana,Nodrošināta VID IS darbība,ITP
+Atbalsts,IT pārvaldība,VID IS administrēšana,Nodrošināta VID IKT/ IS drošība,ISDPD
+Atbalsts,IT pārvaldība,VID IS administrēšana,Nodrošināta datu pārvaldība,ITP
+Atbalsts,Juridiskās funkcijas un tiesvedība,Personas datu aizsardzības nodrošināšana,Nodrošināta personas datu aizsardzība,AP
+Atbalsts,Juridiskās funkcijas un tiesvedība,Personas datu aizsardzības nodrošināšana,Nodrošināta personas datu aizsardzība,APP
+Atbalsts,Juridiskās funkcijas un tiesvedība,Personas datu aizsardzības nodrošināšana,Nodrošināta personas datu aizsardzība,IAD
+Atbalsts,Juridiskās funkcijas un tiesvedība,Personas datu aizsardzības nodrošināšana,Nodrošināta personas datu aizsardzība,IKD
+Atbalsts,Juridiskās funkcijas un tiesvedība,Personas datu aizsardzības nodrošināšana,Nodrošināta personas datu aizsardzība,ITP
+Atbalsts,Juridiskās funkcijas un tiesvedība,Personas datu aizsardzības nodrošināšana,Nodrošināta personas datu aizsardzība,ISDPD
+Atbalsts,Juridiskās funkcijas un tiesvedība,Personas datu aizsardzības nodrošināšana,Nodrošināta personas datu aizsardzība,JPSIP
+Atbalsts,Juridiskās funkcijas un tiesvedība,Personas datu aizsardzības nodrošināšana,Nodrošināta personas datu aizsardzība,MP
+Atbalsts,Juridiskās funkcijas un tiesvedība,Personas datu aizsardzības nodrošināšana,Nodrošināta personas datu aizsardzība,NSUP
+Atbalsts,Juridiskās funkcijas un tiesvedība,Personas datu aizsardzības nodrošināšana,Nodrošināta personas datu aizsardzība,NMUAPP
+Atbalsts,Juridiskās funkcijas un tiesvedība,Personas datu aizsardzības nodrošināšana,Nodrošināta personas datu aizsardzība,NNVP
+Atbalsts,Juridiskās funkcijas un tiesvedība,Personas datu aizsardzības nodrošināšana,Nodrošināta personas datu aizsardzība,NP
+Atbalsts,Juridiskās funkcijas un tiesvedība,Personas datu aizsardzības nodrošināšana,Nodrošināta personas datu aizsardzība,SNASLD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Pilnveidota nodarbinātā kompetence,AP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Pilnveidota nodarbinātā kompetence,APP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Pilnveidota nodarbinātā kompetence,IAD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Pilnveidota nodarbinātā kompetence,IKD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Pilnveidota nodarbinātā kompetence,ITP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Pilnveidota nodarbinātā kompetence,ISDPD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Pilnveidota nodarbinātā kompetence,JPSIP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Pilnveidota nodarbinātā kompetence,MP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Pilnveidota nodarbinātā kompetence,NSUP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Pilnveidota nodarbinātā kompetence,NMUAPP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Pilnveidota nodarbinātā kompetence,NNVP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Pilnveidota nodarbinātā kompetence,NP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Pilnveidota nodarbinātā kompetence,SNASLD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,"Dalība sanāksmēs, komisijās un darba grupās",AP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,"Dalība sanāksmēs, komisijās un darba grupās",APP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,"Dalība sanāksmēs, komisijās un darba grupās",IAD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,"Dalība sanāksmēs, komisijās un darba grupās",IKD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,"Dalība sanāksmēs, komisijās un darba grupās",ITP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,"Dalība sanāksmēs, komisijās un darba grupās",ISDPD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,"Dalība sanāksmēs, komisijās un darba grupās",JPSIP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,"Dalība sanāksmēs, komisijās un darba grupās",MP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,"Dalība sanāksmēs, komisijās un darba grupās",NSUP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,"Dalība sanāksmēs, komisijās un darba grupās",NMUAPP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,"Dalība sanāksmēs, komisijās un darba grupās",NNVP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,"Dalība sanāksmēs, komisijās un darba grupās",NP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,"Dalība sanāksmēs, komisijās un darba grupās",SNASLD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Citu uzdevumu izpilde (neattiecas uz konkrētiem procesiem),AP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Citu uzdevumu izpilde (neattiecas uz konkrētiem procesiem),APP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Citu uzdevumu izpilde (neattiecas uz konkrētiem procesiem),IAD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Citu uzdevumu izpilde (neattiecas uz konkrētiem procesiem),IKD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Citu uzdevumu izpilde (neattiecas uz konkrētiem procesiem),ITP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Citu uzdevumu izpilde (neattiecas uz konkrētiem procesiem),ISDPD
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Citu uzdevumu izpilde (neattiecas uz konkrētiem procesiem),JPSIP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Citu uzdevumu izpilde (neattiecas uz konkrētiem procesiem),MP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Citu uzdevumu izpilde (neattiecas uz konkrētiem procesiem),NSUP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Citu uzdevumu izpilde (neattiecas uz konkrētiem procesiem),NMUAPP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Citu uzdevumu izpilde (neattiecas uz konkrētiem procesiem),NNVP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Citu uzdevumu izpilde (neattiecas uz konkrētiem procesiem),NP
+Atbalsts,Iestādes pārvaldība un iekšējā kontrole,Citu nodarbinātā pienākumu veikšana,Citu uzdevumu izpilde (neattiecas uz konkrētiem procesiem),SNASLD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Pakalpojumu vadības īstenošana,Nodrošināts aktuāls VID pakalpojumu saraksts,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Pakalpojumu vadības īstenošana,Nodrošināts aktuāls VID pakalpojuma apraksts,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Pakalpojumu vadības īstenošana,Veikta izpēte un noteikti risinājumi pakalpojumu pilnveidei,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Saimnieciskā un resursu nodrošinājuma pārvaldība,Nodrošināti akcīzes marku krājumi,NP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Saimnieciskā un resursu nodrošinājuma pārvaldība,Nodrošināti stingrās uzskaites plombu krājumi,NP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Saimnieciskā un resursu nodrošinājuma pārvaldība,Nodrošināti prezentācijas priekšmetu krājumi,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Saimnieciskā un resursu nodrošinājuma pārvaldība,Nodrošināti materiāltehniskie resursi,AP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Saimnieciskā un resursu nodrošinājuma pārvaldība,Nodrošināta transportlīdzekļu pārvaldība,AP
+Pārvaldība,IT pārvaldība,Saimnieciskā un resursu nodrošinājuma pārvaldība,Uzturēta IKT infrastruktūra,ITP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Saimnieciskā un resursu nodrošinājuma pārvaldība,Pārvaldīts VID lietojamais nekustamais īpašums,AP
+Pārvaldība,Nenodokļu maksājumi un īpaši regulētās jomas,Saimnieciskā un resursu nodrošinājuma pārvaldība,Veikta valsts piekritīgās mantas realizācija,AP
+Pārvaldība,Nenodokļu maksājumi un īpaši regulētās jomas,Saimnieciskā un resursu nodrošinājuma pārvaldība,Veikta valsts piekritīgās mantas iznīcināšana,AP
+Pārvaldība,Nenodokļu maksājumi un īpaši regulētās jomas,Saimnieciskā un resursu nodrošinājuma pārvaldība,Atsavināta valsts piekritīgā manta bez atlīdzības,AP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID iekšējā audita veikšana,Pabeigts/ atcelts VID iekšējais audits,IAD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Finanšu vadības īstenošana,Administrēts VID kopējais budžets,AP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Finanšu vadības īstenošana,Administrēts VID kopējais budžets,ITP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Finanšu vadības īstenošana,Administrēts VID kopējais budžets,ISDPD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,"VID iekšējās uzraudzības īstenošana
+",Veikta pārbaude par VID nodarbināto,IKD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,"VID iekšējās uzraudzības īstenošana
+",Veikta uzraudzība par klientu apkalpošanas kvalitāti,NP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,"VID iekšējās uzraudzības īstenošana
+",Veikta uzraudzība par klientu apkalpošanas kvalitāti,AP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,"VID iekšējās uzraudzības īstenošana
+",Veikta uzraudzība par klientu apkalpošanas kvalitāti,SNASLD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,"VID iekšējās uzraudzības īstenošana
+",Veikta procesa uzraudzība,NP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,"VID iekšējās uzraudzības īstenošana
+",Veikta procesa uzraudzība,MP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,"VID iekšējās uzraudzības īstenošana
+",Veikta procesa uzraudzība,NNVP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,"VID iekšējās uzraudzības īstenošana
+",Veikta procesa uzraudzība,NSUP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,"VID iekšējās uzraudzības īstenošana
+",Veikta procesa uzraudzība,SNASLD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,"VID iekšējās uzraudzības īstenošana
+",Veikta dienesta pārbaude,IKD
+Pārvaldība,Administratīvā atbildība un sankcijas,"VID iekšējās uzraudzības īstenošana
+",Piedzīts VID nodarītais zaudējums,JPSIP
+Pārvaldība,Administratīvā atbildība un sankcijas,"VID iekšējās uzraudzības īstenošana
+",Piedzīts VID nodarītais zaudējums,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID darbības plānošana,Izstrādāts/ aktualizēts VID darba plāns,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID darbības plānošana,Izstrādāta/ aktualizēta VID stratēģija,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID darbības plānošana,Izstrādāts/ aktualizēts struktūrvienību limeņa plānošanas dokuments,ITP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID darbības plānošana,Izstrādāts/ aktualizēts struktūrvienību limeņa plānošanas dokuments,MP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID darbības plānošana,Izstrādāts/ aktualizēts struktūrvienību limeņa plānošanas dokuments,NNVP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID darbības plānošana,Izstrādāts/ aktualizēts struktūrvienību limeņa plānošanas dokuments,NP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID darbības plānošana,Izstrādāts/ aktualizēts struktūrvienību limeņa plānošanas dokuments,NMUAPP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID darbības plānošana,Izstrādāts/ aktualizēts struktūrvienību limeņa plānošanas dokuments,IKD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID darbības plānošana,Izstrādāts/ aktualizēts struktūrvienību limeņa plānošanas dokuments,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID darbības plānošana,Izstrādāts/ aktualizēts struktūrvienību limeņa plānošanas dokuments,AP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID darbības novērtēšana,Novērtēta iekšējā audita stratēģiskā plāna izpilde,IAD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID darbības novērtēšana,Novērtēta IKT darbības nepārtrauktības un atjaunošanas plāna izpilde,ITP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID darbības novērtēšana,Novērtēta IKT darbības nepārtrauktības un atjaunošanas plāna izpilde,ISDPD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID darbības novērtēšana,Novērtēta VID darba plāna izpilde,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID darbības novērtēšana,Novērtēti tiesas nolēmumi un VID lēmumi,JPSIP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID darbības novērtēšana,Novērtēta iekšējo un ārējo auditoru ieteikumu ieviešana,IAD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID darbības novērtēšana,Sagatavots pārskats par VID personālu,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID darbības novērtēšana,Veikta VID aptauja/ pētījums un novērtēti tā rezultāti,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID iekšējo dokumentu izstrādāšana,Izstrādāts VID iekšējais dokuments,AP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID iekšējo dokumentu izstrādāšana,Izstrādāts VID iekšējais dokuments,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID iekšējo dokumentu izstrādāšana,Izstrādāts VID iekšējais dokuments,IAD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID iekšējo dokumentu izstrādāšana,Izstrādāts VID iekšējais dokuments,IKD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID iekšējo dokumentu izstrādāšana,Izstrādāts VID iekšējais dokuments,ITP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID iekšējo dokumentu izstrādāšana,Izstrādāts VID iekšējais dokuments,ISDPD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID iekšējo dokumentu izstrādāšana,Izstrādāts VID iekšējais dokuments,JPSIP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID iekšējo dokumentu izstrādāšana,Izstrādāts VID iekšējais dokuments,MP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID iekšējo dokumentu izstrādāšana,Izstrādāts VID iekšējais dokuments,NSUP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID iekšējo dokumentu izstrādāšana,Izstrādāts VID iekšējais dokuments,NMUAPP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID iekšējo dokumentu izstrādāšana,Izstrādāts VID iekšējais dokuments,NNVP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID iekšējo dokumentu izstrādāšana,Izstrādāts VID iekšējais dokuments,NP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,VID iekšējo dokumentu izstrādāšana,Izstrādāts VID iekšējais dokuments,SNASLD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Nodrošināts aktuāls procesa reģistrs,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Nodrošināta procesu rādītāju/ mērījumu uzskaite,AP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Nodrošināta procesu rādītāju/ mērījumu uzskaite,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Nodrošināta procesu rādītāju/ mērījumu uzskaite,IAD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Nodrošināta procesu rādītāju/ mērījumu uzskaite,IKD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Nodrošināta procesu rādītāju/ mērījumu uzskaite,ITP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Nodrošināta procesu rādītāju/ mērījumu uzskaite,ISDPD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Nodrošināta procesu rādītāju/ mērījumu uzskaite,JPSIP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Nodrošināta procesu rādītāju/ mērījumu uzskaite,MP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Nodrošināta procesu rādītāju/ mērījumu uzskaite,NSUP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Nodrošināta procesu rādītāju/ mērījumu uzskaite,NMUAPP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Nodrošināta procesu rādītāju/ mērījumu uzskaite,NNVP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Nodrošināta procesu rādītāju/ mērījumu uzskaite,NP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Nodrošināta procesu rādītāju/ mērījumu uzskaite,SNASLD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Izstrādāta/ aktualizēta procesa plūsmas shēma,AP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Izstrādāta/ aktualizēta procesa plūsmas shēma,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Izstrādāta/ aktualizēta procesa plūsmas shēma,IAD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Izstrādāta/ aktualizēta procesa plūsmas shēma,IKD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Izstrādāta/ aktualizēta procesa plūsmas shēma,ITP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Izstrādāta/ aktualizēta procesa plūsmas shēma,ISDPD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Izstrādāta/ aktualizēta procesa plūsmas shēma,JPSIP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Izstrādāta/ aktualizēta procesa plūsmas shēma,MP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Izstrādāta/ aktualizēta procesa plūsmas shēma,NSUP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Izstrādāta/ aktualizēta procesa plūsmas shēma,NMUAPP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Izstrādāta/ aktualizēta procesa plūsmas shēma,NNVP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Izstrādāta/ aktualizēta procesa plūsmas shēma,NP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Izstrādāta/ aktualizēta procesa plūsmas shēma,SNASLD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Veikta izpēte un noteikti risinājumi procesa pilnveidei,AP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Veikta izpēte un noteikti risinājumi procesa pilnveidei,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Veikta izpēte un noteikti risinājumi procesa pilnveidei,IAD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Veikta izpēte un noteikti risinājumi procesa pilnveidei,IKD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Veikta izpēte un noteikti risinājumi procesa pilnveidei,ITP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Veikta izpēte un noteikti risinājumi procesa pilnveidei,ISDPD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Veikta izpēte un noteikti risinājumi procesa pilnveidei,JPSIP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Veikta izpēte un noteikti risinājumi procesa pilnveidei,MP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Veikta izpēte un noteikti risinājumi procesa pilnveidei,NSUP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Veikta izpēte un noteikti risinājumi procesa pilnveidei,NMUAPP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Veikta izpēte un noteikti risinājumi procesa pilnveidei,NNVP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Veikta izpēte un noteikti risinājumi procesa pilnveidei,NP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Procesu vadības īstenošana,Veikta izpēte un noteikti risinājumi procesa pilnveidei,SNASLD
+Pārvaldība,Nodokļu un nodevu administrēšana,Risku vadības īstenošana,Pārvaldīti nodokļu jomas riski,NMUAPP
+Pārvaldība,Muitas lietu administrēšana,Risku vadības īstenošana,Pārvaldīti muitas jomas riski,MP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Risku vadības īstenošana,Pārvaldīti organizatoriskie riski,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Risku vadības īstenošana,Pārvaldīti korupcijas un interešu konflikta riski,IDP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Risku vadības īstenošana,Pārvaldīti stratēģiskās vadības līmeņa riski,APP
+Pārvaldība,IT pārvaldība,Risku vadības īstenošana,Pārvaldīti VID IS un IKT projektu riski,ITP
+Pārvaldība,Muitas lietu administrēšana,Risku vadības īstenošana,Pārvaldīti muitas projektu riski,MP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Personāla vadības īstenošana,Veikta amatu klasificēšana,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Personāla vadības īstenošana,Izsniegta izziņa ,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Personāla vadības īstenošana,Izsniegta/ anulēta dienesta apliecība,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Personāla vadības īstenošana,Izsniegta viedkarte,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Personāla vadības īstenošana,Izvērtēts personāls,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Personāla vadības īstenošana,Piešķirta dienesta pakāpe,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Personāla vadības īstenošana,Noteikts mēnešalgas vai piemaksas apmērs,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Personāla vadības īstenošana,Noteikts mēnešalgas vai piemaksas apmērs,AP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Personāla vadības īstenošana,Piešķirta attaisnota prombūtne,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Personāla vadības īstenošana,Saplānoti atvaļinājumi,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Personāla vadības īstenošana,Organizētas obligātās veselības pārbaudes,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Personāla vadības īstenošana,Organizēta personāla atlase,APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Personāla vadības īstenošana,Organizēti pasākumi VID nodarbināto profesionālajai pilnveidei,APP
+Pārvaldība,IT pārvaldība,Projektu vadības īstenošana,Īstenots/ nav īstenots VID IS un IKT projekts,ITP
+Pārvaldība,Muitas lietu administrēšana,Projektu vadības īstenošana,Īstenots/ nav īstenots muitas projekts ,MP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Struktūrvienības darbības koordinēšana un kontrole,"Īstenoti noteiktie darba uzdevumi
+",AP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Struktūrvienības darbības koordinēšana un kontrole,"Īstenoti noteiktie darba uzdevumi
+",APP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Struktūrvienības darbības koordinēšana un kontrole,"Īstenoti noteiktie darba uzdevumi
+",IAD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Struktūrvienības darbības koordinēšana un kontrole,"Īstenoti noteiktie darba uzdevumi
+",IKD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Struktūrvienības darbības koordinēšana un kontrole,"Īstenoti noteiktie darba uzdevumi
+",ITP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Struktūrvienības darbības koordinēšana un kontrole,"Īstenoti noteiktie darba uzdevumi
+",ISDPD
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Struktūrvienības darbības koordinēšana un kontrole,"Īstenoti noteiktie darba uzdevumi
+",JPSIP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Struktūrvienības darbības koordinēšana un kontrole,"Īstenoti noteiktie darba uzdevumi
+",MP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Struktūrvienības darbības koordinēšana un kontrole,"Īstenoti noteiktie darba uzdevumi
+",NSUP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Struktūrvienības darbības koordinēšana un kontrole,"Īstenoti noteiktie darba uzdevumi
+",NMUAPP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Struktūrvienības darbības koordinēšana un kontrole,"Īstenoti noteiktie darba uzdevumi
+",NNVP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Struktūrvienības darbības koordinēšana un kontrole,"Īstenoti noteiktie darba uzdevumi
+",NP
+Pārvaldība,Iestādes pārvaldība un iekšējā kontrole,Struktūrvienības darbības koordinēšana un kontrole,"Īstenoti noteiktie darba uzdevumi
+",SNASLD
