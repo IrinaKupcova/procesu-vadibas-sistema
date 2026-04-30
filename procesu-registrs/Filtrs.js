@@ -8,6 +8,7 @@
     tasksHeader: {},
     executorsHeader: {}
   };
+  let extraRefreshRunning = false;
 
   function norm(v) {
     return String(v || "").trim().toLowerCase();
@@ -16,6 +17,46 @@
   function contains(text, term) {
     if (!term) return true;
     return norm(text).includes(norm(term));
+  }
+  function splitCellValues(v) {
+    return String(v || "")
+      .split(/[;\n,]+/)
+      .map((x) => String(x || "").trim())
+      .filter(Boolean);
+  }
+  function getProcessTypeNoValuesFromCell(td) {
+    if (!td) return [];
+    const parts = Array.from(td.querySelectorAll("div"))
+      .map((n) => String(n.textContent || "").trim())
+      .filter(Boolean);
+    if (parts.length) return parts;
+    return splitCellValues(td.textContent || "");
+  }
+  function processTypeNoCellLineValues(cellLine) {
+    return splitCellValues(cellLine ? cellLine.textContent : "");
+  }
+  function applyProcessGpLineFilter(tr, typeNoTerm) {
+    const tds = Array.from(tr.children || []);
+    const tdTypeNo = tds[3];
+    const tdType = tds[4];
+    const tdJoma = tds[5];
+    const tdExec = tds[6];
+    const noLines = tdTypeNo ? Array.from(tdTypeNo.querySelectorAll(":scope > div")) : [];
+    const gpLines = tdType ? Array.from(tdType.querySelectorAll(":scope > div")) : [];
+    const jomaLines = tdJoma ? Array.from(tdJoma.querySelectorAll(":scope > div")) : [];
+    const execLines = tdExec ? Array.from(tdExec.querySelectorAll(":scope > div")) : [];
+    if (!noLines.length) return true;
+    let anyVisible = false;
+    noLines.forEach((line, idx) => {
+      const values = processTypeNoCellLineValues(line);
+      const pass = !typeNoTerm || values.some((v) => norm(v) === norm(typeNoTerm));
+      line.style.display = pass ? "" : "none";
+      if (gpLines[idx]) gpLines[idx].style.display = pass ? "" : "none";
+      if (jomaLines[idx]) jomaLines[idx].style.display = pass ? "" : "none";
+      if (execLines[idx]) execLines[idx].style.display = pass ? "" : "none";
+      if (pass) anyVisible = true;
+    });
+    return anyVisible;
   }
 
   function injectFilterStyles() {
@@ -108,6 +149,11 @@
         const col = select.dataset.colIndex;
         state[key][col] = value;
         btn.classList.toggle("active", norm(value) !== "");
+        if (tableId === "executorsTable") {
+          applyExecutorsFilters();
+          refreshClearFilterButtonActive();
+          return;
+        }
         selectBestLevel();
         applyAllFilters();
       };
@@ -161,17 +207,29 @@
         contains(processText, state.quick.process) &&
         contains(taskText, state.quick.task) &&
         contains(outputText, state.quick.output);
+      const typeNoFilter = state.processHeader["3"] || "";
 
       if (show) {
         for (const col in state.processHeader) {
           const term = state.processHeader[col];
-          if (!contains(tds[Number(col)]?.textContent || "", term)) {
+          const colNum = Number(col);
+          const cellText = tds[colNum]?.textContent || "";
+          // "Procesa galaprodukta Nr." kolonnā šūnā var būt vairāki Nr.;
+          // filtrējam pēc atsevišķa numura, nevis pēc salīmēta teksta.
+          const pass = colNum === 3
+            ? getProcessTypeNoValuesFromCell(tds[colNum]).some((v) => norm(v) === norm(term))
+            : contains(cellText, term);
+          if (!pass) {
             show = false;
             break;
           }
         }
       }
-
+      if (show && norm(typeNoFilter) !== "") {
+        show = applyProcessGpLineFilter(tr, typeNoFilter);
+      } else {
+        applyProcessGpLineFilter(tr, "");
+      }
       tr.style.display = show ? "" : "none";
     });
   }
@@ -221,7 +279,10 @@
     const rows = Array.from(tbody.querySelectorAll("tr"));
     rows.forEach((tr) => {
       const tds = Array.from(tr.children);
-      let show = !globalTerm || contains(tds.map((td) => td.textContent || "").join(" "), globalTerm);
+      // Izpildītāju skatā pēdējā kolonna var saturēt ļoti garu GP tekstu;
+      // to neiekļaujam globālajā meklēšanā, lai nepieļautu UI uzkāršanos.
+      const quickSearchText = tds.slice(0, 4).map((td) => td.textContent || "").join(" ");
+      let show = !globalTerm || contains(quickSearchText, globalTerm);
       for (const col in state.executorsHeader) {
         const term = state.executorsHeader[col];
         if (!contains(tds[Number(col)]?.textContent || "", term)) {
@@ -297,13 +358,8 @@
       }
     }
 
-    const execCard = document.getElementById("executorsCard");
-    const execTable = document.getElementById("executorsTable");
-    const execHasFilter = Object.values(state.executorsHeader || {}).some((v) => norm(v) !== "");
-    if (execCard && execTable && execHasFilter) {
-      const hasVisible = Array.from(execTable.querySelectorAll("tbody tr")).some((tr) => tr.style.display !== "none");
-      if (hasVisible) execCard.classList.remove("hidden");
-    }
+    // Izpildītāju skatu šeit automātiski neveram vaļā, jo tas var izraisīt
+    // class-change -> rerender ciklus un UI uzkāršanos.
   }
 
   function refreshHeaderFilterOptions(tableId, key) {
@@ -317,8 +373,13 @@
       const selected = state[key][String(col)] || "";
       const uniqVals = new Set();
       Array.from(tbody.querySelectorAll("tr")).forEach((tr) => {
-        const v = String(tr.children[col]?.textContent || "").trim();
-        if (v) uniqVals.add(v);
+        const raw = String(tr.children[col]?.textContent || "").trim();
+        if (!raw) return;
+        if (tableId === "processTable" && col === 3) {
+          getProcessTypeNoValuesFromCell(tr.children[col]).forEach((v) => uniqVals.add(v));
+          return;
+        }
+        uniqVals.add(raw);
       });
       select.innerHTML = "";
       const empty = document.createElement("option");
@@ -375,12 +436,23 @@
   }
 
   function refreshExtraTableFilters() {
+    if (extraRefreshRunning) return;
+    extraRefreshRunning = true;
+    try {
     ensureHeaderFilters("tasksSummaryTable", "tasksHeader", true);
     refreshHeaderFilterOptions("tasksSummaryTable", "tasksHeader");
+    const execTable = document.getElementById("executorsTable");
+    const execHead = execTable ? execTable.querySelector("thead tr") : null;
+    const execHasFilters = !!(execHead && execHead.querySelector(".th-filter-box select[data-col-index]"));
+    if (execHead && !execHasFilters) execHead.dataset.filtersReady = "";
     ensureHeaderFilters("executorsTable", "executorsHeader", true);
     refreshHeaderFilterOptions("executorsTable", "executorsHeader");
-    applyAllFilters();
+    applyTasksFilters();
+    applyExecutorsFilters();
     refreshClearFilterButtonActive();
+    } finally {
+      extraRefreshRunning = false;
+    }
   }
 
   function init() {

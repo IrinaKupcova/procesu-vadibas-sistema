@@ -9,7 +9,6 @@
 (function () {
   "use strict";
 
-  const STORAGE_VIEW = "pv_gp_catalog_view_v1";
   const STORAGE_SENS = "pv_gp_sensitivity_v1";
 
   function loadSensMap() {
@@ -56,53 +55,14 @@
 
   window.applyGpCatalogView = function () {
     const table = document.getElementById("catalogTable");
-    const sel = document.getElementById("gpCatalogViewSelect");
     if (!table) return;
-    if (!sel) {
-      table.classList.add("catalog-view--compact");
-      table.classList.remove("catalog-view--expanded");
-      return;
-    }
-    const expanded = sel.value === "expanded";
-    table.classList.toggle("catalog-view--expanded", expanded);
-    table.classList.toggle("catalog-view--compact", !expanded);
+    // Vienots kataloga skats: vienmēr redzams pilnais skats.
+    table.classList.add("catalog-view--expanded");
+    table.classList.remove("catalog-view--compact");
   };
 
   function ensureToolbar() {
-    const card = document.getElementById("catalogListCard");
-    if (!card || document.getElementById("gpCatalogViewToolbar")) return;
-    const mount = document.getElementById("gpCatalogViewMount");
-    const left = card.querySelector(".toolbar .left");
-    const tb = card.querySelector(".toolbar .right");
-    const target = mount || left || tb;
-    const title = left ? left.querySelector(".section-title") : null;
-    if (!target) return;
-    const wrap = document.createElement("div");
-    wrap.id = "gpCatalogViewToolbar";
-    wrap.style.cssText = mount
-      ? "display:flex;align-items:center;gap:8px;flex-wrap:wrap"
-      : "display:flex;align-items:center;gap:8px;margin-right:auto;flex-wrap:wrap";
-    wrap.innerHTML =
-      '<select id="gpCatalogViewSelect" style="font-weight:600;min-width:12rem" title="Pamatskats vai paplašinātais kataloga skats" aria-label="Kataloga skata veids">' +
-      '<option value="compact">Pamatskats</option>' +
-      '<option value="expanded">Paplašinātais skats</option>' +
-      "</select>";
-    if (mount) target.appendChild(wrap);
-    else if (title && left) left.insertBefore(wrap, title.nextSibling);
-    else target.insertBefore(wrap, target.firstChild);
-
-    const sel = document.getElementById("gpCatalogViewSelect");
-    try {
-      sel.value = localStorage.getItem(STORAGE_VIEW) || "compact";
-    } catch (_) {
-      sel.value = "compact";
-    }
-    sel.addEventListener("change", () => {
-      try {
-        localStorage.setItem(STORAGE_VIEW, sel.value);
-      } catch (_) {}
-      window.applyGpCatalogView();
-    });
+    // Skata pārslēdzējs vairs netiek rādīts.
     window.applyGpCatalogView();
   }
 

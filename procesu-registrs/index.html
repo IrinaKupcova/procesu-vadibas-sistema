@@ -32,6 +32,11 @@
       table { width:100%; border-collapse:collapse; margin-top:8px; } th,td { border-bottom:1px solid #e5e7eb; padding:7px 8px; text-align:left; font-size:12px; vertical-align:top; }
       th { background:#eef2ff; font-size:10px; text-transform:uppercase; letter-spacing:.04em; }
       .col-gray{background:#eee}.col-green{background:#d9f99d}.col-blue{background:#bfdbfe}
+      /* Vizuāli nošķirti procesu bloki (process + tā GP rindas) */
+      #processTable tbody tr.process-block-start td { border-top: 3px solid #94a3b8; }
+      #processTable tbody tr.process-block-end td { border-bottom: 2px solid #94a3b8; }
+      #processTable tbody tr.process-block-even td.col-gray { background:#eef2ff; }
+      #processTable tbody tr.process-block-odd td.col-gray { background:#e2e8f0; }
       .form-row { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:8px; } .form-group{display:flex;flex-direction:column;flex:1 1 220px;min-width:200px}
       label{font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;color:#4b5563}
       input,select{font-size:13px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:4px}
@@ -68,9 +73,6 @@
       .help-admin-table{width:100%;font-size:12px;border-collapse:collapse}
       .help-admin-table th,.help-admin-table td{border:1px solid #e2e8f0;padding:6px 8px;vertical-align:top}
       .help-admin-table input[type="text"],.help-admin-table textarea{width:100%;box-sizing:border-box;font-size:12px}
-      /* Galaproduktu veidu katalogs: paplašinātajā skatā redzama kolonna «Sensitīvitātes pakāpe» */
-      #catalogTable.catalog-view--compact th.catalog-col-sensitivity,
-      #catalogTable.catalog-view--compact td.catalog-col-sensitivity{display:none}
       #topToolbarCard .top-toolbar-row2 { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; width: 100%; margin-top: 12px; padding-top: 12px; border-top: 1px solid #334155; box-sizing: border-box; }
       #topToolbarCard .row2-left { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex: 1 1 auto; min-width: min(100%, 260px); }
       #topToolbarCard .row2-right { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; margin-left: auto; }
@@ -386,6 +388,7 @@
         </div>
         <div class="editor-actions">
           <button type="submit" id="taskSaveBtn">Saglabāt</button>
+          <button type="button" id="taskUndoBtn" class="secondary" title="Atcelt pēdējo izmaiņu soli">↶ Atcelt</button>
           <button type="button" id="taskCloseBtn" class="secondary">Aizvērt</button>
           <button type="button" id="taskDeleteBtn" class="danger hidden">Dzēst</button>
         </div>
@@ -395,6 +398,9 @@
     <div class="card section-block hidden" id="executorsCard">
       <div class="toolbar">
         <div class="left"><div class="section-title">Izpildītāji</div></div>
+        <div class="right">
+          <button type="button" id="exportExecutorsExcelBtn" class="secondary">Eksportēt uz Excel</button>
+        </div>
       </div>
       <p class="hint">Nākamajā solī šeit būs Izpildītāju skats (kopsavilkumi un filtrēšana).</p>
     </div>
@@ -405,13 +411,14 @@
           <div class="section-title">Procesu reģistrs</div>
           <span class="toolbar-inline-control" title="Procesu reģistra skats">
             <select id="levelSelect" aria-label="Procesu reģistra skats">
-              <option value="1" selected>Sākums</option>
+              <option value="1" selected>Pamatskats</option>
               <option value="2">Paplašinātais skats</option>
             </select>
           </span>
         </div>
           <div class="right">
             <button type="button" id="toggleProcessBtn" class="secondary">Atvērt procesu reģistru</button>
+            <button type="button" id="exportProcessExcelBtn" class="secondary">Eksportēt uz Excel</button>
             <button type="button" id="flowchartsRepoBtn" class="secondary">Atvērt plūsmas shēmu krātuvi</button>
             <button type="button" id="newBtn">Pievienot jaunu procesu</button>
           </div>
@@ -429,7 +436,7 @@
       </div>
       <div id="processListBody">
         <table id="processTable" class="table-body-hidden"><thead><tr>
-          <th class="col-gray">Procesa grupa</th><th class="col-gray">Darbības joma</th><th class="col-gray">Procesa Nr.</th><th class="col-gray">Process</th><th class="col-gray">Procesa galaprodukta Nr.</th><th class="col-gray">Procesa galaprodukts</th><th class="col-gray">Procesa izpildītājs, pārvalde</th>
+          <th class="col-gray">Procesa grupa</th><th class="col-gray">Procesa Nr.</th><th class="col-gray">Process</th><th class="col-gray">Procesa galaprodukta Nr.</th><th class="col-gray">Procesa galaprodukts</th><th class="col-gray">Joma (piesaiste galaproduktam)</th><th class="col-gray">Procesa izpildītājs, pārvalde</th>
           <th class="col-green col-extended">Procesa iniciātors (input)</th><th class="col-green col-extended">Saistītie procesi</th><th class="col-green col-extended">Pakalpojumi</th><th class="col-green col-extended">Plūsmas shēmas</th><th class="col-green col-extended">IT resursi</th><th class="col-green col-extended">Optimizācija</th><th class="col-green col-extended">Citi rādītāji</th><th>Procesa kartiņa</th>
         </tr></thead><tbody></tbody></table>
         <div id="processPagination" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
@@ -456,15 +463,15 @@
           <div class="form-group"><label>Procesa Nr.</label><input id="eProcNo" /></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Process</label><input id="eProcess" /></div>
-          <div class="form-group"><label>Darbības joma</label><input id="eDarbibasJoma" /></div>
-          <div class="form-group"><label>Procesa galaprodukts</label><input id="eLaws" /></div>
-          <div class="form-group"><label>Galaprodukta kartiņa</label><input type="hidden" id="eDocs" /><button type="button" id="gotoCatalogBtn" class="catalog-jump" style="margin-left:0">Pāriet uz katalogu</button></div>
+          <div class="form-group" style="display:none"><label>Process</label><input id="eProcess" /></div>
+          <div class="form-group"><label>Joma (piesaiste galaproduktam)</label><input id="eDarbibasJoma" /></div>
+          <div class="form-group"><label>Procesa galaprodukts</label><div style="border:1px solid var(--line);border-radius:8px;background:#fff;min-height:170px;padding:8px"><textarea id="eLaws" rows="8" style="width:100%;min-height:120px;resize:vertical;border:0;outline:none;box-shadow:none"></textarea><div id="eGpActions" class="hint" style="display:flex;flex-direction:column;gap:6px;margin-top:6px"></div></div></div>
+          <div class="form-group" style="display:none"><label>Galaprodukta kartiņa</label><input type="hidden" id="eDocs" /></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Procesa iniciātors (input)</label><input id="eInput" /></div>
           <div class="form-group"><label>Procesa izpildītājs, pārvalde</label><input id="eExecutorPatstaviga" /></div>
-          <div class="form-group"><label>Procesa izpildītājs, daļa</label><input id="eExecutorDala" /></div>
+          <div class="form-group" style="display:none"><label>Procesa izpildītājs, daļa</label><input id="eExecutorDala" /></div>
           <div class="form-group"><label>Saistītie procesi</label><input id="eOutCount" /></div>
           <div class="form-group"><label>Pakalpojumi</label><input id="eAvg" /></div>
           <div class="form-group"><label>Plūsmas shēmas</label><input id="eKpi" /></div>
@@ -477,6 +484,7 @@
         <div class="editor-actions">
           <button type="button" id="editBtn" class="secondary">Labot</button>
           <button type="submit">Saglabāt</button>
+          <button type="button" id="processUndoBtn" class="secondary" title="Atcelt pēdējo izmaiņu soli">↶ Atcelt</button>
           <button type="button" id="closeBtn" class="secondary">Aizvērt</button>
           <button type="button" id="deleteBtn" class="danger hidden">Dzēst</button>
         </div>
@@ -488,6 +496,7 @@
         <div class="left"><div class="section-title">Galaproduktu katalogs</div></div>
         <div class="right">
           <button type="button" id="toggleCatalogBtn" class="secondary">Atvērt katalogu</button>
+          <button type="button" id="exportCatalogExcelBtn" class="secondary">Eksportēt uz Excel</button>
           <button type="button" id="newCatalogBtn">Pievienot jaunu galaproduktu</button>
         </div>
       </div>
@@ -496,8 +505,7 @@
       </div>
       <div id="catalogListBody">
         <table id="catalogTable" class="table-body-hidden catalog-view--compact"><thead><tr>
-          <th>Procesa galaprodukta Nr.</th><th>Procesa galaprodukts</th><th>Procesa izpildītājs, pārvalde</th><th>Procesa izpildītājs, daļa</th><th>Procesa Nr.</th><th>Process</th><th>Procesa grupa</th><th>Darbības joma</th>
-          <th class="catalog-col-sensitivity">Sensitīvitātes pakāpe <span class="hint" title="Datu sasaiste ar korupcijas riskiem">(korupcijas riski)</span></th>
+          <th>Procesa galaprodukta Nr.</th><th>Procesa galaprodukts</th><th>Procesa izpildītājs, pārvalde</th><th>Procesa izpildītājs, daļa</th><th>Procesa Nr.</th><th>Process</th><th>Procesa grupa</th><th>Joma (piesaiste galaproduktam)</th>
           <th>GP kartiņa</th>
         </tr></thead><tbody></tbody></table>
       </div>
@@ -509,10 +517,7 @@
         <input id="cTypeNoOrig" type="hidden" />
         <div class="form-row">
           <div class="form-group"><label>Procesa galaprodukta Nr.</label><input id="cTypeNo" /></div>
-          <div class="form-group"><label>Procesa galaprodukts</label><input id="cType" /></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Procesa izpildītājs, pārvalde</label><input id="cUnit" /></div>
+          <div class="form-group" style="display:none"><label>Procesa galaprodukts</label><input id="cType" /></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Procesa Nr.</label><input id="cProcNo" /></div>
@@ -520,13 +525,13 @@
         <div class="form-row">
           <div class="form-group"><label>Process</label><input id="cProcess" /></div>
           <div class="form-group"><label>Procesa grupa</label><input id="cGroup" /></div>
-          <div class="form-group"><label>Darbības joma</label><input id="cDarbibasJoma" /></div>
+          <div class="form-group"><label>Joma (piesaiste galaproduktam)</label><input id="cDarbibasJoma" /></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>Procesa izpildītājs, pārvalde</label><input id="cUnit" /></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Procesa izpildītājs, daļa</label><input id="cDepartment" /></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group"><label>Sensitīvitātes pakāpe <span class="hint" style="font-weight:normal">(datu sasaiste ar korupcijas riskiem; redzama paplašinātajā katalogā)</span></label><input id="cSensitivity" placeholder="piem., zema / vidēja / augsta" /></div>
         </div>
         <div class="form-row">
           <div class="form-group" style="flex:1 1 420px; min-width:280px;">
@@ -535,6 +540,7 @@
           </div>
         </div><div class="editor-actions">
           <button type="submit">Saglabāt</button>
+          <button type="button" id="catalogUndoBtn" class="secondary" title="Atcelt pēdējo izmaiņu soli">↶ Atcelt</button>
           <button type="button" id="catalogDeleteBtn" class="danger hidden">Dzēst</button>
           <button type="button" id="catalogCloseBtn" class="secondary">Aizvērt</button>
         </div>
@@ -602,9 +608,11 @@
       let editingRow = null;
       let editingCatalogRow = null;
       let editingTaskNo = null;
+      let editorReturnContext = null;
+      let catalogListScrollY = 0;
       const $ = id => document.getElementById(id);
       const status = (t,k="info") => { $("dbStatus").textContent=t; $("dbStatus").className="status "+k; };
-      const role = () => roles[user] || "viewer";
+      const role = () => roles[user] || "admin_edit";
       const canEdit = () => role()==="admin_edit";
       function normalizeGroupLabel(v){
         const t = String(v||"").trim().toLowerCase();
@@ -628,11 +636,13 @@
             .map((v)=>String(v || "").trim())
             .filter(Boolean)
             .forEach((gp)=>{
-              const key = `${procNo}|${gp.toLowerCase()}`;
+              const gpName = sanitizeGpName(gp);
+              if(!gpName) return;
+              const key = `${procNo}|${gpName.toLowerCase()}`;
               if(existing.has(key)) return;
               csvRows.push({
                 typeNo: "",
-                type: gp,
+                type: gpName,
                 unit: "",
                 department: "",
                 procNo,
@@ -677,13 +687,15 @@
           const procNo = String((p && p.processNo) || "").trim();
           if(!procNo) return;
           splitValues(p.products).forEach((gp)=>{
-            const key = `${procNo}|${gp.toLowerCase()}`;
+            const gpName = sanitizeGpName(gp);
+            if(!gpName) return;
+            const key = `${procNo}|${gpName.toLowerCase()}`;
             if(existing.has(key) || gpDbSyncedKeys.has(key)) return;
             toInsert.push({
               key,
               row: {
                 typeNo: "",
-                type: gp,
+                type: gpName,
                 unit: String((p && p.executorPatstaviga) || "").trim(),
                 department: String((p && p.executorDala) || "").trim(),
                 procNo,
@@ -717,11 +729,6 @@
             return;
           }
           csvRows = await api.loadCatalogTypes();
-          csvRows.forEach((r) => {
-            if (typeof window.mergeCatalogSensitivity === "function") window.mergeCatalogSensitivity(r);
-          });
-          mergeCatalogRowsFromProcessRows();
-          syncCatalogContextFromProcessRows();
           // Nerādām ielādēto galaproduktu skaitu augšā.
         }catch(err){
           csvRows = [];
@@ -733,9 +740,10 @@
 
         const tbody=$("catalogTable").querySelector("tbody");
         tbody.innerHTML="";
-        csvRows.forEach(x=>{
+        const catalogRowsSorted = [...csvRows].sort((a,b)=>compareTypeNoAsc(a && (a.typeNo || a.id), b && (b.typeNo || b.id)));
+        catalogRowsSorted.forEach(x=>{
           const tr=document.createElement("tr");
-          [x.typeNo,x.type,x.unit,x.department,x.procNo].forEach(v=>{
+          [x.typeNo || x.id,x.type,x.unit,x.department,x.procNo].forEach(v=>{
             const td=document.createElement("td");
             td.textContent=v||"";
             tr.appendChild(td);
@@ -757,10 +765,6 @@
             td.textContent=v||"";
             tr.appendChild(td);
           });
-          const tdSens=document.createElement("td");
-          tdSens.className="catalog-col-sensitivity";
-          tdSens.textContent=String(x.sensitivity||"").trim();
-          tr.appendChild(tdSens);
           const td=document.createElement("td");
           const b=document.createElement("button");
           b.type="button"; b.className="secondary"; b.textContent="Atvērt kartiņu";
@@ -798,18 +802,184 @@
           .map((x)=>String(x||"").trim())
           .filter(Boolean);
       }
+      function splitTypeNoValues(v){
+        return String(v||"")
+          .split(/[;,\n]/)
+          .map((x)=>String(x||"").trim())
+          .filter(Boolean);
+      }
+      function splitProductValues(v){
+        const raw = String(v || "");
+        const base = raw
+          .split(/[;\n]/)
+          .map((x)=>String(x||"").trim())
+          .filter(Boolean);
+        if(base.length > 1) return base;
+        // Dažos ierakstos GP saraksts ir ielikts vienā rindā ar komatiem.
+        // Šķeļam pēc komata tikai tad, ja acīmredzami ir saraksts.
+        const commaCount = (raw.match(/,/g) || []).length;
+        if(commaCount >= 2){
+          return raw
+            .split(",")
+            .map((x)=>String(x||"").trim())
+            .filter(Boolean);
+        }
+        return base;
+      }
+      function compareTypeNoAsc(a, b){
+        const av = String(a || "").trim();
+        const bv = String(b || "").trim();
+        const an = Number(av.replace(",", "."));
+        const bn = Number(bv.replace(",", "."));
+        const aNum = Number.isFinite(an);
+        const bNum = Number.isFinite(bn);
+        if(aNum && bNum) return an - bn;
+        if(aNum && !bNum) return -1;
+        if(!aNum && bNum) return 1;
+        return av.localeCompare(bv, "lv", { numeric: true, sensitivity: "base" });
+      }
+      function sanitizeGpName(v){
+        let s = String(v || "").trim();
+        s = s.replace(/^\[object\s+[^\]]+\]\s*/i, "").trim();
+        if(!s) return "";
+        // Aizsardzība pret "salīmētu" GP sarakstu vienā laukā.
+        if(s.length > 180) return "";
+        return s;
+      }
+      function splitUnitValues(v){
+        return String(v||"")
+          .split(/[,\n;]+/)
+          .map((x)=>String(x||"").replace(/\.+$/,"").trim())
+          .filter(Boolean);
+      }
+      function normTextKey(v){
+        return String(v || "")
+          .normalize("NFKC")
+          .replace(/\s+/g, " ")
+          .trim()
+          .toLowerCase();
+      }
+      function uniqExactStrings(values){
+        const out = [];
+        const seen = new Set();
+        (values || []).forEach((v)=>{
+          const token = String(v || "").trim();
+          if(!token) return;
+          const k = normTextKey(token);
+          if(seen.has(k)) return;
+          seen.add(k);
+          out.push(token);
+        });
+        return out;
+      }
+      function resolveCatalogUnit(row){
+        const direct = String((row && row.unit) || "").trim();
+        if(direct) return direct;
+        const raw = row && row.raw ? row.raw : null;
+        if(!raw || typeof raw !== "object") return "";
+        const exactKeys = [
+          "Procesa_izpilditajs-patstaviga_strukturvieniba",
+          "Procesa_izpilditajs_patstaviga_strukturvieniba",
+          "procesa_izpilditajs-patstaviga_strukturvieniba",
+          "procesa_izpilditajs_patstaviga_strukturvieniba",
+          "Strukturvieniba_izpilditajs_kas_rada_galaprodukta_veidu",
+        ];
+        for (const k of exactKeys){
+          if (Object.prototype.hasOwnProperty.call(raw, k)) {
+            const v = String(raw[k] || "").trim();
+            if(v) return v;
+          }
+        }
+        return "";
+      }
+      function pairProductJoma(products, jomas){
+        const pVals = splitValues(products);
+        const jVals = splitValues(jomas);
+        const out = [];
+        if(!pVals.length) return out;
+        pVals.forEach((p, i)=>{
+          const j = jVals[i] || jVals[0] || "";
+          out.push({ product: p, joma: j });
+        });
+        return out;
+      }
+      function getJomaForProcessGp(procNo, gpName, fallbackJoma){
+        const p = String(procNo || "").trim();
+        const g = String(gpName || "").trim().toLowerCase();
+        const fromCatalog = (csvRows || []).find((x)=>{
+          return String((x && x.procNo) || "").trim() === p
+            && String((x && x.type) || "").trim().toLowerCase() === g
+            && String((x && x.darbibasJoma) || "").trim();
+        });
+        if(fromCatalog) return String(fromCatalog.darbibasJoma || "").trim();
+        return String(fallbackJoma || "").trim();
+      }
+      function renderProcessGpActions(procNo){
+        const mount = $("eGpActions");
+        if(!mount) return;
+        const p = String(procNo || "").trim();
+        if(!p){ mount.innerHTML = ""; return; }
+        const rows = (csvRows || []).filter((x)=>String((x && x.procNo) || "").trim() === p);
+        if(!rows.length){ mount.innerHTML = ""; return; }
+        mount.innerHTML = "";
+        const seen = new Set();
+        rows.forEach((x)=>{
+          const no = String((x && (x.typeNo || x.id)) || "").trim();
+          const gp = sanitizeGpName((x && x.type) || "");
+          const key = `${normTextKey(no)}|${normTextKey(gp)}`;
+          if(!gp || seen.has(key)) return;
+          seen.add(key);
+          const line = document.createElement("div");
+          line.style.display = "flex";
+          line.style.alignItems = "flex-start";
+          line.style.justifyContent = "space-between";
+          line.style.gap = "6px";
+          line.style.minHeight = "28px";
+          const label = document.createElement("div");
+          label.style.flex = "1 1 auto";
+          label.style.whiteSpace = "pre-wrap";
+          label.style.wordBreak = "break-word";
+          label.textContent = `${no ? no + " — " : ""}${gp}`;
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "catalog-jump";
+          b.textContent = "GP kartiņa";
+          b.title = `${no ? no + " — " : ""}${gp || "GP"}`;
+          b.onclick = ()=>gotoCatalogFor(p, gp);
+          line.appendChild(label);
+          line.appendChild(b);
+          mount.appendChild(line);
+        });
+      }
+      function buildEditorGpText(procNo, fallbackProducts){
+        const p = String(procNo || "").trim();
+        const byName = new Map();
+        (csvRows || []).forEach((x)=>{
+          if(String((x && x.procNo) || "").trim() !== p) return;
+          const gp = sanitizeGpName((x && x.type) || "");
+          if(!gp) return;
+          const k = normTextKey(gp);
+          if(!byName.has(k)) byName.set(k, gp);
+        });
+        const fromCatalog = Array.from(byName.values());
+        if(fromCatalog.length) return fromCatalog.join("\n");
+        if (fallbackProducts instanceof Set) return Array.from(fallbackProducts).map(sanitizeGpName).filter(Boolean).join("\n");
+        if (Array.isArray(fallbackProducts)) return fallbackProducts.map(sanitizeGpName).filter(Boolean).join("\n");
+        return splitValues(fallbackProducts).map(sanitizeGpName).filter(Boolean).join("\n");
+      }
       function buildProcessRegisterRows(rows){
         const byKey = new Map();
         (rows||[]).forEach((r)=>{
           const procNo = String((r&&r.processNo)||"").trim();
           const proc = String((r&&r.process)||"").trim();
-          const key = `${procNo}|${proc.toLowerCase()}`;
+          const key = normTextKey(proc || procNo);
           if(!byKey.has(key)){
             byKey.set(key, {
               __sourceRow: r,
               groups: new Set(),
               group: "",
               darbibasJoma: r.darbibasJoma || "",
+              processNos: new Set(),
               processNo: procNo,
               process: proc,
               input: r.input || "",
@@ -823,27 +993,141 @@
               otherMetrics: r.otherMetrics || "",
               executors: new Set(),
               products: new Set(),
+              gpTypeNos: new Map(),
+              gpTypeNoAll: new Set(),
+              sourceRows: [],
             });
           }
           const x = byKey.get(key);
+          // Nesajaucam dažādus procesus ar vienādu nosaukumu:
+          // ja procesa griezumam jau ir savs Procesa Nr., ignorējam citas Nr. rindas.
+          if (procNo && x.processNo && procNo !== x.processNo) return;
+          if(!x.processNo && procNo) x.processNo = procNo;
+          if(procNo && (!x.processNo || procNo === x.processNo)) x.processNos.add(procNo);
           splitValues(r.group).forEach((v)=>x.groups.add(normalizeGroupLabel(v)));
-          splitValues(r.executorPatstaviga).forEach((v)=>x.executors.add(v));
+          splitUnitValues(r.executorPatstaviga).forEach((v)=>x.executors.add(v));
           splitValues(r.executorDala).forEach((v)=>x.executorDalas.add(v));
-          splitValues(r.products).forEach((v)=>x.products.add(v));
+          x.sourceRows.push(r);
+          const gpNames = splitProductValues(r.products).map(sanitizeGpName).filter(Boolean);
+          const raw = (r && r.raw) || {};
+          const gpTypeNoRaw = String(
+            raw["Procesa_galaprodukta_Nr."]
+            || raw["Procesa_galaprodukta_Nr"]
+            || raw["procesa_galaprodukta_nr"]
+            || raw["Procesa_galaprodukta_nr"]
+            || ""
+          ).trim();
+          const gpTypeNos = splitTypeNoValues(gpTypeNoRaw).map((v)=>String(v || "").trim()).filter(Boolean);
+          gpNames.forEach((v, idx)=>{
+            x.products.add(v);
+            const n = gpTypeNos[idx] || "";
+            const k = normTextKey(v);
+            if(!k) return;
+            if(!x.gpTypeNos.has(k)) x.gpTypeNos.set(k, new Set());
+            if(n) x.gpTypeNos.get(k).add(n);
+            if(n) x.gpTypeNoAll.add(n);
+          });
         });
         return Array.from(byKey.values()).map((x)=>{
-          const linked = linkedCatalogData(x);
-          splitValues(linked.types).forEach((v)=>x.products.add(v));
+          const procNoSet = new Set([String(x.processNo || "").trim()].filter(Boolean));
+          const gpNoSet = new Set(Array.from(x.gpTypeNoAll).map((v)=>String(v || "").trim()).filter(Boolean));
+          const gpNameSet = new Set(Array.from(x.products).map((v)=>normTextKey(v)).filter(Boolean));
+          const targetProcNo = String(x.processNo || "").trim();
+          const isValidCatalogGp = (name)=>{
+            const gp = sanitizeGpName(name);
+            if(!gp) return false;
+            // Izmetam acīmredzami "salīmētus" tekstu blāķus.
+            if(gp.length > 180) return false;
+            return true;
+          };
+          let relatedCatalogRows = [];
+          if(targetProcNo){
+            relatedCatalogRows = (csvRows || []).filter((c)=>{
+              const cProcNo = String((c && c.procNo) || "").trim();
+              const cGp = (c && c.type) || "";
+              return cProcNo === targetProcNo && isValidCatalogGp(cGp);
+            });
+          }
+          // Tikai ja procesam nav procNo, izmantojam GP Nr. fallback.
+          if(!relatedCatalogRows.length && !targetProcNo && gpNoSet.size){
+            relatedCatalogRows = (csvRows || []).filter((c)=>{
+              const cTypeNo = String((c && (c.typeNo || c.id)) || "").trim();
+              if(!cTypeNo || !gpNoSet.has(cTypeNo)) return false;
+              return isValidCatalogGp((c && c.type) || "");
+            });
+          }
+          relatedCatalogRows.forEach((c)=>{
+            const gp = sanitizeGpName((c && c.type) || "");
+            if(gp) x.products.add(gp);
+          });
+          const gpSeedNames = Array.from(new Set(relatedCatalogRows.map((c)=>sanitizeGpName((c && c.type) || "")).filter(Boolean)));
+          const gpMap = new Map();
+          gpSeedNames.forEach((gp)=>{
+            const k = normTextKey(gp);
+            gpMap.set(k, { name: gp, entries: [], seen: new Set() });
+          });
+          relatedCatalogRows.forEach((c)=>{
+            const gp = sanitizeGpName((c && c.type) || "");
+            if(!gp) return;
+            const k = normTextKey(gp);
+            if(!gpMap.has(k)) gpMap.set(k, { name: gp, entries: [], seen: new Set() });
+            const g = gpMap.get(k);
+            const n = String((c && (c.typeNo || c.id)) || "").trim();
+            const j = String((c && c.darbibasJoma) || "").trim();
+            const pn = String((c && c.procNo) || "").trim();
+            const e = resolveCatalogUnit(c);
+            const sig = `${pn}|${n}|${j}|${e}`;
+            if(g.seen.has(sig)) return;
+            g.seen.add(sig);
+            g.entries.push({ procNo: pn, typeNo: n, joma: j, executor: e });
+          });
+          const gpItems = Array.from(gpMap.values())
+            .map((g)=>{
+              let typeNos = Array.from(new Set(g.entries.map((e)=>String(e.typeNo||"").trim()).filter(Boolean)));
+              const fallbackTypeNos = Array.from((x.gpTypeNos.get(normTextKey(g.name)) || new Set()))
+                .map((v)=>String(v || "").trim())
+                .filter(Boolean);
+              const hasMergedTypeNo = typeNos.some((v)=>/[;\n,]/.test(String(v || "")));
+              if(!typeNos.length || hasMergedTypeNo){
+                if(fallbackTypeNos.length) typeNos = fallbackTypeNos;
+              }
+              const gpName = String(g.name || "").trim();
+              const jomas = Array.from(new Set(g.entries.map((e)=>String(e.joma||"").trim()).filter(Boolean)));
+              const executors = uniqExactStrings(g.entries.map((e)=>String(e.executor||"").trim()));
+              const procNo = String((g.entries.find((e)=>String(e.procNo||"").trim()) || {}).procNo || "").trim()
+                || Array.from(procNoSet).find(Boolean)
+                || "";
+              return {
+                name: gpName,
+                typeNosText: typeNos.join(", "),
+                jomaText: jomas.join(", "),
+                executorText: executors.join(", "),
+                procNo,
+              };
+            });
           const mergedGroups = Array.from(x.groups).filter(Boolean);
           const mergedDalas = Array.from(x.executorDalas)
             .filter((v)=>String(v||"").trim().toLowerCase() !== "uzraudzības un kontroles veikšana");
+          const processNoText = Array.from(procNoSet).join(", ");
+          const typeNosText = gpItems.map((g)=>g.typeNosText).join("\n");
+          const jomaText = gpItems.map((g)=>g.jomaText).join("\n");
+          const mergedExecutors = uniqExactStrings(Array.from(x.executors));
+          const productsText = gpItems.map((g)=>g.name).join("\n");
           return Object.assign({}, x, {
             group: mergedGroups.join(", "),
-            executorPatstaviga: Array.from(x.executors).join(", "),
+            processNo: processNoText || x.processNo || "",
+            executorPatstaviga: mergedExecutors.join(", "),
             executorDala: mergedDalas.join(", "),
-            productsText: Array.from(x.products).join("\n"),
-            productTypes: linked.types || "",
-            typeNos: linked.typeNos || "",
+            productsText,
+            gpItems,
+            jomaText,
+            jomaSearchText: (csvRows || [])
+              .filter((c)=>procNoSet.has(String((c&&c.procNo)||"").trim()))
+              .map((c)=>String((c&&c.darbibasJoma)||"").trim())
+              .filter(Boolean)
+              .join(" "),
+            productTypes: productsText.replace(/\n/g, "; "),
+            typeNos: typeNosText,
           });
         });
       }
@@ -930,9 +1214,7 @@
             const executorDala = r && r.executorDala != null ? r.executorDala : (raw.Strukturvieniba_dala || raw.strukturvieniba_dala || raw.executorDala || "");
             return Object.assign({}, r, { darbibasJoma, executorDala, group: normalizeGroupLabel(r.group) });
           });
-          mergeCatalogRowsFromProcessRows();
-          syncCatalogContextFromProcessRows();
-          syncProcessProductsToCatalogDb().catch(()=>{});
+          // Strict DB mode: neradām/sinhronizējam sintētiskus kataloga ierakstus no procesa lauka.
           syncProcessProductTypesFromCatalog();
           status("","info");
         }catch(err){
@@ -940,6 +1222,30 @@
           const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (e => (e && e.message) ? e.message : String(e));
           status("DB kļūda: "+mapper(err),"error");
         }
+      }
+      async function reloadAllData(){
+        await loadCatalog();
+        await loadDb();
+        renderTable();
+        renderReports();
+        renderTasksView();
+        rebuildMx();
+      }
+      function exportTableToExcel(tableId, filePrefix){
+        const table = $(tableId);
+        if(!table){ status("Eksports nav pieejams: tabula nav atrasta.","error"); return; }
+        const clone = table.cloneNode(true);
+        clone.querySelectorAll("button").forEach((b)=>b.remove());
+        const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"></head><body>${clone.outerHTML}</body></html>`;
+        const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8;" });
+        const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
+        const a = document.createElement("a");
+        a.href = URL.createObjectURL(blob);
+        a.download = `${filePrefix}_${stamp}.xls`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
       }
 
       function applyLevel(){
@@ -965,30 +1271,44 @@
           if($("toggleCatalogBtn")) $("toggleCatalogBtn").textContent="Aizvērt katalogu";
         }
         const rows=Array.from(table.querySelectorAll("tbody tr"));
-        let matched=false;
-        rows.forEach((tr)=>{
-          const tds=tr.querySelectorAll("td");
-          const mp = String(tds[4]?.textContent||"").trim()===p;
-          const cellType = normText(tds[1]?.textContent||"");
-          const targetType = normText(gp);
-          const mt = !targetType || cellType===targetType || cellType.includes(targetType) || targetType.includes(cellType);
-          const hit = !!(p && mp && mt);
-          tr.style.outline = hit ? "2px solid #2563eb" : "";
-          tr.style.background = hit ? "#dbeafe" : "";
-          if(hit) matched=true;
-        });
+        rows.forEach((tr)=>{ tr.style.outline=""; tr.style.background=""; });
         table.scrollIntoView({behavior:"smooth", block:"center"});
-        let matchedRow = (csvRows || []).find((x)=>{
-          const mp = String((x && x.procNo) || "").trim() === p;
+        const matches = (csvRows || []).filter((x)=>{
+          const mp = !p || String((x && x.procNo) || "").trim() === p;
           const cellType = normText((x && x.type) || "");
           const targetType = normText(gp);
-          const mt = !targetType || cellType===targetType || cellType.includes(targetType) || targetType.includes(cellType);
+          const mt = !targetType || cellType===targetType;
           return mp && mt;
-        }) || null;
-        if(!matchedRow){
+        });
+        let matchedRow = matches[0] || null;
+        if(!matchedRow && !gp && p){
           matchedRow = (csvRows || []).find((x)=>String((x && x.procNo) || "").trim() === p) || null;
         }
-        if(!matchedRow){ alert("Katalogā nav atrasta atbilstoša rinda."); return; }
+        if(!matchedRow){
+          if(gp){
+            matchedRow = {
+              typeNo: "",
+              type: String(gpType || "").trim(),
+              unit: "",
+              department: "",
+              procNo: p,
+              process: "",
+              group: "",
+              darbibasJoma: "",
+              additionalInfo: "",
+            };
+          }else{
+            alert("Katalogā nav atrasta atbilstoša rinda.");
+            return;
+          }
+        }
+        rows.forEach((tr)=>{
+          const tds=tr.querySelectorAll("td");
+          const hit = String(tds[4]?.textContent||"").trim()===String(matchedRow.procNo||"").trim()
+            && normText(tds[1]?.textContent||"")===normText(matchedRow.type||"");
+          tr.style.outline = hit ? "2px solid #2563eb" : "";
+          tr.style.background = hit ? "#dbeafe" : "";
+        });
         if(matchedRow) openCatalogEditor(matchedRow);
       }
       window.openCatalogByProcessGp = (procNo, gpType) => gotoCatalogFor(procNo, gpType);
@@ -998,8 +1318,8 @@
         const tb=$("processTable").querySelector("tbody"); tb.innerHTML="";
         const mergedRows = buildProcessRegisterRows(processRows);
         const matchedRows = mergedRows.filter(r=>{
-          return (!gf||r.group===gf)&&(!q||[r.group,r.processNo,r.process,r.darbibasJoma,r.input,r.executorPatstaviga,r.executorDala,r.productsText,r.productTypes,r.typeNos,r.relatedProcesses,r.services,r.flowcharts,r.itResources,r.optimization,r.otherMetrics].join(" ").toLowerCase().includes(q));
-        });
+          return (!gf||r.group===gf)&&(!q||[r.group,r.processNo,r.process,r.darbibasJoma,r.jomaSearchText,r.input,r.executorPatstaviga,r.executorDala,r.productsText,r.productTypes,r.typeNos,r.relatedProcesses,r.services,r.flowcharts,r.itResources,r.optimization,r.otherMetrics].join(" ").toLowerCase().includes(q));
+        }).sort((a,b)=>String(a && a.process || "").localeCompare(String(b && b.process || ""), "lv", { sensitivity: "base" }));
         const totalRows = matchedRows.length;
         const totalPages = Math.max(1, Math.ceil(totalRows / processPageSize));
         if(processPage > totalPages) processPage = totalPages;
@@ -1010,47 +1330,72 @@
         if($("processNextPageBtn")) $("processNextPageBtn").disabled = processPage >= totalPages;
         renderProcessInlineStats(matchedRows);
         refreshProcessFooterVisibility();
-        pagedRows
-        .forEach(r=>{
-          const tr=document.createElement("tr"); const c=(t,cls)=>{const td=document.createElement("td"); if(cls) String(cls).split(/\s+/).filter(Boolean).forEach((cn)=>td.classList.add(cn)); td.textContent=t||""; tr.appendChild(td);};
-          c(r.group,"col-gray"); c(r.darbibasJoma,"col-gray"); c(r.processNo,"col-gray"); c(r.process,"col-gray");
-          c(r.typeNos,"col-gray");
-          const tdType=document.createElement("td"); tdType.classList.add("col-gray");
-          const gpLines = splitValues(r.productsText);
-          if(gpLines.length){
-            gpLines.forEach((gpName)=>{
+        pagedRows.forEach((r, processIdx)=>{
+          const gpItems = Array.isArray(r.gpItems) ? r.gpItems : [];
+          const lines = gpItems.length ? gpItems : [{
+            name: "",
+            typeNosText: String(r.typeNos || ""),
+            jomaText: String(r.darbibasJoma || ""),
+            executorText: String(r.executorPatstaviga || ""),
+            procNo: String(r.processNo || "").trim(),
+          }];
+          lines.forEach((gpItem, idx)=>{
+            const tr=document.createElement("tr");
+            tr.classList.add(processIdx % 2 === 0 ? "process-block-even" : "process-block-odd");
+            if(idx === 0) tr.classList.add("process-block-start");
+            if(idx === lines.length - 1) tr.classList.add("process-block-end");
+            const c=(t,cls)=>{const td=document.createElement("td"); if(cls) String(cls).split(/\s+/).filter(Boolean).forEach((cn)=>td.classList.add(cn)); td.textContent=t||""; tr.appendChild(td);};
+
+            c(idx===0 ? r.group : "","col-gray");
+            c(idx===0 ? r.processNo : "","col-gray");
+            c(idx===0 ? r.process : "","col-gray");
+            c(String(gpItem.typeNosText || ""),"col-gray");
+
+            const tdType=document.createElement("td"); tdType.classList.add("col-gray");
+            let gpName = String(gpItem.name || "").trim();
+            if(gpName){
               const rowWrap=document.createElement("div");
               rowWrap.style.display="flex";
               rowWrap.style.alignItems="center";
               rowWrap.style.gap="6px";
+              rowWrap.style.minHeight="28px";
               const gpText=document.createElement("span");
               gpText.textContent=gpName;
+              const gpProcNo = String(gpItem.procNo || "").trim() || String(r.processNo || "").split(",")[0].trim();
               const jump=document.createElement("button");
               jump.type="button";
               jump.className="catalog-jump";
               jump.textContent="GP kartiņa";
               jump.title="Atvērt GP kartiņu katalogā";
-              jump.onclick=()=>gotoCatalogFor(r.processNo, gpName);
+              jump.onclick=()=>gotoCatalogFor(gpProcNo, gpName);
               rowWrap.appendChild(gpText);
               rowWrap.appendChild(jump);
               tdType.appendChild(rowWrap);
-            });
-          }else{
-            const jump=document.createElement("button");
-            jump.type="button";
-            jump.className="catalog-jump";
-            jump.textContent="GP kartiņa";
-            jump.title="Atvērt GP kartiņu katalogā";
-            jump.onclick=()=>gotoCatalogFor(r.processNo);
-            tdType.appendChild(jump);
-          }
-          tr.appendChild(tdType);
-          c(r.executorPatstaviga,"col-gray");
-          c(r.input,"col-green col-extended");
-          c(r.relatedProcesses,"col-green col-extended"); c(r.services,"col-green col-extended"); c(r.flowcharts,"col-green col-extended"); c(r.itResources,"col-green col-extended"); c(r.optimization,"col-green col-extended"); c(r.otherMetrics,"col-green col-extended");
-          const td=document.createElement("td"), b=document.createElement("button"); b.type="button"; b.className="secondary"; b.textContent="Atvērt kartiņu"; b.onclick=()=>openEditor(r.__sourceRow||r); td.appendChild(b); tr.appendChild(td);
-          if(q) tr.classList.add("search-hit");
-          tb.appendChild(tr);
+            }
+            tr.appendChild(tdType);
+
+            c(String(gpItem.jomaText || ""),"col-gray");
+            c(String(gpItem.executorText || ""),"col-gray");
+
+            c(idx===0 ? r.input : "","col-green col-extended");
+            c(idx===0 ? r.relatedProcesses : "","col-green col-extended");
+            c(idx===0 ? r.services : "","col-green col-extended");
+            c(idx===0 ? r.flowcharts : "","col-green col-extended");
+            c(idx===0 ? r.itResources : "","col-green col-extended");
+            c(idx===0 ? r.optimization : "","col-green col-extended");
+            c(idx===0 ? r.otherMetrics : "","col-green col-extended");
+
+            const td=document.createElement("td");
+            if(idx===0){
+              const b=document.createElement("button");
+              b.type="button"; b.className="secondary"; b.textContent="Atvērt kartiņu"; b.onclick=()=>openEditor(r);
+              td.appendChild(b);
+            }
+            tr.appendChild(td);
+
+            if(q) tr.classList.add("search-hit");
+            tb.appendChild(tr);
+          });
         });
         applyLevel();
         if(q){
@@ -1079,13 +1424,13 @@
 
       function fillForm(r){
         $("eId").value=r?String(r.id||""):""; $("eGroup").value=r?normalizeGroupLabel(r.group):"Pamatdarbība";
-        $("eProcNo").value=r?r.processNo:""; $("eProcess").value=r?r.process:""; $("eDarbibasJoma").value=r?r.darbibasJoma:""; $("eLaws").value=r?r.products:""; $("eDocs").value=r?r.productTypes:"";
+        $("eProcNo").value=r?r.processNo:""; $("eProcess").value=r?r.process:""; $("eDarbibasJoma").value=r?r.darbibasJoma:""; $("eLaws").value=buildEditorGpText(r ? r.processNo : "", r ? (r.productsText || r.products) : ""); $("eDocs").value=r?r.productTypes:"";
         $("eInput").value=r?r.input:""; $("eExecutorPatstaviga").value=r?r.executorPatstaviga:""; $("eExecutorDala").value=r?r.executorDala:""; $("eOutCount").value=r?r.relatedProcesses:""; $("eAvg").value=r?r.services:""; $("eKpi").value=r?r.flowcharts:""; $("eRisk").value=r?r.itResources:""; $("eOpt").value=r?r.optimization:""; $("eOther").value=r?r.otherMetrics:"";
-        if($("gotoCatalogBtn")) $("gotoCatalogBtn").onclick=()=>gotoCatalogFor($("eProcNo").value);
+        renderProcessGpActions($("eProcNo").value);
       }
       function fillCatalogForm(r){
         $("cTypeNoOrig").value = r ? String(r.id || r.typeNo || "") : "";
-        $("cTypeNo").value = r ? (r.typeNo || "") : "";
+        $("cTypeNo").value = r ? (r.typeNo || r.id || "") : "";
         $("cType").value = r ? (r.type || "") : "";
         $("cUnit").value = r ? (r.unit || "") : "";
         $("cProcNo").value = r ? (r.procNo || "") : "";
@@ -1093,7 +1438,6 @@
         if($("cGroup")) $("cGroup").value = r ? (r.group || "") : "";
         if($("cDarbibasJoma")) $("cDarbibasJoma").value = r ? (r.darbibasJoma || "") : "";
         if($("cDepartment")) $("cDepartment").value = r ? String(r.department || "").trim() : "";
-        if ($("cSensitivity")) $("cSensitivity").value = r ? String(r.sensitivity || "").trim() : "";
         if ($("cAdditionalInfo")) $("cAdditionalInfo").value = r ? String(r.additionalInfo || "").trim() : "";
         $("catalogDeleteBtn").classList.toggle("hidden", !r);
       }
@@ -1107,19 +1451,71 @@
           group: $("cGroup") ? $("cGroup").value.trim() : "",
           darbibasJoma: $("cDarbibasJoma") ? $("cDarbibasJoma").value.trim() : "",
           department: $("cDepartment") ? $("cDepartment").value.trim() : "",
-          sensitivity: $("cSensitivity") ? $("cSensitivity").value.trim() : "",
           additionalInfo: $("cAdditionalInfo") ? $("cAdditionalInfo").value.trim() : "",
         };
       }
       function formVals(){ return {group:$("eGroup").value.trim(),processNo:$("eProcNo").value.trim(),process:$("eProcess").value.trim(),
         darbibasJoma:$("eDarbibasJoma").value.trim(),products:$("eLaws").value.trim(),productTypes:$("eDocs").value.trim(),input:$("eInput").value.trim(),executorPatstaviga:$("eExecutorPatstaviga").value.trim(),executorDala:$("eExecutorDala").value.trim(),relatedProcesses:$("eOutCount").value.trim(),
         services:$("eAvg").value.trim(),flowcharts:$("eKpi").value.trim(),itResources:$("eRisk").value.trim(),optimization:$("eOpt").value.trim(),otherMetrics:$("eOther").value.trim()};}
+      function getVisibleMainSection(){
+        const ids = ["tasksViewCard","processListCard","catalogListCard","executorsCard","reportsCard","metricsCard","manualCard","skaidrojumiAdminCard"];
+        for (const id of ids){
+          const n = $(id);
+          if(n && !n.classList.contains("hidden")) return id;
+        }
+        return "processListCard";
+      }
+      function captureEditorReturnContext(preferredSectionId){
+        const pt = $("processTable");
+        const ct = $("catalogTable");
+        const tt = $("tasksSummaryTable");
+        editorReturnContext = {
+          sectionId: preferredSectionId || getVisibleMainSection(),
+          processOpen: !!(pt && !pt.classList.contains("table-body-hidden")),
+          catalogOpen: !!(ct && !ct.classList.contains("table-body-hidden")),
+          tasksOpen: !!(tt && !tt.classList.contains("table-body-hidden")),
+          scrollY: window.scrollY || 0,
+        };
+      }
+      function restoreEditorReturnContext(fallbackSectionId){
+        const ctx = editorReturnContext || {};
+        const sectionId = ctx.sectionId || fallbackSectionId || "processListCard";
+        const section = $(sectionId);
+        if(section) section.classList.remove("hidden");
+        const pt = $("processTable");
+        if(pt){
+          const open = ctx.processOpen !== false;
+          pt.classList.toggle("table-body-hidden", !open);
+          if($("toggleProcessBtn")) $("toggleProcessBtn").textContent = open ? "Aizvērt procesu reģistru" : "Atvērt procesu reģistru";
+        }
+        const ct = $("catalogTable");
+        if(ct){
+          const open = !!ctx.catalogOpen;
+          ct.classList.toggle("table-body-hidden", !open);
+          if($("toggleCatalogBtn")) $("toggleCatalogBtn").textContent = open ? "Aizvērt katalogu" : "Atvērt katalogu";
+        }
+        const tt = $("tasksSummaryTable");
+        if(tt){
+          const open = !!ctx.tasksOpen;
+          tt.classList.toggle("table-body-hidden", !open);
+          if($("toggleTasksBtn")) $("toggleTasksBtn").textContent = open ? "Aizvērt uzdevumu skatu" : "Atvērt uzdevumu skatu";
+        }
+        const y = Number(ctx.scrollY || 0);
+        setTimeout(()=>window.scrollTo({ top: y, behavior: "auto" }), 0);
+      }
       function openEditor(r){
-        editingRow = r || null;
+        captureEditorReturnContext("processListCard");
+        const src = r && r.__sourceRow ? r.__sourceRow : (r || null);
+        editingRow = src;
         if($("processListCard")) $("processListCard").classList.add("hidden");
-        $("editorCard").classList.remove("hidden"); $("editorTitle").textContent="Procesa kartiņa"; fillForm(r);
-        const e=canEdit(); $("deleteBtn").classList.toggle("hidden", !(r&&e));
-        $("editorForm").querySelectorAll("input,select,button").forEach(el=>{ if(el.id==="closeBtn") return; el.disabled=!e;});
+        const procName = String(((r || src) && (r || src).process) || "").trim();
+        $("editorCard").classList.remove("hidden");
+        $("editorTitle").innerHTML = procName
+          ? `<span style="color:#1d4ed8;font-weight:700">${procName}</span> — Procesa kartiņa`
+          : "Procesa kartiņa";
+        fillForm(r || src);
+        const e=canEdit(); $("deleteBtn").classList.toggle("hidden", !(src&&e));
+        $("editorForm").querySelectorAll("input,select,textarea,button").forEach(el=>{ if(el.id==="closeBtn") return; el.disabled=!e;});
         $("modeHint").textContent=e?"Labošanas režīms ieslēgts.":"Skatīšanās režīms.";
       }
 
@@ -1146,20 +1542,46 @@
           if(node) node.classList.add("hidden");
         });
 
+        captureEditorReturnContext("processListCard");
         $("editorCard").classList.remove("hidden");
         openEditor(match);
       };
       function openCatalogEditor(r){
+        const processVisible = !!($("processListCard") && !$("processListCard").classList.contains("hidden"));
+        const catalogVisible = !!($("catalogListCard") && !$("catalogListCard").classList.contains("hidden"));
+        const executorsVisible = !!($("executorsCard") && !$("executorsCard").classList.contains("hidden"));
+        if(processVisible && !catalogVisible) catalogOpenReturnTarget = "process";
+        else if(executorsVisible && !catalogVisible && !processVisible) catalogOpenReturnTarget = "executors";
+        else catalogOpenReturnTarget = "catalog";
+        captureEditorReturnContext(
+          catalogOpenReturnTarget === "process"
+            ? "processListCard"
+            : (catalogOpenReturnTarget === "executors" ? "executorsCard" : "catalogListCard")
+        );
         editingCatalogRow = r || null;
-        if(catalogOpenReturnTarget !== "process" && $("catalogListCard")) $("catalogListCard").classList.add("hidden");
+        if(catalogOpenReturnTarget === "catalog"){
+          catalogListScrollY = window.scrollY || 0;
+          if($("catalogListCard")) $("catalogListCard").classList.add("hidden");
+        }else if(catalogOpenReturnTarget === "executors"){
+          if($("executorsCard")) $("executorsCard").classList.add("hidden");
+        }
         $("catalogEditorCard").classList.remove("hidden");
-        $("catalogEditorTitle").textContent = r ? "Galaprodukta kartiņa (rediģēt)" : "Galaprodukta kartiņa (jauns)";
+        if($("catalogEditorCard") && $("catalogEditorCard").scrollIntoView){
+          $("catalogEditorCard").scrollIntoView({ behavior:"smooth", block:"start" });
+        }
+        const gpName = String((r && r.type) || "").trim();
+        $("catalogEditorTitle").innerHTML = r
+          ? (gpName
+              ? `<span style="color:#1d4ed8;font-weight:700">${gpName}</span> — Galaprodukta kartiņa (rediģēt)`
+              : "Galaprodukta kartiņa (rediģēt)")
+          : "Galaprodukta kartiņa (jauns)";
         fillCatalogForm(r);
         const e = canEdit();
         $("catalogEditorForm").querySelectorAll("input,textarea,button").forEach(el=>{ if(el.id==="catalogCloseBtn") return; el.disabled=!e;});
       }
 
       function openTaskEditor(task){
+        captureEditorReturnContext("tasksViewCard");
         const t = task || null;
         editingTaskNo = t && t.no != null ? String(t.no) : "";
         $("taskEditorCard").classList.remove("hidden");
@@ -1349,6 +1771,9 @@
         }
         navButtons.forEach((btn)=>{
           btn.addEventListener("click", ()=>{
+            if($("editorCard")) $("editorCard").classList.add("hidden");
+            if($("catalogEditorCard")) $("catalogEditorCard").classList.add("hidden");
+            if($("taskEditorCard")) $("taskEditorCard").classList.add("hidden");
             const id = btn.getAttribute("data-scroll-target");
             if(id==="__home"){
               closeAllMainSections();
@@ -1636,6 +2061,12 @@
           }
         }
       };
+      if($("exportProcessExcelBtn")) $("exportProcessExcelBtn").onclick=()=>exportTableToExcel("processTable","procesu_registrs");
+      if($("exportCatalogExcelBtn")) $("exportCatalogExcelBtn").onclick=()=>exportTableToExcel("catalogTable","gp_katalogs");
+      if($("exportExecutorsExcelBtn")) $("exportExecutorsExcelBtn").onclick=()=>{
+        if(typeof window.renderExecutorsView === "function") window.renderExecutorsView();
+        exportTableToExcel("executorsTable","izpilditaji");
+      };
       if($("toggleTasksBtn")) $("toggleTasksBtn").onclick=()=>{
         const table = $("tasksSummaryTable");
         if(!table) return;
@@ -1666,28 +2097,62 @@
         const card = $("taskEditorCard");
         if(card && card.scrollIntoView) card.scrollIntoView({behavior:"smooth", block:"start"});
       };
-      $("newBtn").onclick=()=>openEditor(null); $("closeBtn").onclick=()=>{$("editorCard").classList.add("hidden"); if($("processListCard")) $("processListCard").classList.remove("hidden"); const pt=$("processTable"); if(pt&&pt.classList.contains("table-body-hidden")){ pt.classList.remove("table-body-hidden"); if($("toggleProcessBtn")) $("toggleProcessBtn").textContent="Aizvērt procesu reģistru"; } editingRow=null;};
+      function initFormUndo(formId, triggerId){
+        const form = $(formId);
+        const trigger = $(triggerId);
+        if(!form || !trigger) return;
+        const stack = [];
+        const capture = ()=>{
+          const values = {};
+          form.querySelectorAll("input,select,textarea").forEach((el)=>{
+            if(!el.id) return;
+            values[el.id] = el.type === "checkbox" ? !!el.checked : String(el.value || "");
+          });
+          return values;
+        };
+        const apply = (snap)=>{
+          if(!snap) return;
+          Object.keys(snap).forEach((id)=>{
+            const el = $(id);
+            if(!el) return;
+            if(el.type === "checkbox") el.checked = !!snap[id];
+            else el.value = snap[id];
+          });
+        };
+        const pushState = ()=>{
+          const now = capture();
+          const prev = stack.length ? stack[stack.length - 1] : null;
+          if(prev && JSON.stringify(prev) === JSON.stringify(now)) return;
+          stack.push(now);
+          if(stack.length > 100) stack.shift();
+        };
+        form.addEventListener("input", pushState, true);
+        form.addEventListener("change", pushState, true);
+        trigger.onclick = ()=>{
+          if(stack.length <= 1) return;
+          stack.pop();
+          apply(stack[stack.length - 1]);
+        };
+        setTimeout(pushState, 0);
+      }
+      initFormUndo("editorForm","processUndoBtn");
+      initFormUndo("catalogEditorForm","catalogUndoBtn");
+      initFormUndo("taskEditorForm","taskUndoBtn");
+      $("newBtn").onclick=()=>openEditor(null); $("closeBtn").onclick=()=>{$("editorCard").classList.add("hidden"); restoreEditorReturnContext("processListCard"); editingRow=null;};
       $("newCatalogBtn").onclick=()=>openCatalogEditor(null);
       $("catalogCloseBtn").onclick=()=>{
         $("catalogEditorCard").classList.add("hidden");
-        if(catalogOpenReturnTarget === "process"){
-          if($("processListCard")) $("processListCard").classList.remove("hidden");
-          const pt=$("processTable");
-          if(pt&&pt.classList.contains("table-body-hidden")){
-            pt.classList.remove("table-body-hidden");
-            if($("toggleProcessBtn")) $("toggleProcessBtn").textContent="Aizvērt procesu reģistru";
-          }
-        }else{
-          if($("catalogListCard")) $("catalogListCard").classList.remove("hidden");
-          const ct=$("catalogTable");
-          if(ct&&ct.classList.contains("table-body-hidden")){
-            ct.classList.remove("table-body-hidden");
-            if($("toggleCatalogBtn")) $("toggleCatalogBtn").textContent="Aizvērt katalogu";
-          }
+        restoreEditorReturnContext(
+          catalogOpenReturnTarget === "process"
+            ? "processListCard"
+            : (catalogOpenReturnTarget === "executors" ? "executorsCard" : "catalogListCard")
+        );
+        if(catalogOpenReturnTarget === "catalog"){
+          setTimeout(()=>window.scrollTo({ top: Number(catalogListScrollY || 0), behavior: "auto" }), 0);
         }
         editingCatalogRow=null;
       };
-      $("taskCloseBtn").onclick=()=>{$("taskEditorCard").classList.add("hidden"); editingTaskNo=null;};
+      $("taskCloseBtn").onclick=()=>{$("taskEditorCard").classList.add("hidden"); restoreEditorReturnContext("tasksViewCard"); editingTaskNo=null;};
       $("taskEditorForm").onsubmit=async(e)=>{
         e.preventDefault();
         if(!canEdit()){alert("Labošana pieejama tikai admin (labot)."); return;}
@@ -1696,6 +2161,8 @@
         const newTaskName = String($("tTask").value || "").trim();
         if(!newNo){ status("Lauks 'Nr.' ir obligāts.","error"); return; }
         if(!newTaskName){ status("Lauks 'Uzdevums' ir obligāts.","error"); return; }
+        const taskActionMsg = oldNo ? "Vai tiešām saglabāt uzdevuma labojumus?" : "Vai tiešām pievienot jaunu uzdevumu?";
+        if(!confirm(taskActionMsg)) return;
         try{
           const api = window.DB;
           if(!oldNo){
@@ -1721,12 +2188,9 @@
             await api.updateTaskByNo(oldNo, { taskNo: newNo, task: newTaskName });
           }
           $("taskEditorCard").classList.add("hidden");
+          restoreEditorReturnContext("tasksViewCard");
           editingTaskNo = null;
-          await loadDb();
-          renderTable();
-          renderReports();
-          renderTasksView();
-          rebuildMx();
+          await reloadAllData();
           status(oldNo ? "Uzdevums saglabāts." : "Jauns uzdevums pievienots.","ok");
         }catch(err){
           const msg = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError(err) : String(err && err.message ? err.message : err);
@@ -1748,11 +2212,7 @@
           await api.removeTaskByNo(oldNo);
           $("taskEditorCard").classList.add("hidden");
           editingTaskNo = null;
-          await loadDb();
-          renderTable();
-          renderReports();
-          renderTasksView();
-          rebuildMx();
+          await reloadAllData();
           status("Uzdevums dzēsts.","ok");
         }catch(err){
           const msg = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError(err) : String(err && err.message ? err.message : err);
@@ -1760,10 +2220,12 @@
           status("DB kļūda: "+msg,"error");
         }
       };
-      if($("editBtn")) $("editBtn").onclick=()=>{ if(!canEdit()) return; $("editorForm").querySelectorAll("input,select").forEach(el=>el.disabled=false); };
+      if($("editBtn")) $("editBtn").onclick=()=>{ if(!canEdit()) return; $("editorForm").querySelectorAll("input,select,textarea").forEach(el=>el.disabled=false); };
       $("editorForm").onsubmit=async(e)=>{ e.preventDefault(); if(!canEdit()){alert("Labošana pieejama tikai admin (labot)."); return;}
         const f=formVals();
-        if(!f.processNo){ status("Lauks 'Procesa Nr.' ir obligāts.","error"); return; }
+        if(!editingRow && !f.processNo){ status("Lauks 'Procesa Nr.' ir obligāts.","error"); return; }
+        const processActionMsg = editingRow ? "Vai tiešām saglabāt procesa labojumus?" : "Vai tiešām pievienot jaunu procesu?";
+        if(!confirm(processActionMsg)) return;
         try{
           const api = window.DB;
           if(!api || typeof api.insert !== "function" || typeof api.update !== "function" || typeof api.remove !== "function"){
@@ -1778,7 +2240,14 @@
             await api.update(editingRow, f);
           }
           editingRow=null;
-          $("editorCard").classList.add("hidden"); await loadDb(); renderTable(); rebuildMx(); status("Saglabāts.","ok");
+          $("editorCard").classList.add("hidden");
+          restoreEditorReturnContext("processListCard");
+          try{
+            await reloadAllData();
+            status("Saglabāts.","ok");
+          }catch(_){
+            status("Saglabāts (atsvaidzināšana neizdevās).","info");
+          }
         }catch(err){
           const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (e => (e && e.message) ? e.message : String(e));
           console.error("DB save error:", err);
@@ -1798,7 +2267,7 @@
           }
           await api.remove(row);
           editingRow=null;
-          $("editorCard").classList.add("hidden"); await loadDb(); renderTable(); rebuildMx(); status("Dzēsts.","ok");
+          $("editorCard").classList.add("hidden"); await reloadAllData(); status("Dzēsts.","ok");
         }catch(err){
           const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (e => (e && e.message) ? e.message : String(e));
           console.error("DB delete error:", err);
@@ -1815,18 +2284,28 @@
           return;
         }
         const f = catalogFormVals();
+        const gpActionMsg = editingCatalogRow ? "Vai tiešām saglabāt GP labojumus?" : "Vai tiešām pievienot jaunu GP?";
+        if(!confirm(gpActionMsg)) return;
         try{
           if(!editingCatalogRow){
             await api.insertCatalog(f);
           }else{
             await api.updateCatalog(editingCatalogRow, f);
           }
-          if (typeof window.persistCatalogSensitivity === "function") {
-            window.persistCatalogSensitivity(f.typeNo, f.sensitivity);
-          }
           editingCatalogRow=null;
           $("catalogEditorCard").classList.add("hidden");
-          await loadCatalog();
+          restoreEditorReturnContext(
+            catalogOpenReturnTarget === "process"
+              ? "processListCard"
+              : (catalogOpenReturnTarget === "executors" ? "executorsCard" : "catalogListCard")
+          );
+          try{
+            await reloadAllData();
+            status("Saglabāts.","ok");
+          }catch(_){
+            // Saglabāšana jau veikta; ja pārlāde nobrūk, neapturam lietotāju ar viltus "nesaglabājās".
+            status("Saglabāts (atsvaidzināšana neizdevās).","info");
+          }
         }catch(err){
           const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (x=>String(x));
           const msg = mapper(err);
@@ -1838,15 +2317,11 @@
         if(!canEdit()) return;
         if(!editingCatalogRow) return;
         if(!confirm("Dzēst procesa galaproduktu?")) return;
-        const delTypeNo = editingCatalogRow.typeNo || editingCatalogRow.id;
         try{
           await window.DB.removeCatalog(editingCatalogRow);
-          if (typeof window.removeCatalogSensitivity === "function" && delTypeNo) {
-            window.removeCatalogSensitivity(String(delTypeNo));
-          }
           editingCatalogRow=null;
           $("catalogEditorCard").classList.add("hidden");
-          await loadCatalog();
+          await reloadAllData();
         }catch(err){
           const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (x=>String(x));
           const msg = mapper(err);
