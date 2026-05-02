@@ -691,8 +691,8 @@
     const groupCol = pickCatalogCol(["Procesa_grupa", "Procesu_grupa", "procesa_grupa", "procesu_grupa", "group"], null);
     const jomaCol = pickCatalogExistingCol(["Darbibas_joma", "darbibas_joma", "Darbības joma", "darbibasJoma", "Joma_piesaiste_galaproduktam"]);
 
+    const typeNoVal = String(row.typeNo || "").trim();
     const payload = {
-      [typeNoCol]: String(row.typeNo || "").trim(),
       [typeCol]: String(row.type || "").trim(),
       [unitCol]: String(row.unit || "").trim(),
       "Uzdevuma_Nr.": String(row.taskNo || "").trim(),
@@ -700,6 +700,7 @@
       [deptCol]: String(row.department || "").trim(),
       "Papildu informācija": String(row.additionalInfo || "").trim(),
     };
+    if (typeNoVal) payload[typeNoCol] = typeNoVal;
     if (processCol) payload[processCol] = String(row.process || "").trim();
     if (groupCol) payload[groupCol] = String(row.group || "").trim();
     if (jomaCol) payload[jomaCol] = String(row.darbibasJoma || "").trim();

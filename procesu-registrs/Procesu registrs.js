@@ -1,17 +1,164 @@
 (function () {
   "use strict";
 
-  const $ = (id) => document.getElementById(id);
+  /** Datu korektūra procesu reģistra tabulai: visas DB `procesu_registrs` rindas ar GP → viena apvienota karte, GP rindas zemāk, joma no attiecīgās DB rindas, pārvaldes viena rinda ar komatiem. */
 
-  function uniq(vals) {
-    return Array.from(new Set(vals.map((v) => String(v || "").trim()).filter(Boolean)));
+  function normTextKey(v) {
+    return String(v || "")
+      .normalize("NFKC")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
   }
-  function fmtPair(no, name) {
-    const n = String(no || "").trim();
-    const t = String(name || "").trim();
-    if (n && t) return `${n} — ${t}`;
-    return n || t || "";
+
+  function sanitizeGpName(v) {
+    let s = String(v || "").trim();
+    s = s.replace(/^\[object\s+[^\]]+\]\s*/i, "").trim();
+    if (!s) return "";
+    if (s.length > 180) return "";
+    return s;
   }
+
+  function splitProductValues(v) {
+    const raw = String(v || "");
+    const base = raw
+      .split(/[;\n]/)
+      .map((x) => String(x || "").trim())
+      .filter(Boolean);
+    if (base.length > 1) return base;
+    const commaCount = (raw.match(/,/g) || []).length;
+    if (commaCount >= 2) {
+      return raw
+        .split(",")
+        .map((x) => String(x || "").trim())
+        .filter(Boolean);
+    }
+    return base;
+  }
+
+  function splitTypeNoValues(v) {
+    return String(v || "")
+      .split(/[;,\n]/)
+      .map((x) => String(x || "").trim())
+      .filter(Boolean);
+  }
+
+  function rowProcessKey(r) {
+    const procNo = String((r && r.processNo) || "").trim();
+    const proc = String((r && r.process) || "").trim();
+    return normTextKey(proc || procNo);
+  }
+
+  function mergedRowKey(m) {
+    return normTextKey(String((m && m.process) || "").trim() || String((m && m.processNo) || "").trim());
+  }
+
+  function gpTypeNosFromRaw(r) {
+    const raw = (r && r.raw) || {};
+    const gpTypeNoRaw = String(
+      raw["Procesa_galaprodukta_Nr."] ||
+        raw["Procesa_galaprodukta_Nr"] ||
+        raw["procesa_galaprodukta_nr"] ||
+        raw["Procesa_galaprodukta_nr"] ||
+        ""
+    ).trim();
+    return splitTypeNoValues(gpTypeNoRaw);
+  }
+
+  function collectExecutorsFromRawList(list) {
+    const seen = new Set();
+    const out = [];
+    (list || []).forEach((r) => {
+      String((r && r.executorPatstaviga) || "")
+        .split(/[,\n;]+/)
+        .map((x) => String(x || "").replace(/\.+$/g, "").trim())
+        .filter(Boolean)
+        .forEach((unit) => {
+          const low = unit.toLowerCase();
+          if (seen.has(low)) return;
+          seen.add(low);
+          out.push(unit);
+        });
+    });
+    return out.join(", ");
+  }
+
+  function buildGpItemsFromRawRows(rawList) {
+    const gpItems = [];
+    (rawList || []).forEach((r) => {
+      const joma = String((r && r.darbibasJoma) || "").trim();
+      const productsField = (r && r.products) != null ? r.products : "";
+      const tokens = splitProductValues(productsField).map(sanitizeGpName).filter(Boolean);
+      const typeNos = gpTypeNosFromRaw(r);
+      const procNo = String((r && r.processNo) || "").trim();
+      tokens.forEach((name, idx) => {
+        gpItems.push({
+          name,
+          typeNosText: String(typeNos[idx] || "").trim(),
+          jomaText: joma,
+          executorText: "",
+          procNo,
+        });
+      });
+    });
+    return gpItems;
+  }
+
+  /**
+   * @param {Array} mergedRows — buildProcessRegisterRows rezultāts
+   * @param {Array} rawRows — processRows no DB (getProcessRows slice)
+   */
+  function applyProcessRegisterDataPatch(mergedRows, rawRows) {
+    if (!Array.isArray(mergedRows) || !Array.isArray(rawRows)) return mergedRows || [];
+
+    const rawByKey = new Map();
+    rawRows.forEach((r) => {
+      const k = rowProcessKey(r);
+      if (!k) return;
+      if (!rawByKey.has(k)) rawByKey.set(k, []);
+      rawByKey.get(k).push(r);
+    });
+
+    const uniqProc = new Set();
+    rawRows.forEach((r) => {
+      const k = rowProcessKey(r);
+      if (k) uniqProc.add(k);
+    });
+    const nUniq = uniqProc.size;
+    if (nUniq !== 50) {
+      console.warn("[Procesu registrs] Unikālo procesu (atslēga pēc Process / Procesa Nr.) skaits:", nUniq, "(pārbaudes kritērijs: 50).");
+    }
+
+    const patched = mergedRows.map((m) => {
+      const k = mergedRowKey(m);
+      const list = k ? rawByKey.get(k) : null;
+      if (!list || !list.length) return m;
+
+      const gpItems = buildGpItemsFromRawRows(list);
+      const combinedExec = collectExecutorsFromRawList(list);
+      if (gpItems.length) {
+        gpItems[0].executorText = combinedExec;
+      }
+
+      const productsText = gpItems.length ? gpItems.map((g) => g.name).filter(Boolean).join("\n") : String(m.productsText || "");
+      const jomaParts = gpItems.map((g) => String(g.jomaText || "").trim()).filter(Boolean);
+      const jomaSearchText = [m.jomaSearchText, ...jomaParts].filter(Boolean).join(" ").trim();
+
+      return Object.assign({}, m, {
+        gpItems,
+        productsText,
+        productTypes: productsText ? productsText.replace(/\n/g, "; ") : String(m.productTypes || ""),
+        executorPatstaviga: combinedExec,
+        jomaSearchText,
+      });
+    });
+
+    return patched;
+  }
+
+  window.applyProcessRegisterDataPatch = applyProcessRegisterDataPatch;
+
+  const $ = (id) => document.getElementById(id);
 
   function moveControlsToRegistry() {
     const row = $("searchInput") ? $("searchInput").parentElement : null;
@@ -43,129 +190,16 @@
     if (!table || !input || !select) return;
 
     const q = String(input.value || "").trim().toLowerCase();
-    if (!q) return; // netraucē citiem filtriem, ja galvenais filtrs tukšs
+    if (!q) return;
     const rows = Array.from(table.querySelectorAll("tbody tr"));
     rows.forEach((tr) => {
-      if (!q) {
-        if (tr.style.display === "none") tr.style.display = "";
-        return;
-      }
       const text = getFieldText(tr, select.value).toLowerCase();
       tr.style.display = text.includes(q) ? "" : "none";
     });
   }
 
-  function ensureExtraViewsUi() {
-    if ($("extraViewsCard")) return;
-    const processCard = $("processListCard");
-    if (!processCard || !processCard.parentElement) return;
-
-    const card = document.createElement("div");
-    card.className = "card section-block section-block--extraviews";
-    card.id = "extraViewsCard";
-    card.innerHTML = `
-      <div class="toolbar">
-        <div class="left">
-          <div class="section-title">Skata izvēle</div>
-        </div>
-        <div class="right">
-          <select id="extraViewSelect" style="font-weight:600;min-width:11rem">
-            <option value="owners" selected>Izpildītāji</option>
-            <option value="tasks">Uzdevumi</option>
-          </select>
-        </div>
-      </div>
-      <div id="tasksViewWrap" class="hidden">
-        <table id="tasksViewTable"><thead><tr><th>Uzdevums (Nr. un nosaukums)</th><th>Procesi (Nr. un nosaukumi)</th><th>Izpildītāji</th></tr></thead><tbody></tbody></table>
-      </div>
-      <div id="ownersViewWrap">
-        <table id="ownersViewTable"><thead><tr><th>Izpildītājs</th><th>Uzdevumi (Nr. un nosaukumi)</th><th>Procesi (Nr. un nosaukumi)</th><th>GP veidi</th></tr></thead><tbody></tbody></table>
-      </div>
-    `;
-    const catalogEditorCard = $("catalogEditorCard");
-    if (catalogEditorCard && catalogEditorCard.parentElement) {
-      catalogEditorCard.parentElement.insertBefore(card, catalogEditorCard.nextSibling);
-    } else {
-      processCard.parentElement.appendChild(card);
-    }
-
-    $("extraViewSelect").addEventListener("change", () => {
-      const v = $("extraViewSelect").value;
-      $("tasksViewWrap").classList.toggle("hidden", v !== "tasks");
-      $("ownersViewWrap").classList.toggle("hidden", v !== "owners");
-    });
-  }
-
-  function renderTasksView(rows) {
-    const tb = $("tasksViewTable") ? $("tasksViewTable").querySelector("tbody") : null;
-    if (!tb) return;
-    const catalogRows = typeof window.getCatalogRows === "function" ? window.getCatalogRows() : [];
-    const byTask = new Map();
-    rows.forEach((r) => {
-      const k = fmtPair(r.taskNo, r.task);
-      if (!k) return;
-      if (!byTask.has(k)) byTask.set(k, { processes: [], executors: [] });
-      const x = byTask.get(k);
-      x.processes.push(fmtPair(r.processNo, r.process));
-      const rowKey = `${String(r.taskNo || "").trim()}|${String(r.processNo || "").trim()}`;
-      catalogRows.forEach((c) => {
-        const ck = `${String(c.taskNo || "").trim()}|${String(c.procNo || "").trim()}`;
-        if (ck === rowKey) {
-          const ex = String(c.unit || "").trim();
-          if (ex) x.executors.push(ex);
-        }
-      });
-    });
-    tb.innerHTML = "";
-    Array.from(byTask.keys()).sort().forEach((task) => {
-      const data = byTask.get(task);
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${task}</td><td>${uniq(data.processes).join("; ")}</td><td>${uniq(data.executors).join("; ")}</td>`;
-      tb.appendChild(tr);
-    });
-  }
-
-  function renderOwnersView(rows) {
-    const tb = $("ownersViewTable") ? $("ownersViewTable").querySelector("tbody") : null;
-    if (!tb) return;
-    const catalogRows = typeof window.getCatalogRows === "function" ? window.getCatalogRows() : [];
-    const processIndex = new Map();
-    rows.forEach((r) => {
-      const key = `${String(r.taskNo || "").trim()}|${String(r.processNo || "").trim()}`;
-      processIndex.set(key, r);
-    });
-
-    const byOwner = new Map();
-    catalogRows.forEach((c) => {
-      const owner = String(c.unit || "").trim(); // Izpildītājs no GP kataloga
-      if (!owner) return;
-      const key = `${String(c.taskNo || "").trim()}|${String(c.procNo || "").trim()}`;
-      const p = processIndex.get(key);
-      if (!byOwner.has(owner)) byOwner.set(owner, { tasks: [], processes: [], outputs: [] });
-      const x = byOwner.get(owner);
-      x.tasks.push((p && fmtPair(p.taskNo, p.task)) || String(c.taskNo || "").trim());
-      x.processes.push((p && fmtPair(p.processNo, p.process)) || String(c.procNo || "").trim());
-      x.outputs.push(c.type || "");
-    });
-
-    tb.innerHTML = "";
-    Array.from(byOwner.keys()).sort().forEach((owner) => {
-      const data = byOwner.get(owner);
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${owner}</td><td>${uniq(data.tasks).join("; ")}</td><td>${uniq(data.processes).join("; ")}</td><td>${uniq(data.outputs).join("; ")}</td>`;
-      tb.appendChild(tr);
-    });
-  }
-
-  function renderExtraViews() {
-    const rows = typeof window.getProcessRows === "function" ? window.getProcessRows() : [];
-    renderTasksView(rows);
-    renderOwnersView(rows);
-  }
-
   function setup() {
     moveControlsToRegistry();
-    ensureExtraViewsUi();
 
     const searchInput = $("searchInput");
     const viewSelect = $("viewFilterSelect");
@@ -177,23 +211,21 @@
       window.renderTable = function () {
         originalRender();
         applyMainSearchByView();
-        renderExtraViews();
       };
       window.__procRegHooked = true;
     }
 
-    window.renderExtraViews = renderExtraViews;
-    renderExtraViews();
+    window.renderExtraViews = function () {};
   }
 
   function boot() {
-    if (!$("processListCard") || typeof window.renderTable !== "function") {
+    if (!$("processListCard")) {
       setTimeout(boot, 200);
       return;
     }
     setup();
   }
 
-  boot();
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);
+  else boot();
 })();
-

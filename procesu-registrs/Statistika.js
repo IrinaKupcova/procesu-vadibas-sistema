@@ -4,7 +4,8 @@
 
   let orgOpen = false;
   let processOpen = false;
-  const filterState = { org: {}, proc: {} };
+  let jomaOpen = false;
+  const filterState = { org: {}, proc: {}, joma: {} };
 
   function $(id) {
     return document.getElementById(id);
@@ -173,13 +174,13 @@
       processCard.id = "processOutputStatsCard";
       processCard.style.cssText = "margin-top:12px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:14px;";
       processCard.innerHTML =
-        '<h3 id="processOutputStatsTitle" style="margin:0 0 8px;font-size:16px;color:#0f172a;cursor:pointer;user-select:none">Procesa galaprodukti procesos</h3>' +
+        '<h3 id="processOutputStatsTitle" style="margin:0 0 8px;font-size:16px;color:#0f172a;cursor:pointer;user-select:none">Galaprodukti procesos</h3>' +
         '<div id="processOutputStatsBody" class="hidden"></div>';
       reportsWrap.appendChild(processCard);
     }
     const processTitle = $("processOutputStatsTitle");
     const processBody = $("processOutputStatsBody");
-    if (processTitle && !processTitle.dataset.baseTitle) processTitle.dataset.baseTitle = "Procesa galaprodukti procesos";
+    if (processTitle) processTitle.dataset.baseTitle = "Galaprodukti procesos";
     if (processTitle && !processTitle.dataset.toggleBound) {
       processTitle.addEventListener("click", () => {
         processOpen = !processOpen;
@@ -191,11 +192,41 @@
     makeToggleTitle(processTitle, processOpen);
     processBody.classList.toggle("hidden", !processOpen);
 
-    return { orgBody, processBody };
+    let jomaCard = $("jomaStatsCard");
+    if (!jomaCard) {
+      jomaCard = document.createElement("div");
+      jomaCard.id = "jomaStatsCard";
+      jomaCard.style.cssText = "margin-top:12px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:14px;";
+      jomaCard.innerHTML =
+        '<h3 id="jomaStatsTitle" style="margin:0 0 8px;font-size:16px;color:#0f172a;cursor:pointer;user-select:none">Jomu statistika</h3>' +
+        '<div id="jomaStatsBody" class="hidden"></div>';
+      reportsWrap.appendChild(jomaCard);
+    }
+    const jomaTitle = $("jomaStatsTitle");
+    const jomaBody = $("jomaStatsBody");
+    if (jomaTitle) jomaTitle.dataset.baseTitle = "Jomu statistika";
+    if (jomaTitle && !jomaTitle.dataset.toggleBound) {
+      jomaTitle.addEventListener("click", () => {
+        jomaOpen = !jomaOpen;
+        jomaBody.classList.toggle("hidden", !jomaOpen);
+        makeToggleTitle(jomaTitle, jomaOpen);
+      });
+      jomaTitle.dataset.toggleBound = "1";
+    }
+    makeToggleTitle(jomaTitle, jomaOpen);
+    jomaBody.classList.toggle("hidden", !jomaOpen);
+
+    return { orgBody, processBody, jomaBody };
+  }
+
+  function removeStatsTableTotals(host) {
+    if (!host) return;
+    host.querySelectorAll(".stats-table-total").forEach((n) => n.remove());
   }
 
   function renderOrgTable(orgBody, processRows, catalogRows) {
     if (!orgBody) return;
+    removeStatsTableTotals(orgBody);
     const processIndex = new Map();
     processRows.forEach((r) => {
       const k = String((r && r.processNo) || "").trim();
@@ -246,52 +277,173 @@
     const hint = $("orgStatsHint");
     if (hint) hint.textContent = "Statistika pēc procesa izpildītāja, pārvaldes (no Galaproduktu kataloga).";
     orgBody.appendChild(tbl);
+    const sumPamat = Array.from(byUnit.values()).reduce((s, x) => s + x.pamat, 0);
+    const sumAtbalsta = Array.from(byUnit.values()).reduce((s, x) => s + x.atbalsta, 0);
+    const sumVadibas = Array.from(byUnit.values()).reduce((s, x) => s + x.vadibas, 0);
+    const sumPak = Array.from(byUnit.values()).reduce((s, x) => s + x.services.size, 0);
+    const tot = document.createElement("p");
+    tot.className = "stats-table-total";
+    tot.style.cssText = "margin:8px 0 0;font-size:13px;font-weight:600;color:#0f172a;";
+    tot.textContent =
+      `Kopskaits — tabulas rindas: ${byUnit.size}; pamatdarbības (summa): ${sumPamat}; atbalsta: ${sumAtbalsta}; vadības: ${sumVadibas}; atšķirīgu pakalpojumu (summa): ${sumPak}.`;
+    orgBody.appendChild(tot);
     ensureHeaderFilters("orgStatsTable", "org");
     refreshFilterOptions("orgStatsTable", "org");
     applyFilters("orgStatsTable", "org");
   }
 
-  function renderProcessOutputTable(processBody, processRows, catalogRows) {
+  function getStatsProcessRows() {
+    if (typeof window.getMergedProcessRegisterRows === "function") {
+      const m = window.getMergedProcessRegisterRows();
+      if (Array.isArray(m) && m.length) return m;
+    }
+    return typeof window.getProcessRows === "function" ? window.getProcessRows() : [];
+  }
+
+  function countGalaproduktiInProcess(r) {
+    const raw = String((r && r.products) || "").trim();
+    if (!raw) return 0;
+    return raw
+      .split(/[;\n]+/)
+      .map((x) => String(x || "").trim())
+      .filter(Boolean).length;
+  }
+
+  /** GP skaits tāpat kā procesu tabulas loģiskajam procesam (gpItems / productsText), nevis katras DB rindas «products» lauks atsevišķi. */
+  function countGalaproduktiOnMergedRow(r) {
+    if (!r) return 0;
+    if (Array.isArray(r.gpItems) && r.gpItems.length) {
+      const named = r.gpItems.filter((g) => String((g && g.name) || "").trim()).length;
+      if (named > 0) return named;
+    }
+    const pt = String((r && r.productsText) || "").trim();
+    if (pt) {
+      return pt
+        .split(/[;\n]+/)
+        .map((x) => String(x || "").trim())
+        .filter(Boolean).length;
+    }
+    return countGalaproduktiInProcess(r);
+  }
+
+  function normProcessStatsKey(name) {
+    return String(name || "")
+      .normalize("NFKC")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  }
+
+  /** Pārskats «Galaprodukti procesos» — apvienotas procesu reģistra rindas; viena rinda uz procesa nosaukumu, skaits = GP šim procesam. */
+  function renderProcessOutputTable(processBody) {
     if (!processBody) return;
-    const byProc = new Map();
-    processRows.forEach((r) => {
-      const procNo = String((r && r.processNo) || "").trim();
-      const key = procNo;
-      if (!byProc.has(key)) {
-        byProc.set(key, {
-          processLabel: [procNo, String((r && r.process) || "").trim()].filter(Boolean).join(" - ") || procNo || "(bez procesa)",
-          outputs: new Set(),
-          executors: new Set(),
-        });
+    removeStatsTableTotals(processBody);
+    const merged = getStatsProcessRows();
+    const byName = new Map();
+    merged.forEach((r) => {
+      const displayName = String((r && r.process) || "").trim() || "—";
+      const k = normProcessStatsKey(displayName);
+      const n = countGalaproduktiOnMergedRow(r);
+      if (!byName.has(k)) {
+        byName.set(k, { processName: displayName, gpCount: 0 });
       }
+      byName.get(k).gpCount += n;
     });
-    catalogRows.forEach((c) => {
-      const key = String((c && c.procNo) || "").trim();
-      if (!byProc.has(key)) {
-        byProc.set(key, { processLabel: String((c && c.procNo) || "").trim() || "(bez procesa)", outputs: new Set(), executors: new Set() });
-      }
-      const x = byProc.get(key);
-      const t = String((c && c.type) || "").trim();
-      const u = String((c && c.unit) || "").trim();
-      if (t) x.outputs.add(t);
-      if (u) x.executors.add(u);
-    });
+    const rows = Array.from(byName.values());
 
     const old = $("processOutputStatsTable");
     if (old && old.parentElement) old.parentElement.removeChild(old);
     const tbl = document.createElement("table");
     tbl.id = "processOutputStatsTable";
-    tbl.innerHTML = "<thead><tr><th>Process</th><th>Procesa galaprodukti (skaits)</th><th>Procesa izpildītāji, pārvaldes (skaits)</th></tr></thead><tbody></tbody>";
+    tbl.innerHTML =
+      "<thead><tr><th>Procesa numurs</th><th>Process</th><th>Galaproduktu skaits procesā</th></tr></thead><tbody></tbody>";
     const tb = tbl.querySelector("tbody");
-    Array.from(byProc.values()).sort((a, b) => a.processLabel.localeCompare(b.processLabel, "lv")).forEach((x) => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${x.processLabel}</td><td>${x.outputs.size}</td><td>${x.executors.size}</td>`;
-      tb.appendChild(tr);
-    });
+    rows
+      .sort((a, b) => a.processName.localeCompare(b.processName, "lv"))
+      .forEach((x) => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `<td></td><td>${x.processName}</td><td>${x.gpCount}</td>`;
+        tb.appendChild(tr);
+      });
     processBody.appendChild(tbl);
+    const totalGp = rows.reduce((s, x) => s + x.gpCount, 0);
+    const tot = document.createElement("p");
+    tot.className = "stats-table-total";
+    tot.style.cssText = "margin:8px 0 0;font-size:13px;font-weight:600;color:#0f172a;";
+    tot.textContent = `Kopskaits — procesi (ieraksti tabulā): ${rows.length}; galaprodukti (visiem procesiem kopā): ${totalGp}.`;
+    processBody.appendChild(tot);
     ensureHeaderFilters("processOutputStatsTable", "proc");
     refreshFilterOptions("processOutputStatsTable", "proc");
     applyFilters("processOutputStatsTable", "proc");
+  }
+
+  function gpLinesForJomaStats(r) {
+    return Array.isArray(r.gpItems) && r.gpItems.length
+      ? r.gpItems
+      : [{ jomaText: String((r && r.darbibasJoma) || "") }];
+  }
+
+  function processTouchesJomaLabel(r, jomaLabel) {
+    return gpLinesForJomaStats(r).some((gp) => String((gp && gp.jomaText) || "").trim() === jomaLabel);
+  }
+
+  /** Jomu sadalījums pēc tām pašām vērtībām kā procesu tabulas «Joma» kolonnas filtrs (katrs GP). */
+  function renderJomaStatsTable(jomaBody) {
+    if (!jomaBody) return;
+    removeStatsTableTotals(jomaBody);
+    const merged = getStatsProcessRows();
+    const collect =
+      typeof window.collectProcessTableJomaFilterLikeValues === "function"
+        ? window.collectProcessTableJomaFilterLikeValues
+        : null;
+    const uniqJomas = collect ? collect(merged) : new Set();
+    if (!collect) {
+      merged.forEach((r) => {
+        const j = String((r && r.darbibasJoma) || "").trim() || "(nav jomas)";
+        uniqJomas.add(j);
+      });
+    }
+    let navJomas = 0;
+    merged.forEach((r) => {
+      const any = gpLinesForJomaStats(r).some((gp) => String((gp && gp.jomaText) || "").trim());
+      if (!any) navJomas += 1;
+    });
+    const byJoma = new Map();
+    Array.from(uniqJomas)
+      .sort((a, b) => a.localeCompare(b, "lv"))
+      .forEach((joma) => {
+        let n = 0;
+        merged.forEach((r) => {
+          if (processTouchesJomaLabel(r, joma)) n += 1;
+        });
+        byJoma.set(joma, n);
+      });
+    if (navJomas > 0) byJoma.set("(nav jomas)", navJomas);
+
+    const old = $("jomaStatsTable");
+    if (old && old.parentElement) old.parentElement.removeChild(old);
+    const tbl = document.createElement("table");
+    tbl.id = "jomaStatsTable";
+    tbl.innerHTML = "<thead><tr><th>Joma</th><th>Procesu skaits</th></tr></thead><tbody></tbody>";
+    const tb = tbl.querySelector("tbody");
+    const jomaKeys = Array.from(byJoma.keys()).filter((k) => k !== "(nav jomas)");
+    jomaKeys.sort((a, b) => a.localeCompare(b, "lv"));
+    if (byJoma.has("(nav jomas)")) jomaKeys.push("(nav jomas)");
+    jomaKeys.forEach((joma) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td>${joma}</td><td>${byJoma.get(joma)}</td>`;
+      tb.appendChild(tr);
+    });
+    jomaBody.appendChild(tbl);
+    const totalProcesi = merged.length;
+    const tot = document.createElement("p");
+    tot.className = "stats-table-total";
+    tot.style.cssText = "margin:8px 0 0;font-size:13px;font-weight:600;color:#0f172a;";
+    tot.textContent = `Kopskaits — procesi (loģiskie): ${totalProcesi}; jomu grupas tabulā: ${byJoma.size}.`;
+    jomaBody.appendChild(tot);
+    ensureHeaderFilters("jomaStatsTable", "joma");
+    refreshFilterOptions("jomaStatsTable", "joma");
+    applyFilters("jomaStatsTable", "joma");
   }
 
   function renderOrgStats() {
@@ -300,26 +452,34 @@
     const processRows = typeof window.getProcessRows === "function" ? window.getProcessRows() : [];
     const catalogRows = typeof window.getCatalogRows === "function" ? window.getCatalogRows() : [];
     renderOrgTable(refs.orgBody, processRows, catalogRows);
-    renderProcessOutputTable(refs.processBody, processRows, catalogRows);
+    renderProcessOutputTable(refs.processBody);
+    renderJomaStatsTable(refs.jomaBody);
     if (typeof window.refreshClearFilterButtonActive === "function") window.refreshClearFilterButtonActive();
   }
 
   function hasActiveStatsFilters() {
     return Object.values(filterState.org || {}).some((v) => norm(v) !== "") ||
-      Object.values(filterState.proc || {}).some((v) => norm(v) !== "");
+      Object.values(filterState.proc || {}).some((v) => norm(v) !== "") ||
+      Object.values(filterState.joma || {}).some((v) => norm(v) !== "");
   }
 
   function clearStatsFilters() {
     filterState.org = {};
     filterState.proc = {};
-    document.querySelectorAll("#orgStatsTable .th-filter-box select[data-col-index], #processOutputStatsTable .th-filter-box select[data-col-index]").forEach((s) => {
+    filterState.joma = {};
+    document.querySelectorAll(
+      "#orgStatsTable .th-filter-box select[data-col-index], #processOutputStatsTable .th-filter-box select[data-col-index], #jomaStatsTable .th-filter-box select[data-col-index]"
+    ).forEach((s) => {
       s.value = "";
     });
-    document.querySelectorAll("#orgStatsTable .th-filter-btn.active, #processOutputStatsTable .th-filter-btn.active").forEach((b) => {
+    document.querySelectorAll(
+      "#orgStatsTable .th-filter-btn.active, #processOutputStatsTable .th-filter-btn.active, #jomaStatsTable .th-filter-btn.active"
+    ).forEach((b) => {
       b.classList.remove("active");
     });
     applyFilters("orgStatsTable", "org");
     applyFilters("processOutputStatsTable", "proc");
+    applyFilters("jomaStatsTable", "joma");
     if (typeof window.refreshClearFilterButtonActive === "function") window.refreshClearFilterButtonActive();
   }
 

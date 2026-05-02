@@ -44,6 +44,11 @@
   }
 
   function boot() {
+    if (!document.getElementById("processListCard")) {
+      setTimeout(boot, 200);
+      return;
+    }
+    if (!document.getElementById("extraViewsCard")) return;
     if (initViewCardToggle()) return;
     setTimeout(boot, 200);
   }

@@ -1,0 +1,49 @@
+---
+description: Procesu reģistrs — izmaiņu apjoms un fiksētas UI/procesa kartiņas prasības
+globs: procesu-registrs/**
+alwaysApply: false
+---
+
+# Procesu reģistrs — nemainīt bez tiešas prasības
+
+## Apjoms
+
+- Strādājot ar `procesu-registrs/**`, **maini tikai to, ko lietotājs tieši prasa** šajā mapē. Nesāc refaktorus, “kodēšanas tīrīšanu”, citu failu labojumus vai uzvedības maiņas ārpus pieprasījuma.
+- Ja prasība ir šaura (viens lauks, viena poga), **diff jāpaliek šauram**.
+
+## Fiksētas prasības (nelauzt bez jaunas explicitas lietotāja prasības)
+
+### Procesu reģistra skats
+
+- Procesu tabulas `#processTable` **noklusējumā ar `table-body-hidden`** (reģistrs “ciet”), līdz lietotājs atver ar pogu.
+- Rīkjoslas pogas: **zilā (primary)** — “Atvērt procesu reģistru”, “Atvērt katalogu”; **pelēkā (`secondary`)** — “Pievienot jaunu procesu”, “Pievienot jaunu galaproduktu”.
+
+### Jaunā procesa kartiņa (`#editorCard` ar klasi `editor-new-process`)
+
+- **Nav GP lauka** (`#eGpEditorWrap` paslēpts): galaprodukti tiek pārvaldīti **tikai caur GP katalogu**, ne kartiņā.
+- **Nav jomas lauka** (`#eJomaWrap` paslēpts).
+- **Redzams** jaunā procesa **nosaukums** (`#eProcessWrap` / `eProcess`).
+- **Saglabāšana bez obligāta Procesa Nr.** — `eProcNo` drīkst būt tukšs; saglabāšanu neblokēt tikai tāpēc, ka trūkst numura.
+- Joprojām var prasīt citus obligātus laukus (piem. procesa nosaukumu), **tikai ja** tāds noteikums jau ir produktā un lietotājs to nav atcēlis.
+
+### Navigācija “Sākums”
+
+- Nedrīkst automātiski atvērt procesu tabulas `tbody`, ja lietotājs nav to prasījis (saskaņot ar `closeAllMainSections` un “ciet” principu).
+
+### Noņemtie UI (nelabot atpakaļ bez explicitas prasības)
+
+- **Nav** `#extraViewsCard` / «Skata izvēle» (Izpildītāji, Uzdevumi) — to veidoja `Procesu registrs.js`, ir izņemts.
+- **Pārskati** (`#reportsCard`): augšējā `#reportsGrid` rinda ar trim kopsavilkumiem (procesu grupu skaiti, «Galaproduktu skaits», «Izpildītāju skaits») ir **izņemta**; paliek zemākā statistika (`Statistika.js`, `orgStatsCard` u.c.).
+
+### Procesu reģistra datu slānis
+
+- Pēc `buildProcessRegisterRows` jāievēro `window.applyProcessRegisterDataPatch` no `Procesu registrs.js` (index `renderTable` un `getMergedProcessRegisterRows`), lai GP/joma/pārvalde atbilstu visām DB `procesu_registrs` rindām grupā.
+
+### Procesu tabulas akordeons (UI, bez datu loģikas maiņas)
+
+- Vairāku GP rindu blokiem: pirmā rinda ir **`process-accordion-hdr`** (`data-accordion-block` = unikāls id, `aria-expanded`), pārējās — **`process-accordion-part`**; noklusējumā detaļrindas slēptas ar CSS, pēc klika uz galvenes rindas (ne uz pogām) tās atver ar klasi **`is-visible`**.
+- Vairāki bloki var būt atvērti vienlaikus; akordeons neaizveras pats — tikai pēc lietotāja klika vai pogas **`accordionToggleAllBtn`** (teksts **Atvērt visus akordeonus** / **Aizvērt visus akordeonus** atkarībā no stāvokļa; redzama tikai kad procesu tabulas `tbody` nav ar `table-body-hidden`), kas izsauc **`setAllProcessAccordions`**; atsevišķam blokam — **`applyProcessAccordionBlockState`** (`refreshProcessFooterVisibility` atjauno pogas redzamību un tekstu).
+- Atvērto bloku atslēgas **`__processAccordionExpandedKeys`** (stabils id: **`makeProcessAccordionBlockId(r)`** no `processNo` + `process`) — saglabājas pāri **`renderTable`** (filtrs, lapa, meklēšana), kamēr procesu tabula nav paslēpta; **`clearProcessAccordionExpandedMemory`** izsauc, kad lietotājs paslēpj tabulu, navigācijā aizver procesu sadaļu, pārslēdzas uz citu galveno sadaļu, **Sākums** (`__home`) vai atgriežas no redaktora ar aizvērtu procesu tabulu.
+- Delegācija: **`wireProcessTableAccordionOnce()`** uz `#processTable` (viena reize).
+- Ja procesam tikai viena GP rinda — akordeons **netiek** lietots (nav `process-accordion-*`).
+- Stūrīšu nozīme uz galvenes rindas: **GP** = GP rindu skaits blokā; **Joma** = unikālu ne tukšu `jomaText` skaits; **Izpildītājs** = unikālu tokenu skaits no `executorText` (komati/semikoli).
