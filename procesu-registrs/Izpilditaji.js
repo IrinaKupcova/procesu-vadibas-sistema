@@ -11,6 +11,9 @@
   const TABLE_ID = "executorsTable";
   const ROWS_ID = "executorsTableBody";
   let inlineEditMode = false;
+  const executorProcessExpanded = new Set();
+  const executorProcessSectionExpanded = new Set();
+  const executorGpSectionExpanded = new Set();
 
   function getText(v) {
     return v === null || v === undefined ? "" : String(v).trim();
@@ -24,16 +27,20 @@
       table = document.createElement("table");
       table.id = TABLE_ID;
       table.style.width = "100%";
-      table.style.minWidth = "1200px";
+      table.style.minWidth = "980px";
       table.style.borderCollapse = "collapse";
+      table.style.tableLayout = "fixed";
       table.innerHTML = `
+        <colgroup>
+          <col style="width:38%">
+          <col style="width:34%">
+          <col style="width:28%">
+        </colgroup>
         <thead>
           <tr>
             <th>Procesa izpildītājs, pārvalde</th>
-            <th>Procesa izpildītājs, daļa</th>
             <th>Process</th>
-            <th>Procesa kartiņa</th>
-            <th>Procesa galaprodukts (GP)</th>
+            <th>Galaprodukts</th>
           </tr>
         </thead>
         <tbody id="${ROWS_ID}"></tbody>
@@ -58,11 +65,49 @@
     return table;
   }
 
+  function ensureStyles() {
+    if (document.getElementById("executorsAccordionCss")) return;
+    const s = document.createElement("style");
+    s.id = "executorsAccordionCss";
+    s.textContent = `
+      #${TABLE_ID} .ex-unit-hdr td{font-weight:700;background:#e2e8f0;color:#0f172a;border-top:2px solid #94a3b8}
+      #${TABLE_ID} .ex-proc-hdr td{background:#f8fafc;color:#1f2937}
+      #${TABLE_ID} .ex-gp-row td{background:#ffffff}
+      #${TABLE_ID} .ex-toggle{cursor:pointer;text-decoration:none;color:inherit;user-select:none}
+      #${TABLE_ID} .ex-chip{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 8px;border-radius:999px;background:#334155;color:#fff;font-size:12px;font-weight:700;line-height:1}
+      #${TABLE_ID} .ex-chip-btn{cursor:pointer}
+      #${TABLE_ID} .ex-muted-chip{background:#94a3b8}
+      #${TABLE_ID} .ex-link{color:#0f172a;text-decoration:none;cursor:pointer}
+      #${TABLE_ID} .ex-link:hover{color:#111827}
+      #${TABLE_ID} .ex-gp-wrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+      #${TABLE_ID} td, #${TABLE_ID} th{padding:6px 8px;vertical-align:top}
+      #${TABLE_ID} .ex-pad{padding-left:8px}
+      #${TABLE_ID} .ex-pad2{padding-left:8px}
+    `;
+    document.head.appendChild(s);
+  }
+
   function splitValues(v) {
     return String(v || "")
       .split(/[;,\n]/)
       .map((x) => String(x || "").trim())
       .filter(Boolean);
+  }
+  function resolveProcessNoFallback(processRows, procNo, procName) {
+    const direct = getText(procNo);
+    if (direct) return direct;
+    const targetName = getText(procName).toLowerCase();
+    if (!targetName) return "";
+    const hit = (processRows || []).find((r) => getText(r && r.process).toLowerCase() === targetName && getText(r && r.processNo));
+    return hit ? getText(hit.processNo) : "";
+  }
+  function openProcessCard(processRows, procNo, procName) {
+    const resolvedNo = resolveProcessNoFallback(processRows, procNo, procName);
+    const fallbackName = getText(procName);
+    if (!resolvedNo && !fallbackName) return;
+    if (typeof window.openProcessEditorByTaskProcNos === "function") {
+      window.openProcessEditorByTaskProcNos(fallbackName, resolvedNo);
+    }
   }
 
   function canEdit() {
@@ -94,49 +139,66 @@
     };
   }
 
-  function computeRows(processRows, catalogRows) {
-    const rows = [];
-    const byProcNo = new Map();
+  function computeExecutors(processRows, catalogRows) {
+    const byUnit = new Map();
+    const getUnitEntry = (unit) => {
+      const key = getText(unit) || "—";
+      if (!byUnit.has(key)) {
+        byUnit.set(key, {
+          unit: key,
+          processMap: new Map(), // procKey -> { procNo, proc, gpMap }
+        });
+      }
+      return byUnit.get(key);
+    };
+
+    const catalogByProc = new Map();
     (catalogRows || []).forEach((c) => {
       const pn = getText(c.procNo);
       if (!pn) return;
-      if (!byProcNo.has(pn)) byProcNo.set(pn, []);
-      byProcNo.get(pn).push(c);
+      if (!catalogByProc.has(pn)) catalogByProc.set(pn, []);
+      catalogByProc.get(pn).push(c);
     });
-    for (const p of processRows) {
+
+    (processRows || []).forEach((p) => {
       const procNo = getText(p.processNo);
-      if (!procNo) continue;
       const proc = getText(p.process);
-      const linked = byProcNo.get(procNo) || [];
-      const unitsFromProcess = splitValues(p.executorPatstaviga);
-      const departmentsFromProcess = splitValues(p.executorDala);
-      const unitsFromCatalog = Array.from(new Set(linked.map((c) => getText(c.unit)).filter(Boolean)));
-      const departmentsFromCatalog = Array.from(new Set(linked.map((c) => getText(c.department)).filter(Boolean)));
-      const units = Array.from(new Set([].concat(unitsFromProcess, unitsFromCatalog))).filter(Boolean);
-      const departments = Array.from(new Set([].concat(departmentsFromProcess, departmentsFromCatalog))).filter(Boolean);
-      const normalizedUnits = units.length ? units : [""];
-      const departmentText = departments.join(", ");
-      const gpFromProc = splitValues(p.products);
-      normalizedUnits.forEach((unit) => {
-        const gpSet = new Set();
-        linked.forEach((c) => {
-          const cUnit = getText(c.unit);
-          if (!cUnit || !unit || cUnit.toLowerCase() === unit.toLowerCase()) {
-            const t = getText(c.type);
-            if (t) gpSet.add(t);
-          }
-        });
-        gpFromProc.forEach((t) => gpSet.add(t));
-        rows.push({
-          executor: unit,
-          department: departmentText,
-          procNo,
-          proc,
-          gpList: Array.from(gpSet),
+      if (!procNo && !proc) return;
+      const procKey = `${procNo}¦${proc}`;
+      const linkedCatalog = catalogByProc.get(procNo) || [];
+      const units = Array.from(new Set([]
+        .concat(splitValues(p.executorPatstaviga))
+        .concat(linkedCatalog.flatMap((x) => splitValues(x.unit)))
+        .filter(Boolean)));
+      const finalUnits = units.length ? units : ["—"];
+
+      finalUnits.forEach((u) => {
+        const unitEntry = getUnitEntry(u);
+        if (!unitEntry.processMap.has(procKey)) unitEntry.processMap.set(procKey, { procNo, proc, gpMap: new Map() });
+        const processEntry = unitEntry.processMap.get(procKey);
+
+        const gpFromProcess = splitValues(p.products).map((name) => ({ no: "", name, procNo, proc }));
+        const gpFromCatalog = linkedCatalog
+          .filter((x) => {
+            const unitVals = splitValues(x.unit);
+            if (!unitVals.length || u === "—") return true;
+            return unitVals.some((uv) => getText(uv).toLowerCase() === getText(u).toLowerCase());
+          })
+          .map((x) => ({
+            no: getText(x.typeNo),
+            name: getText(x.type),
+            procNo: getText(x.procNo) || procNo,
+            proc: getText(x.process) || proc,
+          }));
+        gpFromProcess.concat(gpFromCatalog).forEach((g) => {
+          if (!getText(g.name)) return;
+          const gpKey = `${getText(g.no)}¦${getText(g.name)}¦${getText(g.procNo)}`;
+          if (!processEntry.gpMap.has(gpKey)) processEntry.gpMap.set(gpKey, g);
         });
       });
-    }
-    return rows.sort((a, b) => `${a.executor} ${a.department} ${a.procNo} ${a.proc}`.localeCompare(`${b.executor} ${b.department} ${b.procNo} ${b.proc}`, "lv"));
+    });
+
+    return Array.from(byUnit.values()).sort((a, b) => a.unit.localeCompare(b.unit, "lv", { sensitivity: "base" }));
   }
 
   function renderExecutorsView() {
@@ -145,103 +207,145 @@
 
     const table = ensureTable(card);
     if (!table) return;
+    ensureStyles();
 
     const tb = document.getElementById(ROWS_ID);
     if (!tb) return;
 
     const p = typeof window.getProcessRows === "function" ? window.getProcessRows() : [];
     const c = typeof window.getCatalogRows === "function" ? window.getCatalogRows() : [];
-
-    const rows = computeRows(p, c);
+    const units = computeExecutors(p, c);
 
     tb.innerHTML = "";
-    for (const r of rows) {
-      const tr = document.createElement("tr");
-      const procRows = (p || []).filter((x) => getText(x && x.processNo) === getText(r.procNo));
-      const baseProc = procRows[0] || null;
-      const td = (txt) => {
-        const el = document.createElement("td");
-        if (inlineEditMode && canEdit()) {
-          const inp = document.createElement("input");
-          inp.type = "text";
-          inp.value = txt == null ? "" : String(txt);
-          inp.style.width = "100%";
-          inp.style.boxSizing = "border-box";
-          el.appendChild(inp);
-        } else {
-          el.textContent = txt == null ? "" : String(txt);
-        }
-        return el;
-      };
-      tr.appendChild(td(r.executor || ""));
-      tr.appendChild(td(r.department || ""));
-      tr.appendChild(td([r.procNo, r.proc].filter(Boolean).join(" - ")));
+    units.forEach((u) => {
+      const unitKey = u.unit;
+      const processList = Array.from(u.processMap.values()).sort((a, b) =>
+        `${a.procNo} ${a.proc}`.localeCompare(`${b.procNo} ${b.proc}`, "lv", { sensitivity: "base" })
+      );
+      const unitGpCount = processList.reduce((acc, pr) => acc + Array.from(pr.gpMap.values()).length, 0);
+      const processSectionOpen = executorProcessSectionExpanded.has(unitKey);
+      const gpSectionOpen = executorGpSectionExpanded.has(unitKey);
+      const isOpen = processSectionOpen || gpSectionOpen;
 
-      const tdBtn = document.createElement("td");
-      if (inlineEditMode && canEdit()) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "secondary";
-        btn.textContent = "Saglabāt";
-        btn.addEventListener("click", async () => {
-          if (!baseProc || !window.DB || typeof window.DB.update !== "function") return;
-          const tds = tr.querySelectorAll("td");
-          const executor = String((tds[0].querySelector("input") && tds[0].querySelector("input").value) || "").trim();
-          const department = String((tds[1].querySelector("input") && tds[1].querySelector("input").value) || "").trim();
-          const procText = String((tds[2].querySelector("input") && tds[2].querySelector("input").value) || "").trim();
-          const procName = procText.includes(" - ") ? procText.split(" - ").slice(1).join(" - ").trim() : procText;
-          try {
-            await window.DB.update(baseProc, processFormValsFromRow(baseProc, {
-              executorPatstaviga: executor,
-              executorDala: department,
-              process: procName || baseProc.process || "",
-            }));
-            if (typeof window.renderTable === "function") window.renderTable();
-            if (typeof window.loadCatalog === "function") await window.loadCatalog();
-          } catch (_) {}
-        });
-        tdBtn.appendChild(btn);
-      } else {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "secondary";
-        btn.textContent = "Atvērt kartiņu";
-        btn.addEventListener("click", () => {
-          if (typeof window.openProcessEditorByTaskProcNos === "function") {
-            window.openProcessEditorByTaskProcNos("", r.procNo);
-          }
-        });
-        tdBtn.appendChild(btn);
+      const hdr = document.createElement("tr");
+      hdr.className = "ex-unit-hdr";
+      hdr.innerHTML = `
+        <td>${u.unit}</td>
+        <td><span class="ex-chip ex-chip-btn" title="Atvērt/aizvērt procesus"><span class="ex-arrow">${processSectionOpen ? "▾" : "▸"}</span> ${processList.length}</span></td>
+        <td><span class="ex-chip ex-chip-btn" title="Atvērt/aizvērt galaproduktus"><span class="ex-arrow">${gpSectionOpen ? "▾" : "▸"}</span> ${unitGpCount}</span></td>
+      `;
+      const processChip = hdr.children[1] && hdr.children[1].querySelector(".ex-chip-btn");
+      if (processChip) {
+        const toggle = () => {
+          if (executorProcessSectionExpanded.has(unitKey)) executorProcessSectionExpanded.delete(unitKey);
+          else executorProcessSectionExpanded.add(unitKey);
+          renderExecutorsView();
+        };
+        processChip.addEventListener("click", toggle);
+        const processArrow = processChip.querySelector(".ex-arrow");
+        if (processArrow) processArrow.addEventListener("click", (e) => { e.stopPropagation(); toggle(); });
       }
-      tr.appendChild(tdBtn);
+      const gpChip = hdr.children[2] && hdr.children[2].querySelector(".ex-chip-btn");
+      if (gpChip) {
+        const toggle = () => {
+          if (executorGpSectionExpanded.has(unitKey)) executorGpSectionExpanded.delete(unitKey);
+          else executorGpSectionExpanded.add(unitKey);
+          renderExecutorsView();
+        };
+        gpChip.addEventListener("click", toggle);
+        const gpArrow = gpChip.querySelector(".ex-arrow");
+        if (gpArrow) gpArrow.addEventListener("click", (e) => { e.stopPropagation(); toggle(); });
+      }
+      tb.appendChild(hdr);
+      if (!isOpen) return;
+      if (!processSectionOpen && !gpSectionOpen) return;
 
-      const tdGp = document.createElement("td");
-      if (Array.isArray(r.gpList) && r.gpList.length) {
-        r.gpList.forEach((gp) => {
-          const line = document.createElement("div");
-          line.style.display = "flex";
-          line.style.alignItems = "center";
-          line.style.gap = "6px";
-          const txt = document.createElement("span");
-          txt.textContent = gp;
+      processList.forEach((pr) => {
+        const pKey = `${unitKey}¦${pr.procNo}¦${pr.proc}`;
+        const pOpen = executorProcessExpanded.has(pKey);
+        const gpList = Array.from(pr.gpMap.values()).sort((a, b) =>
+          `${a.no} ${a.name}`.localeCompare(`${b.no} ${b.name}`, "lv", { sensitivity: "base" })
+        );
+        const tr = document.createElement("tr");
+        tr.className = "ex-proc-hdr";
+        const c0 = document.createElement("td");
+        c0.className = "ex-pad";
+        c0.innerHTML = `<span class="ex-toggle"><span class="ex-arrow">${pOpen ? "▾" : "▸"}</span></span>`;
+        const toggleProcess = () => {
+          if (executorProcessExpanded.has(pKey)) executorProcessExpanded.delete(pKey);
+          else executorProcessExpanded.add(pKey);
+          renderExecutorsView();
+        };
+        const procToggle = c0.querySelector(".ex-toggle");
+        if (procToggle) procToggle.addEventListener("click", toggleProcess);
+        const procArrow = c0.querySelector(".ex-arrow");
+        if (procArrow) procArrow.addEventListener("click", (e) => { e.stopPropagation(); toggleProcess(); });
+        const c1 = document.createElement("td");
+        const pText = document.createElement("span");
+        pText.className = "ex-link";
+        pText.textContent = [pr.procNo, pr.proc].filter(Boolean).join(" — ");
+        pText.title = "Atvērt procesa kartiņu";
+        pText.addEventListener("click", () => {
+          openProcessCard(p, pr.procNo, pr.proc);
+        });
+        c1.appendChild(pText);
+        c1.appendChild(document.createTextNode(" "));
+        const pBtn = document.createElement("button");
+        pBtn.type = "button";
+        pBtn.className = "secondary";
+        pBtn.textContent = "Procesa kartiņa";
+        pBtn.addEventListener("click", () => {
+          openProcessCard(p, pr.procNo, pr.proc);
+        });
+        c1.appendChild(pBtn);
+        const c2 = document.createElement("td");
+        c2.innerHTML = `<span class="ex-chip ex-muted-chip ex-chip-btn" title="Atvērt/aizvērt galaproduktus"><span class="ex-arrow">${pOpen ? "▾" : "▸"}</span> ${gpList.length}</span>`;
+        const gpCountChip = c2.querySelector(".ex-chip-btn");
+        if (gpCountChip) {
+          const toggle = () => {
+            if (!executorProcessSectionExpanded.has(unitKey)) executorProcessSectionExpanded.add(unitKey);
+            if (executorProcessExpanded.has(pKey)) executorProcessExpanded.delete(pKey);
+            else executorProcessExpanded.add(pKey);
+            renderExecutorsView();
+          };
+          gpCountChip.addEventListener("click", toggle);
+          const gpArrow = gpCountChip.querySelector(".ex-arrow");
+          if (gpArrow) gpArrow.addEventListener("click", (e) => { e.stopPropagation(); toggle(); });
+        }
+        tr.appendChild(c0); tr.appendChild(c1); tr.appendChild(c2);
+        if (processSectionOpen || gpSectionOpen) tb.appendChild(tr);
+
+        if (!gpSectionOpen) return;
+        gpList.forEach((gp) => {
+          const gtr = document.createElement("tr");
+          gtr.className = "ex-gp-row";
+          const g0 = document.createElement("td");
+          g0.className = "ex-pad2";
+          g0.textContent = "";
+          const g1 = document.createElement("td");
+          g1.textContent = "";
+          const wrap = document.createElement("div");
+          wrap.className = "ex-gp-wrap";
+          const gpText = document.createElement("span");
+          gpText.textContent = gp.no ? `${gp.no} — ${gp.name}` : gp.name;
           const gpBtn = document.createElement("button");
           gpBtn.type = "button";
           gpBtn.className = "secondary";
-          gpBtn.textContent = "GP kartiņa";
+          gpBtn.textContent = "Galaprodukta kartiņa";
           gpBtn.addEventListener("click", () => {
             if (typeof window.openCatalogByProcessGp === "function") {
-              window.openCatalogByProcessGp(r.procNo, gp);
+              window.openCatalogByProcessGp(gp.procNo, gp.name);
             }
           });
-          line.appendChild(txt);
-          line.appendChild(gpBtn);
-          tdGp.appendChild(line);
+          wrap.appendChild(gpText);
+          wrap.appendChild(gpBtn);
+          const g2 = document.createElement("td");
+          g2.appendChild(wrap);
+          gtr.appendChild(g0); gtr.appendChild(g1); gtr.appendChild(g2);
+          tb.appendChild(gtr);
         });
-      }
-      tr.appendChild(tdGp);
-
-      tb.appendChild(tr);
-    }
+      });
+    });
 
     if (typeof window.refreshExtraTableFilters === "function") {
       window.refreshExtraTableFilters();

@@ -10,6 +10,12 @@
 
   const TABLE = "procesu_registrs";
   const CATALOG_TABLE = "Procesu_galaproduktu_veidu_katalogs";
+  const SINGLE_TABLE_MODE = (() => {
+    try {
+      if (typeof window !== "undefined" && window.PV_SINGLE_TABLE_MODE != null) return !!window.PV_SINGLE_TABLE_MODE;
+    } catch (_) {}
+    return true;
+  })();
   const GROUPS = new Set([
     "pamatdarbība",
     "atbalsts",
@@ -43,6 +49,76 @@
     return /^[A-Za-z0-9_]+$/.test(s) ? s : `"${s.replace(/"/g, '""')}"`;
   };
   const qeq = (query, key, value) => query.eq(pgCol(key), value);
+  const nkey = (v) => String(v || "").normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
+  function splitCatalogProducts(v) {
+    if (v instanceof Set) {
+      return Array.from(v).map((x) => String(x || "").trim()).filter(Boolean);
+    }
+    if (Array.isArray(v)) {
+      return v.map((x) => String(x || "").trim()).filter(Boolean);
+    }
+    const raw = String(v || "");
+    const base = raw
+      .split(/[;\n]/)
+      .map((x) => String(x || "").trim())
+      .filter(Boolean);
+    if (base.length > 1) return base;
+    const commaCount = (raw.match(/,/g) || []).length;
+    if (commaCount >= 2) {
+      return raw
+        .split(",")
+        .map((x) => String(x || "").trim())
+        .filter(Boolean);
+    }
+    return base;
+  }
+  function splitCatalogTypeNos(v) {
+    if (v instanceof Set) return Array.from(v).map((x) => String(x || "").trim());
+    if (Array.isArray(v)) return v.map((x) => String(x || "").trim());
+    return String(v || "")
+      .split(/[;,\n]+/)
+      .map((x) => String(x || "").trim());
+  }
+  function joinCatalogTypeNos(arr) {
+    return (arr || []).map((x) => String(x || "").trim()).join("; ");
+  }
+  function getProcessTypeNoColFromRaw(raw) {
+    const candidates = [
+      "Procesa_galaprodukta_Nr.",
+      "Procesa_galaprodukta_Nr",
+      "procesa_galaprodukta_nr",
+      "Procesa_galaprodukta_nr",
+      "Galaproduktu_veida_Nr.",
+      "Galaproduktu_veida_Nr",
+    ];
+    for (const c of candidates) {
+      if (raw && Object.prototype.hasOwnProperty.call(raw, c)) return c;
+      if (dbCols && dbCols.has(c)) return c;
+    }
+    return "Procesa_galaprodukta_Nr.";
+  }
+  function findSingleTableTargetRow(rows, procNo, type) {
+    const p = String(procNo || "").trim();
+    const tKey = nkey(type || "");
+    if (p) {
+      const byProc = (rows || []).find((r) => String((r && r.processNo) || "").trim() === p);
+      if (byProc) return byProc;
+    }
+    if (tKey) {
+      const byToken = (rows || []).find((r) => splitCatalogProducts((r && r.products) || "").some((x) => nkey(x) === tKey));
+      if (byToken) return byToken;
+      // Fallback migrācijas/veco datu gadījumiem, kad products nav korekti tokenizēts.
+      const byRawContains = (rows || []).find((r) => nkey((r && r.products) || "").includes(tKey));
+      if (byRawContains) return byRawContains;
+      const byProcessName = (rows || []).find((r) => nkey((r && r.process) || "") === tKey);
+      if (byProcessName) return byProcessName;
+      return null;
+    }
+    return null;
+  }
+  function joinCatalogProducts(arr) {
+    return (arr || []).map((x) => String(x || "").trim()).filter(Boolean).join("; ");
+  }
   const emitSync = (kind, source) => {
     try {
       window.dispatchEvent(new CustomEvent("app:db-sync", { detail: { kind, source } }));
@@ -195,6 +271,15 @@
       const choices = aliasMap[logicalKey];
       const key = pickKey(raw, choices);
       if (key) p[key] = formVals[logicalKey] || "";
+    });
+    // Atļaujam tiešos DB kolonnu nosaukumus (piem., Procesa_galaprodukta_Nr.)
+    // updateCatalog/insertCatalog single-table režīmā tos nodod tieši.
+    Object.keys(formVals || {}).forEach((k) => {
+      if (!k || Object.prototype.hasOwnProperty.call(aliasMap, k)) return;
+      const hasInRaw = raw && Object.prototype.hasOwnProperty.call(raw, k);
+      const hasInDb = dbCols && dbCols.size ? dbCols.has(k) : false;
+      if (!hasInRaw && !hasInDb) return;
+      p[k] = formVals[k] == null ? "" : formVals[k];
     });
 
     // Obligātie lauki — tikai reālās kolonnas no dbCols (bez „minētas” kolonnas, kuras tabulā nav).
@@ -625,6 +710,42 @@
   }
 
   async function loadCatalogTypes() {
+    if (SINGLE_TABLE_MODE) {
+      const { data, error } = await supabaseClient.from(TABLE).select("*");
+      if (error) throw error;
+      dbCols = new Set();
+      (data || []).forEach((r) => Object.keys(r || {}).forEach((k) => dbCols.add(k)));
+      const processRows = (data || []).map(mapDbRowToUiRow);
+      const out = [];
+      processRows.forEach((p) => {
+        const procNo = String((p && p.processNo) || "").trim();
+        const gps = splitCatalogProducts((p && p.products) || "");
+        const raw = (p && p.raw) || {};
+        const typeNoCol = getProcessTypeNoColFromRaw(raw);
+        const nos = splitCatalogTypeNos(raw ? raw[typeNoCol] : "");
+        gps.forEach((gp) => {
+          const type = String(gp || "").trim();
+          if (!type) return;
+          out.push({
+            key: p.idKey,
+            id: p.id,
+            matchKeys: Array.isArray(p.matchKeys) ? p.matchKeys.slice() : [],
+            typeNo: String(nos.shift() || "").trim(),
+            type,
+            unit: String((p && p.executorPatstaviga) || "").trim(),
+            department: String((p && p.executorDala) || "").trim(),
+            taskNo: String((p && p.taskNo) || "").trim(),
+            procNo,
+            process: String((p && p.process) || "").trim(),
+            group: String((p && p.group) || "").trim(),
+            darbibasJoma: String((p && p.darbibasJoma) || "").trim(),
+            additionalInfo: "",
+            raw: p.raw || null,
+          });
+        });
+      });
+      return out;
+    }
     let data = null;
     let error = null;
 
@@ -647,6 +768,45 @@
   }
 
   async function insertCatalog(row) {
+    if (SINGLE_TABLE_MODE) {
+      const procNo = String((row && row.procNo) || "").trim();
+      const gp = String((row && row.type) || "").trim();
+      if (!gp) throw new Error("Galaprodukta veids ir obligāts.");
+      const processRows = await load();
+      const target = findSingleTableTargetRow(processRows || [], procNo, gp);
+      if (!target) throw new Error("Nav atrasts process ar norādīto procesa Nr.");
+      const existing = splitCatalogProducts(target.products);
+      const raw = (target && target.raw) || {};
+      const typeNoCol = getProcessTypeNoColFromRaw(raw);
+      const existingNos = splitCatalogTypeNos(raw ? raw[typeNoCol] : "");
+      if (!existing.some((x) => nkey(x) === nkey(gp))) existing.push(gp);
+      if (!existingNos.length && existing.length) existingNos.push("");
+      existingNos[existing.length - 1] = String((row && row.typeNo) || existingNos[existing.length - 1] || "").trim();
+      const payload = {
+        group: row.group != null ? row.group : targetResolved.group,
+        taskNo: row.taskNo != null ? row.taskNo : target.taskNo,
+        task: target.task,
+        processNo: procNo,
+        process: row.process != null ? row.process : target.process,
+        darbibasJoma: row.darbibasJoma != null ? row.darbibasJoma : target.darbibasJoma,
+        owner: target.owner,
+        products: joinCatalogProducts(existing),
+        [typeNoCol]: joinCatalogTypeNos(existingNos.slice(0, existing.length)),
+        productTypes: target.productTypes,
+        input: target.input,
+        relatedProcesses: target.relatedProcesses,
+        services: target.services,
+        flowcharts: target.flowcharts,
+        itResources: target.itResources,
+        optimization: target.optimization,
+        executorPatstaviga: row.unit != null ? row.unit : target.executorPatstaviga,
+        executorDala: row.department != null ? row.department : target.executorDala,
+        otherMetrics: target.otherMetrics,
+      };
+      await update(target, payload);
+      emitSync("catalog", "html");
+      return payload;
+    }
     const unitCandidates = [
       "Procesa_izpilditajs-patstaviga_strukturvieniba",
       "Procesa_izpilditajs_patstaviga_strukturvieniba",
@@ -717,6 +877,65 @@
   }
 
   async function updateCatalog(current, row) {
+    if (SINGLE_TABLE_MODE) {
+      const processRows = await load();
+      const prevProcNo = String((current && current.procNo) || "").trim();
+      const nextProcNo = String((row && row.procNo) || "").trim();
+      const procNo = nextProcNo || prevProcNo;
+      const target = (processRows || []).find((r) => String((r && r.processNo) || "").trim() === procNo);
+      const prevType = String((current && current.type) || "").trim();
+      const nextType = String((row && row.type) || "").trim();
+      if (!nextType) throw new Error("Galaprodukta veids ir obligāts.");
+      const targetResolved = target || findSingleTableTargetRow(processRows || [], procNo, prevType || nextType);
+      if (!targetResolved) throw new Error("Nav atrasts process atjaunināšanai.");
+      let list = splitCatalogProducts(targetResolved.products);
+      const raw = (targetResolved && targetResolved.raw) || {};
+      const typeNoCol = getProcessTypeNoColFromRaw(raw);
+      let nos = splitCatalogTypeNos(raw ? raw[typeNoCol] : "");
+      while (nos.length < list.length) nos.push("");
+      const pairs = list.map((name, idx) => ({ name, no: String(nos[idx] || "").trim() }));
+      const prevKey = nkey(prevType);
+      let replaced = false;
+      if (prevKey) {
+        for (let i = 0; i < pairs.length; i += 1) {
+          if (nkey(pairs[i].name) === prevKey) {
+            pairs[i].name = nextType;
+            pairs[i].no = String((row && row.typeNo) || "").trim();
+            replaced = true;
+            break;
+          }
+        }
+      }
+      if (!replaced && !pairs.some((x) => nkey(x.name) === nkey(nextType))) {
+        pairs.push({ name: nextType, no: String((row && row.typeNo) || "").trim() });
+      }
+      list = pairs.map((x) => x.name);
+      nos = pairs.map((x) => x.no);
+      const payload = {
+        group: row.group != null ? row.group : target.group,
+        taskNo: row.taskNo != null ? row.taskNo : targetResolved.taskNo,
+        task: targetResolved.task,
+        processNo: procNo,
+        process: row.process != null ? row.process : targetResolved.process,
+        darbibasJoma: row.darbibasJoma != null ? row.darbibasJoma : targetResolved.darbibasJoma,
+        owner: targetResolved.owner,
+        products: joinCatalogProducts(list),
+        [typeNoCol]: joinCatalogTypeNos(nos),
+        productTypes: targetResolved.productTypes,
+        input: targetResolved.input,
+        relatedProcesses: targetResolved.relatedProcesses,
+        services: targetResolved.services,
+        flowcharts: targetResolved.flowcharts,
+        itResources: targetResolved.itResources,
+        optimization: targetResolved.optimization,
+        executorPatstaviga: row.unit != null ? row.unit : targetResolved.executorPatstaviga,
+        executorDala: row.department != null ? row.department : targetResolved.executorDala,
+        otherMetrics: targetResolved.otherMetrics,
+      };
+      await update(targetResolved, payload);
+      emitSync("catalog", "html");
+      return payload;
+    }
     function buildCatalogFallbackKeys(src) {
       const s = src || {};
       const knownKeys = new Set(Object.keys((s && s.raw) || s || {}));
@@ -838,6 +1057,51 @@
   }
 
   async function removeCatalog(current) {
+    if (SINGLE_TABLE_MODE) {
+      const processRows = await load();
+      const procNo = String((current && current.procNo) || "").trim();
+      const type = String((current && current.type) || "").trim();
+      if (!type) throw new Error("Dzēšanai vajadzīgs galaprodukta nosaukums.");
+      const target = findSingleTableTargetRow(processRows || [], procNo, type);
+      if (!target) throw new Error("Nav atrasts process dzēšanai.");
+      const tKey = nkey(type);
+      const raw = (target && target.raw) || {};
+      const typeNoCol = getProcessTypeNoColFromRaw(raw);
+      const list0 = splitCatalogProducts(target.products);
+      const nos0 = splitCatalogTypeNos(raw ? raw[typeNoCol] : "");
+      while (nos0.length < list0.length) nos0.push("");
+      const kept = [];
+      for (let i = 0; i < list0.length; i += 1) {
+        if (nkey(list0[i]) === tKey) continue;
+        kept.push({ name: list0[i], no: String(nos0[i] || "").trim() });
+      }
+      const list = kept.map((x) => x.name);
+      const nos = kept.map((x) => x.no);
+      const payload = {
+        group: target.group,
+        taskNo: target.taskNo,
+        task: target.task,
+        processNo: target.processNo,
+        process: target.process,
+        darbibasJoma: target.darbibasJoma,
+        owner: target.owner,
+        products: joinCatalogProducts(list),
+        [typeNoCol]: joinCatalogTypeNos(nos),
+        productTypes: target.productTypes,
+        input: target.input,
+        relatedProcesses: target.relatedProcesses,
+        services: target.services,
+        flowcharts: target.flowcharts,
+        itResources: target.itResources,
+        optimization: target.optimization,
+        executorPatstaviga: target.executorPatstaviga,
+        executorDala: target.executorDala,
+        otherMetrics: target.otherMetrics,
+      };
+      await update(target, payload);
+      emitSync("catalog", "html");
+      return true;
+    }
     function buildCatalogFallbackKeys(src) {
       const s = src || {};
       const knownKeys = new Set(Object.keys((s && s.raw) || s || {}));
@@ -1005,10 +1269,23 @@
     syncChannel = supabaseClient.channel("app-db-sync");
     syncChannel
       .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, () => emitSync("process", "db"))
-      .on("postgres_changes", { event: "*", schema: "public", table: CATALOG_TABLE }, () => emitSync("catalog", "db"))
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: CATALOG_TABLE },
+        () => emitSync("catalog", "db")
+      )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") emitSync("all", "db");
       });
+    if (SINGLE_TABLE_MODE) {
+      try { supabaseClient.removeChannel(syncChannel); } catch (_) {}
+      syncChannel = supabaseClient.channel("app-db-sync");
+      syncChannel
+        .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, () => emitSync("all", "db"))
+        .subscribe((status) => {
+          if (status === "SUBSCRIBED") emitSync("all", "db");
+        });
+    }
 
     // Fallback polling (ja realtime nav pieejams/RLS kanālu ierobežojumi)
     pollTimer = setInterval(() => {
@@ -1070,6 +1347,70 @@
     return data;
   }
 
+  async function updateProcessJomaByProcessNo(processNo, darbibasJoma) {
+    const procNo = String(processNo || "").trim();
+    if (!procNo) throw new Error("Procesa Nr. nav norādīts.");
+    const joma = String(darbibasJoma || "").trim();
+    if (!dbCols || !dbCols.size) {
+      try { await load(); } catch (_) {}
+    }
+    const procNoCol =
+      (dbCols && dbCols.has("Procesa_numurs")) ? "Procesa_numurs" :
+      (dbCols && dbCols.has("procesa_numurs")) ? "procesa_numurs" :
+      (dbCols && dbCols.has("Procesa_Nr.")) ? "Procesa_Nr." :
+      (dbCols && dbCols.has("procesa_nr")) ? "procesa_nr" :
+      (dbCols && dbCols.has("processNo")) ? "processNo" :
+      "Procesa_Nr.";
+    const jomaCol =
+      (dbCols && dbCols.has("Darbibas_joma")) ? "Darbibas_joma" :
+      (dbCols && dbCols.has("darbibas_joma")) ? "darbibas_joma" :
+      (dbCols && dbCols.has("Darbības joma")) ? "Darbības joma" :
+      (dbCols && dbCols.has("darbibasJoma")) ? "darbibasJoma" :
+      "Darbibas_joma";
+    let q = supabaseClient.from(TABLE).update({ [jomaCol]: joma });
+    q = qeq(q, procNoCol, procNo);
+    const { error } = await q;
+    if (error) throw error;
+    emitSync("process", "html");
+    return true;
+  }
+  async function updateProcessNoBulk(oldProcessNo, processName, newProcessNo) {
+    if (!dbCols || !dbCols.size) {
+      try { await load(); } catch (_) {}
+    }
+    const oldNo = String(oldProcessNo || "").trim();
+    const newNo = String(newProcessNo || "").trim();
+    const pName = String(processName || "").trim();
+    const procNoCol =
+      (dbCols && dbCols.has("Procesa_numurs")) ? "Procesa_numurs" :
+      (dbCols && dbCols.has("procesa_numurs")) ? "procesa_numurs" :
+      (dbCols && dbCols.has("Procesa_Nr.")) ? "Procesa_Nr." :
+      (dbCols && dbCols.has("procesa_nr")) ? "procesa_nr" :
+      (dbCols && dbCols.has("processNo")) ? "processNo" :
+      "Procesa_Nr.";
+    const processCol =
+      (dbCols && dbCols.has("Process")) ? "Process" :
+      (dbCols && dbCols.has("Procesi, kas nodrošina uzdevuma dzīves ciklu")) ? "Procesi, kas nodrošina uzdevuma dzīves ciklu" :
+      "Process";
+    let changed = false;
+    if (oldNo) {
+      let q = supabaseClient.from(TABLE).update({ [procNoCol]: newNo });
+      q = qeq(q, procNoCol, oldNo);
+      const { error } = await q;
+      if (error) throw error;
+      changed = true;
+    }
+    if (!changed && pName) {
+      let q = supabaseClient.from(TABLE).update({ [procNoCol]: newNo });
+      q = qeq(q, processCol, pName);
+      const { error } = await q;
+      if (error) throw error;
+      changed = true;
+    }
+    emitSync("process", "html");
+    return true;
+  }
+
   window.DB = {
     TABLE,
     load,
@@ -1082,6 +1423,8 @@
     removeCatalog,
     updateTaskByNo,
     removeTaskByNo,
+    updateProcessJomaByProcessNo,
+    updateProcessNoBulk,
     startSync,
     stopSync,
     mapDbError,

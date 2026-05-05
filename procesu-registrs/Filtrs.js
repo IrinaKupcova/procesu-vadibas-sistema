@@ -6,7 +6,9 @@
     processHeader: {},
     catalogHeader: {},
     tasksHeader: {},
-    executorsHeader: {}
+    executorsHeader: {},
+    processGroupsHeader: {},
+    processJomasHeader: {}
   };
   let extraRefreshRunning = false;
 
@@ -135,6 +137,7 @@
   }
 
   function ensureHeaderFilters(tableId, key, skipLast) {
+    if (tableId === "processJomasTable") return; // Jomu sadaļai filtrēšana ir izslēgta.
     const table = document.getElementById(tableId);
     if (!table) return;
     const headRow = table.querySelector("thead tr");
@@ -330,6 +333,65 @@
     });
   }
 
+  function applySimpleTableFilters(tableId, key) {
+    const tbody = document.querySelector(`#${tableId} tbody`);
+    if (!tbody) return;
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+    rows.forEach((tr) => {
+      const tds = Array.from(tr.children);
+      let show = true;
+      for (const col in state[key]) {
+        const term = state[key][col];
+        if (!contains(tds[Number(col)]?.textContent || "", term)) {
+          show = false;
+          break;
+        }
+      }
+      tr.style.display = show ? "" : "none";
+    });
+  }
+  function applyAccordionTableFilters(tableId, key) {
+    const tbody = document.querySelector(`#${tableId} tbody`);
+    if (!tbody) return;
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+    const headers = rows.filter((tr) => tr.classList && tr.classList.contains("process-accordion-hdr"));
+    const hasTerms = Object.values(state[key] || {}).some((v) => norm(v) !== "");
+    // Bez aktīviem filtriem NEAIZTIEKAM tabulas redzamību:
+    // atstājam tieši renderētās atvēršanas/aizvēršanas stāvokli.
+    if (!hasTerms) return;
+    const cellText = (tr, col, hdr) => {
+      if (!tr) return "";
+      const isPart = tr.classList && tr.classList.contains("process-accordion-part");
+      if (isPart && Number(col) === 0 && hdr) return String(hdr.children[0]?.textContent || "");
+      return String(tr.children[Number(col)]?.textContent || "");
+    };
+    const rowMatches = (tr, hdr) => {
+      for (const col in state[key]) {
+        const term = state[key][col];
+        if (!contains(cellText(tr, col, hdr), term)) return false;
+      }
+      return true;
+    };
+    headers.forEach((hdr) => {
+      const bid = hdr.getAttribute("data-accordion-block");
+      const parts = bid
+        ? rows.filter((tr) => tr.classList && tr.classList.contains("process-accordion-part") && tr.getAttribute("data-accordion-block") === bid)
+        : [];
+      const hdrMatch = rowMatches(hdr, hdr);
+      const partMatches = parts.map((tr) => rowMatches(tr, hdr));
+      const anyPartMatch = partMatches.some(Boolean);
+      const blockShow = hdrMatch || anyPartMatch;
+      hdr.style.display = blockShow ? "" : "none";
+      parts.forEach((tr, idx) => {
+        if (!blockShow) {
+          tr.style.display = "none";
+          return;
+        }
+        tr.style.display = partMatches[idx] ? "" : "none";
+      });
+    });
+  }
+
   function hasActiveFilters() {
     const searchInput = document.getElementById("searchInput");
     if (searchInput && norm(searchInput.value) !== "") return true;
@@ -337,6 +399,7 @@
     if (Object.values(state.catalogHeader || {}).some((v) => norm(v) !== "")) return true;
     if (Object.values(state.tasksHeader || {}).some((v) => norm(v) !== "")) return true;
     if (Object.values(state.executorsHeader || {}).some((v) => norm(v) !== "")) return true;
+    if (Object.values(state.processGroupsHeader || {}).some((v) => norm(v) !== "")) return true;
     if (typeof window.hasActiveStatsFilters === "function" && window.hasActiveStatsFilters()) return true;
     return false;
   }
@@ -354,6 +417,7 @@
     applyCatalogFilters();
     applyTasksFilters();
     applyExecutorsFilters();
+    applyAccordionTableFilters("processGroupsTable", "processGroupsHeader");
     autoOpenOnFilteredResult();
     refreshClearFilterButtonActive();
     if (typeof window.renderReports === "function") window.renderReports();
@@ -399,6 +463,7 @@
   }
 
   function refreshHeaderFilterOptions(tableId, key) {
+    if (tableId === "processJomasTable") return; // Jomu sadaļai filtrēšana ir izslēgta.
     const table = document.getElementById(tableId);
     if (!table) return;
     const tbody = table.querySelector("tbody");
@@ -408,6 +473,34 @@
       const col = Number(select.dataset.colIndex);
       const selected = state[key][String(col)] || "";
       const uniqVals = new Set();
+      if (
+        tableId === "processTable" &&
+        col === 5 &&
+        typeof window.collectProcessTableJomaFilterLikeValues === "function" &&
+        typeof window.getMergedProcessRegisterRows === "function"
+      ) {
+        const mergedRows = window.getMergedProcessRegisterRows();
+        const jomaVals = window.collectProcessTableJomaFilterLikeValues(mergedRows);
+        Array.from(jomaVals || []).forEach((v) => {
+          const clean = String(v || "").trim();
+          if (clean) uniqVals.add(clean);
+        });
+      } else {
+      if (tableId === "processJomasTable" || tableId === "processGroupsTable") {
+        const hdrRows = Array.from(tbody.querySelectorAll("tr.process-accordion-hdr"));
+        if (col === 0) {
+          hdrRows.forEach((tr) => {
+            const raw = String(tr.children[0]?.textContent || "").trim();
+            if (raw) uniqVals.add(raw);
+          });
+        } else {
+          const partRows = Array.from(tbody.querySelectorAll("tr.process-accordion-part"));
+          partRows.forEach((tr) => {
+            const raw = String(tr.children[col]?.textContent || "").trim();
+            if (raw) uniqVals.add(raw);
+          });
+        }
+      } else {
       Array.from(tbody.querySelectorAll("tr")).forEach((tr) => {
         const raw = String(tr.children[col]?.textContent || "").trim();
         if (!raw) return;
@@ -417,6 +510,8 @@
         }
         uniqVals.add(raw);
       });
+      }
+      }
       select.innerHTML = "";
       const empty = document.createElement("option");
       empty.value = "";
@@ -445,6 +540,8 @@
     state.catalogHeader = {};
     state.tasksHeader = {};
     state.executorsHeader = {};
+    state.processGroupsHeader = {};
+    state.processJomasHeader = {};
 
     const searchInput = document.getElementById("searchInput");
     if (searchInput) searchInput.value = "";
@@ -462,11 +559,16 @@
   function setupRenderHook() {
     // index.html renderTable ir lokāla funkcija; drošāk ir dot publisku pēcrendera callback.
     window.__afterTableRenderFilters = function () {
+      // Galvenes var tikt pārbūvētas (kompaktais/detalizētais skats), tāpēc filtrus
+      // vienmēr nodrošinām atkārtoti pirms opciju atjaunošanas.
+      ensureHeaderFilters("processTable", "processHeader", true);
+      ensureHeaderFilters("catalogTable", "catalogHeader", false);
       refreshHeaderFilterOptions("processTable", "processHeader");
       refreshHeaderFilterOptions("catalogTable", "catalogHeader");
       refreshHeaderFilterOptions("tasksSummaryTable", "tasksHeader");
       // executorsTable ir dinamiska; refreshHeaderFilterOptions droši ignorēs, ja nav
       refreshHeaderFilterOptions("executorsTable", "executorsHeader");
+      refreshHeaderFilterOptions("processGroupsTable", "processGroupsHeader");
       applyAllFilters();
     };
   }
@@ -497,9 +599,11 @@
     ensureHeaderFilters("processTable", "processHeader", true);
     ensureHeaderFilters("catalogTable", "catalogHeader", false);
     ensureHeaderFilters("tasksSummaryTable", "tasksHeader", true);
+    ensureHeaderFilters("processGroupsTable", "processGroupsHeader", false);
     refreshHeaderFilterOptions("processTable", "processHeader");
     refreshHeaderFilterOptions("catalogTable", "catalogHeader");
     refreshHeaderFilterOptions("tasksSummaryTable", "tasksHeader");
+    refreshHeaderFilterOptions("processGroupsTable", "processGroupsHeader");
     setupRenderHook();
     applyAllFilters();
     window.removeAllFilters = clearAllFilters;
