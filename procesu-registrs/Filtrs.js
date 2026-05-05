@@ -35,6 +35,33 @@
   function processTypeNoCellLineValues(cellLine) {
     return splitCellValues(cellLine ? cellLine.textContent : "");
   }
+  /** GP akordeona detaļrindām tukšas ir procesa kopējās kolonnas (0–2) un platās kolonnas (7–13); filtrējot nedrīkst tās salīdzināt kā tukšās — izmantojam bloka galvenes rindas šūnas. */
+  function processAccordionHeaderByBlock(rows) {
+    const m = new Map();
+    rows.forEach((tr) => {
+      if (!tr.classList || !tr.classList.contains("process-accordion-hdr")) return;
+      const bid = tr.getAttribute("data-accordion-block");
+      if (bid) m.set(bid, tr);
+    });
+    return m;
+  }
+  function accordionPartHeader(tr, headerByBlock) {
+    if (!tr.classList || !tr.classList.contains("process-accordion-part")) return null;
+    const bid = tr.getAttribute("data-accordion-block");
+    return bid ? headerByBlock.get(bid) || null : null;
+  }
+  /** Teksts kolonnas filtream / īso filtru laukiem — detaļrindām kopīgās kolonnas ņem no hdr (3–6: katras GP rindas šūnas šajā TR). */
+  function processFilterCellText(tr, colNum, hdr) {
+    const inheritHdr =
+      hdr &&
+      tr.classList &&
+      tr.classList.contains("process-accordion-part") &&
+      (colNum <= 2 || (colNum >= 7 && colNum <= 13));
+    const rowEl = inheritHdr ? hdr : tr;
+    const td = rowEl && rowEl.children ? rowEl.children[colNum] : null;
+    return td ? String(td.textContent || "") : "";
+  }
+
   function applyProcessGpLineFilter(tr, typeNoTerm) {
     const tds = Array.from(tr.children || []);
     const tdTypeNo = tds[3];
@@ -119,7 +146,7 @@
       const isLast = idx === sourceHeaders.length - 1;
       if (skipLast && isLast) return;
 
-      const title = th.textContent || "";
+      const title = (th.getAttribute("data-filter-label") || "").trim() || (th.textContent || "").trim();
       th.textContent = "";
 
       const wrap = document.createElement("div");
@@ -197,11 +224,12 @@
     if (!tbody) return;
 
     const rows = Array.from(tbody.querySelectorAll("tr"));
+    const headerByBlock = processAccordionHeaderByBlock(rows);
     rows.forEach((tr) => {
-      const tds = Array.from(tr.children);
-      const taskText = `${tds[1]?.textContent || ""} ${tds[2]?.textContent || ""}`;
-      const processText = `${tds[3]?.textContent || ""} ${tds[4]?.textContent || ""}`;
-      const outputText = tds[7]?.textContent || "";
+      const hdr = accordionPartHeader(tr, headerByBlock);
+      const taskText = `${processFilterCellText(tr, 1, hdr)} ${processFilterCellText(tr, 2, hdr)}`;
+      const processText = `${processFilterCellText(tr, 3, hdr)} ${processFilterCellText(tr, 4, hdr)}`;
+      const outputText = processFilterCellText(tr, 7, hdr);
 
       let show =
         contains(processText, state.quick.process) &&
@@ -213,12 +241,12 @@
         for (const col in state.processHeader) {
           const term = state.processHeader[col];
           const colNum = Number(col);
-          const cellText = tds[colNum]?.textContent || "";
+          const typeNoTd = tr.children && tr.children[colNum] != null ? tr.children[colNum] : null;
           // "Procesa galaprodukta Nr." kolonnā šūnā var būt vairāki Nr.;
           // filtrējam pēc atsevišķa numura, nevis pēc salīmēta teksta.
           const pass = colNum === 3
-            ? getProcessTypeNoValuesFromCell(tds[colNum]).some((v) => norm(v) === norm(term))
-            : contains(cellText, term);
+            ? getProcessTypeNoValuesFromCell(typeNoTd).some((v) => norm(v) === norm(term))
+            : contains(processFilterCellText(tr, colNum, hdr), term);
           if (!pass) {
             show = false;
             break;
@@ -231,6 +259,14 @@
         applyProcessGpLineFilter(tr, "");
       }
       tr.style.display = show ? "" : "none";
+    });
+
+    headerByBlock.forEach((hdr, bid) => {
+      if ((hdr.style && hdr.style.display) === "none") {
+        tbody.querySelectorAll(`tr.process-accordion-part[data-accordion-block="${CSS.escape(bid)}"]`).forEach((part) => {
+          part.style.display = "none";
+        });
+      }
     });
   }
 

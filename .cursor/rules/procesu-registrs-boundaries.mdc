@@ -30,6 +30,13 @@ alwaysApply: false
 
 - Nedrīkst automātiski atvērt procesu tabulas `tbody`, ja lietotājs nav to prasījis (saskaņot ar `closeAllMainSections` un “ciet” principu).
 
+### Stabilizēts koncepts (2026-05 — **pagaidām nemainīt** bez tiešas lietotāja prasības)
+
+Lietotājs ir apstiprinājis šo UX arhitektūru; **neievies līdzīgas alternatīvas, nereintroducē noņemto, nemaini uzvedību “uzlabojuma” vārdā**.
+
+- **Bez piespraudnes (pins):** nav piesprausto sadaļu, nav apakšjoslas ar piespraustajām kartītēm, nav `sessionStorage` pins stāvokļa, nav Ctrl+ciparu pārslēgšanās starp piespraustajiem. Navigācija: **viena galvenā sadaļa režīms** — `closeAllMainSections()` paslēpj visas norādītās kartītes; `initLeftNav` **bez** pins/workbench loģikas.
+- **Kartiņu aizvēršana (procesa / GP / uzdevuma redaktors):** pēc aizvēršanas lietotājam jāatgriežas **tajā pašā lapas ritināšanas pozīcijā**, kur bija pirms atvēršanas — saglabāt **`captureEditorReturnContext` / `restoreEditorReturnContext`** un `editorReturnContext` ar `scrollX`/`scrollY`; pēc atjaunošanas izmantot esošo izkārtojuma nobīdes stratēģiju (piem. `requestAnimationFrame` + īss `setTimeout`), neaizstāt ar `scrollIntoView` uz kartiņu, ja tas pārkāpj šo principu.
+
 ### Noņemtie UI (nelabot atpakaļ bez explicitas prasības)
 
 - **Nav** `#extraViewsCard` / «Skata izvēle» (Izpildītāji, Uzdevumi) — to veidoja `Procesu registrs.js`, ir izņemts.

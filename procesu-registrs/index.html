@@ -136,6 +136,21 @@
       #helpAdminOpenBtn.nav-active { background: #1d4ed8; border-color: #1e40af; color: #fff; }
       #processListBody,#catalogListBody,#reportsBodyWrap { overflow-x: auto; width: 100%; }
       #processTable,#catalogTable { min-width: 1300px; }
+      #processTable thead th .th-db-col,
+      #catalogTable thead th .th-db-col {
+        display: block;
+        margin-top: 5px;
+        font-size: 11px;
+        font-weight: 700;
+        font-family: ui-monospace, Consolas, "Segoe UI Mono", monospace;
+        text-transform: none;
+        letter-spacing: 0;
+        color: #1e3a8a;
+        line-height: 1.25;
+        word-break: break-word;
+      }
+      body.theme-light #processTable thead th .th-db-col,
+      body.theme-light #catalogTable thead th .th-db-col { color: #1d4ed8; }
       #reportsGrid { display: grid; grid-template-columns: repeat(auto-fit,minmax(240px,1fr)); gap: 10px; }
       .report-stat { background: #eef2ff; border: 1px solid #c7d2fe; border-radius: 10px; padding: 10px 12px; }
       .report-stat .k { font-size: 12px; color: #334155; margin-bottom: 4px; }
@@ -235,7 +250,7 @@
           <button type="button" class="secondary side-nav-jump" data-scroll-target="catalogListCard">Galaproduktu katalogs</button>
           <button type="button" class="secondary side-nav-jump" data-scroll-target="executorsCard">Izpildītāji</button>
           <button type="button" class="secondary side-nav-jump" data-scroll-target="metricsCard">Mērījumi</button>
-          <button type="button" class="secondary side-nav-jump" data-scroll-target="reportsCard">Pārskati</button>
+          <button type="button" class="secondary side-nav-jump" data-scroll-target="reportsCard">Statistika</button>
           <button type="button" class="secondary side-nav-jump" data-scroll-target="manualCard">Rokasgrāmata</button>
           <button type="button" id="helpAdminOpenBtn" class="secondary side-nav-jump hidden" data-scroll-target="skaidrojumiAdminCard">Skaidrojuma ievietošana</button>
         </div>
@@ -462,8 +477,21 @@
       </div>
       <div id="processListBody">
         <table id="processTable" class="table-body-hidden"><thead><tr>
-          <th class="col-gray">Procesa grupa</th><th class="col-gray">Procesa Nr.</th><th class="col-gray">Process</th><th class="col-gray">Procesa galaprodukta Nr.</th><th class="col-gray">Procesa galaprodukts</th><th class="col-gray">Joma (piesaiste galaproduktam)</th><th class="col-gray">Procesa izpildītājs, pārvalde</th>
-          <th class="col-green col-extended">Procesa iniciātors (input)</th><th class="col-green col-extended">Saistītie procesi</th><th class="col-green col-extended">Pakalpojumi</th><th class="col-green col-extended">Plūsmas shēmas</th><th class="col-green col-extended">IT resursi</th><th class="col-green col-extended">Optimizācija</th><th class="col-green col-extended">Citi rādītāji</th><th>Procesa kartiņa</th>
+          <th class="col-gray" data-filter-label="Procesa grupa">Procesa grupa<br><strong class="th-db-col">Procesa_grupa</strong></th>
+          <th class="col-gray" data-filter-label="Procesa Nr.">Procesa Nr.<br><strong class="th-db-col">Procesa_Nr.</strong></th>
+          <th class="col-gray" data-filter-label="Process">Process<br><strong class="th-db-col">Procesi, kas nodrošina uzdevuma dzīves ciklu</strong></th>
+          <th class="col-gray" data-filter-label="Procesa galaprodukta Nr.">Procesa galaprodukta Nr.<br><strong class="th-db-col">Procesa_galaprodukta_Nr.</strong></th>
+          <th class="col-gray" data-filter-label="Procesa galaprodukts">Procesa galaprodukts<br><strong class="th-db-col">Procesa_galaprodukti</strong></th>
+          <th class="col-gray" data-filter-label="Joma (piesaiste galaproduktam)">Joma (piesaiste galaproduktam)<br><strong class="th-db-col">Darbibas_joma</strong></th>
+          <th class="col-gray" data-filter-label="Procesa izpildītājs, pārvalde">Procesa izpildītājs, pārvalde<br><strong class="th-db-col">Procesa_izpilditajs-patstaviga_strukturvieniba</strong></th>
+          <th class="col-green col-extended" data-filter-label="Procesa iniciātors (input)">Procesa iniciātors (input)<br><strong class="th-db-col">procesa_iniciators</strong></th>
+          <th class="col-green col-extended" data-filter-label="Saistītie procesi">Saistītie procesi<br><strong class="th-db-col">Saistitie_procesi</strong></th>
+          <th class="col-green col-extended" data-filter-label="Pakalpojumi">Pakalpojumi<br><strong class="th-db-col">Pakalpojumi</strong></th>
+          <th class="col-green col-extended" data-filter-label="Plūsmas shēmas">Plūsmas shēmas<br><strong class="th-db-col">Plusma_shema</strong></th>
+          <th class="col-green col-extended" data-filter-label="IT resursi">IT resursi<br><strong class="th-db-col">IT_resursi</strong></th>
+          <th class="col-green col-extended" data-filter-label="Optimizācija">Optimizācija<br><strong class="th-db-col">Optimizacija</strong></th>
+          <th class="col-green col-extended" data-filter-label="Citi rādītāji">Citi rādītāji<br><strong class="th-db-col">Citi_raditaji</strong></th>
+          <th data-filter-label="Procesa kartiņa">Procesa kartiņa</th>
         </tr></thead><tbody></tbody></table>
         <div id="processPagination" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
           <label>Rindas lapā
@@ -531,8 +559,15 @@
       </div>
       <div id="catalogListBody">
         <table id="catalogTable" class="table-body-hidden catalog-view--compact"><thead><tr>
-          <th>Procesa galaprodukta Nr.</th><th>Procesa galaprodukts</th><th>Procesa izpildītājs, pārvalde</th><th>Procesa izpildītājs, daļa</th><th>Procesa Nr.</th><th>Process</th><th>Procesa grupa</th><th>Joma (piesaiste galaproduktam)</th>
-          <th>GP kartiņa</th>
+          <th data-filter-label="Procesa galaprodukta Nr.">Procesa galaprodukta Nr.<br><strong class="th-db-col">Procesa_galaprodukta_Nr.</strong></th>
+          <th data-filter-label="Procesa galaprodukts">Procesa galaprodukts<br><strong class="th-db-col">Procesa_galaprodukti</strong></th>
+          <th data-filter-label="Procesa izpildītājs, pārvalde">Procesa izpildītājs, pārvalde<br><strong class="th-db-col">Procesa_izpilditajs-patstaviga_strukturvieniba</strong></th>
+          <th data-filter-label="Procesa izpildītājs, daļa">Procesa izpildītājs, daļa<br><strong class="th-db-col">Daļa,_nodaļa</strong></th>
+          <th data-filter-label="Procesa Nr.">Procesa Nr.<br><strong class="th-db-col">Procesa_Nr.</strong></th>
+          <th data-filter-label="Process">Process<br><strong class="th-db-col">Process</strong></th>
+          <th data-filter-label="Procesa grupa">Procesa grupa<br><strong class="th-db-col">Procesa_grupa</strong></th>
+          <th data-filter-label="Joma (piesaiste galaproduktam)">Joma (piesaiste galaproduktam)<br><strong class="th-db-col">Darbibas_joma</strong></th>
+          <th data-filter-label="GP kartiņa">GP kartiņa</th>
         </tr></thead><tbody></tbody></table>
       </div>
     </div>
@@ -575,7 +610,7 @@
 
     <div class="card section-block hidden" id="reportsCard">
       <div class="toolbar">
-        <div class="left"><div class="section-title">Pārskati</div></div>
+        <div class="left"><div class="section-title">Statistika</div></div>
       </div>
       <div id="reportsBodyWrap">
         <div id="reportsGrid"></div>
@@ -614,7 +649,7 @@
   <script src="GP%20kataogs.js"></script>
 
     <script>
-      let processRows = [], csvRows = [], user = "daina", roles = {};
+      let processRows = [], csvRows = [], catalogRowsView = [], user = "daina", roles = {};
       let processPage = 1;
       let processPageSize = 100;
       let gpDbSyncInProgress = false;
@@ -737,15 +772,18 @@
           const api = window.DB;
           if(!api || typeof api.loadCatalogTypes !== "function"){
             csvRows = [];
+            catalogRowsView = [];
             const tbody = $("catalogTable").querySelector("tbody");
             if (tbody) tbody.innerHTML = "";
             status("Kataloga DB API nav pieejams.","error");
             return;
           }
           csvRows = await api.loadCatalogTypes();
+          catalogRowsView = buildCatalogRowsForView();
           // Nerādām ielādēto galaproduktu skaitu augšā.
         }catch(err){
           csvRows = [];
+          catalogRowsView = [];
           const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (e => (e && e.message) ? e.message : String(e));
           const msg = mapper(err);
           console.error("Catalog DB load error:", err);
@@ -754,7 +792,8 @@
 
         const tbody=$("catalogTable").querySelector("tbody");
         tbody.innerHTML="";
-        const catalogRowsSorted = [...csvRows].sort((a,b)=>{
+        const sourceRows = (Array.isArray(catalogRowsView) && catalogRowsView.length) ? catalogRowsView : csvRows;
+        const catalogRowsSorted = [...sourceRows].sort((a,b)=>{
           const ta = String((a && a.type) || "");
           const tb = String((b && b.type) || "");
           const c = ta.localeCompare(tb, "lv", { sensitivity: "base" });
@@ -788,7 +827,7 @@
           const td=document.createElement("td");
           const b=document.createElement("button");
           b.type="button"; b.className="secondary"; b.textContent="Atvērt kartiņu";
-          b.onclick=()=>openCatalogEditor(x);
+          b.onclick=()=>openCatalogEditor(x && x.__catalogSourceRow ? x.__catalogSourceRow : x);
           td.appendChild(b); tr.appendChild(td);
           tbody.appendChild(tr);
         });
@@ -845,6 +884,66 @@
             .filter(Boolean);
         }
         return base;
+      }
+      function buildCatalogRowsForView(){
+        const sourceCatalog = Array.isArray(csvRows) ? csvRows : [];
+        const sourceProcess = Array.isArray(processRows) ? processRows : [];
+        if(!sourceProcess.length) return sourceCatalog.slice();
+        const catalogByProcGp = new Map();
+        sourceCatalog.forEach((c)=>{
+          const procNo = String((c && c.procNo) || "").trim();
+          const gp = normText(String((c && c.type) || "").trim());
+          if(!procNo || !gp) return;
+          const k = `${procNo}|${gp}`;
+          if(!catalogByProcGp.has(k)) catalogByProcGp.set(k, c);
+        });
+        const out = [];
+        const seen = new Set();
+        sourceProcess.forEach((r)=>{
+          const procNo = String((r && r.processNo) || "").trim();
+          if(!procNo) return;
+          const processName = String((r && r.process) || "").trim();
+          const group = String((r && r.group) || "").trim();
+          const joma = String((r && r.darbibasJoma) || "").trim();
+          const department = String((r && r.executorDala) || "").trim();
+          const units = splitUnitValues((r && r.executorPatstaviga) || "");
+          const unitList = units.length ? units : [String((r && r.executorPatstaviga) || "").trim()];
+          const gpNames = splitProductValues((r && r.products) || "").map((x)=>String(x || "").trim()).filter(Boolean);
+          const raw = (r && r.raw) || {};
+          const typeNos = splitTypeNoValues(
+            String(
+              raw["Procesa_galaprodukta_Nr."]
+              || raw["Procesa_galaprodukta_Nr"]
+              || raw["procesa_galaprodukta_nr"]
+              || raw["Procesa_galaprodukta_nr"]
+              || ""
+            )
+          );
+          gpNames.forEach((gp, idx)=>{
+            const gpNorm = normText(gp);
+            const source = catalogByProcGp.get(`${procNo}|${gpNorm}`) || null;
+            const typeNo = String(typeNos[idx] || (source && (source.typeNo || source.id)) || "").trim();
+            unitList.forEach((unitRaw)=>{
+              const unit = String(unitRaw || "").trim();
+              const sig = `${procNo}|${gpNorm}|${normText(unit)}|${normText(department)}|${normText(joma)}|${typeNo}`;
+              if(seen.has(sig)) return;
+              seen.add(sig);
+              const row = Object.assign({}, source || {}, {
+                typeNo,
+                type: gp,
+                unit,
+                department,
+                procNo,
+                process: processName || String((source && source.process) || "").trim(),
+                group: group || String((source && source.group) || "").trim(),
+                darbibasJoma: joma || String((source && source.darbibasJoma) || "").trim(),
+              });
+              if(source) row.__catalogSourceRow = source;
+              out.push(row);
+            });
+          });
+        });
+        return out.length ? out : sourceCatalog.slice();
       }
       function compareTypeNoAsc(a, b){
         const av = String(a || "").trim();
@@ -1313,7 +1412,8 @@
         legend.innerHTML = "";
       }
       function refreshCatalogLiveCount(){
-        if($("statCatalogLiveCount")) $("statCatalogLiveCount").textContent = String((csvRows || []).length);
+        const n = (Array.isArray(catalogRowsView) && catalogRowsView.length) ? catalogRowsView.length : (csvRows || []).length;
+        if($("statCatalogLiveCount")) $("statCatalogLiveCount").textContent = String(n);
       }
       function refreshProcessFooterVisibility(){
         const table = $("processTable");
@@ -1356,6 +1456,8 @@
             const executorDala = r && r.executorDala != null ? r.executorDala : (raw.Strukturvieniba_dala || raw.strukturvieniba_dala || raw.executorDala || "");
             return Object.assign({}, r, { darbibasJoma, executorDala, group: normalizeGroupLabel(r.group) });
           });
+          catalogRowsView = buildCatalogRowsForView();
+          refreshCatalogLiveCount();
           // Strict DB mode: neradām/sinhronizējam sintētiskus kataloga ierakstus no procesa lauka.
           syncProcessProductTypesFromCatalog();
           status("","info");
@@ -1366,8 +1468,8 @@
         }
       }
       async function reloadAllData(){
-        await loadCatalog();
         await loadDb();
+        await loadCatalog();
         renderTable();
         renderReports();
         renderTasksView();
@@ -1636,7 +1738,10 @@
           return processRows.slice();
         }
       };
-      window.getCatalogRows = () => Array.isArray(csvRows) ? csvRows.slice() : [];
+      window.getCatalogRows = () => {
+        const rows = (Array.isArray(catalogRowsView) && catalogRowsView.length) ? catalogRowsView : csvRows;
+        return Array.isArray(rows) ? rows.slice() : [];
+      };
 
       function fillForm(r){
         const isNew = !r;
@@ -2767,8 +2872,9 @@
         initThemeToggle();
         const p=new URLSearchParams(location.search); if(p.get("user")) user=p.get("user"); if(["1","2"].includes(p.get("level"))) $("levelSelect").value=p.get("level");
         loadRoles();
+        await loadDb();
         try{ await loadCatalog(); }catch{}
-        await loadDb(); renderTable(); rebuildMx();
+        renderTable(); rebuildMx();
         if(window.DB && typeof window.DB.startSync === "function"){
           window.DB.startSync({ pollMs: 7000 });
         }
@@ -2776,6 +2882,7 @@
           const kind = ev && ev.detail ? ev.detail.kind : "all";
           if(kind==="all" || kind==="process"){
             await loadDb();
+            await loadCatalog();
             renderTable();
           }
           if(kind==="all" || kind==="catalog"){

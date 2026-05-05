@@ -84,7 +84,7 @@
   }
 
   function buildGpItemsFromRawRows(rawList) {
-    const gpItems = [];
+    const byName = new Map();
     (rawList || []).forEach((r) => {
       const joma = String((r && r.darbibasJoma) || "").trim();
       const productsField = (r && r.products) != null ? r.products : "";
@@ -92,16 +92,30 @@
       const typeNos = gpTypeNosFromRaw(r);
       const procNo = String((r && r.processNo) || "").trim();
       tokens.forEach((name, idx) => {
-        gpItems.push({
-          name,
-          typeNosText: String(typeNos[idx] || "").trim(),
-          jomaText: joma,
-          executorText: "",
-          procNo,
-        });
+        const key = normTextKey(name);
+        if (!key) return;
+        const typeNo = String(typeNos[idx] || "").trim();
+        if (!byName.has(key)) {
+          byName.set(key, {
+            name,
+            typeNosSet: new Set(),
+            jomaSet: new Set(),
+            procNo,
+          });
+        }
+        const item = byName.get(key);
+        if (typeNo) item.typeNosSet.add(typeNo);
+        if (joma) item.jomaSet.add(joma);
+        if (!item.procNo && procNo) item.procNo = procNo;
       });
     });
-    return gpItems;
+    return Array.from(byName.values()).map((it) => ({
+      name: it.name,
+      typeNosText: Array.from(it.typeNosSet).join(", "),
+      jomaText: Array.from(it.jomaSet).join(", "),
+      executorText: "",
+      procNo: String(it.procNo || "").trim(),
+    }));
   }
 
   /**

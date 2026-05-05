@@ -6,6 +6,11 @@
   let processOpen = false;
   let jomaOpen = false;
   const filterState = { org: {}, proc: {}, joma: {} };
+  const orgDetailOpenState = {
+    process: new Set(),
+    gp: new Set(),
+    services: new Set(),
+  };
 
   function $(id) {
     return document.getElementById(id);
@@ -39,6 +44,46 @@
       .th-filter-box{display:none;margin-top:4px}
       .th-filter-box.open{display:block}
       .th-filter-box select{width:100%;font-size:11px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px;background:#fff}
+      .stats-org-bar-wrap{display:flex;flex-wrap:wrap;gap:16px;margin:10px 0 14px;align-items:stretch}
+      .stats-org-bar-panel{flex:1 1 min(440px,100%);border:1px solid #cbd5e1;border-radius:10px;padding:12px;background:#ffffff}
+      body:not(.theme-light) .stats-org-bar-panel{background:#f8fafc}
+      .stats-org-bar-panel h4{margin:0 0 10px;font-size:14px;font-weight:700;color:#0f172a}
+      .stats-org-bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;font-size:12px;min-width:380px}
+      .stats-org-bar-row:last-child{margin-bottom:0}
+      .stats-org-bar-panel{overflow-x:auto}
+      .stats-org-bar-label{flex:0 0 min(220px,36%);overflow:hidden;text-overflow:ellipsis;color:#334155;line-height:1.25}
+      .stats-org-bar-track{flex:1;height:18px;background:#e2e8f0;border-radius:6px;overflow:hidden;position:relative}
+      .stats-org-bar-fill{height:100%;border-radius:6px;display:flex;align-items:center;padding:0 6px;justify-content:flex-end;font-size:11px;font-weight:700;color:#0f172a;background:linear-gradient(90deg,#93c5fd,#3b82f6);white-space:nowrap}
+      .stats-org-bar-fill--gp{background:linear-gradient(90deg,#6ee7b7,#059669)}
+      .stats-org-bar-fill--services{background:linear-gradient(90deg,#fca5a5,#dc2626)}
+      .stats-org-bar-fill--pamat{background:#60a5fa}
+      .stats-org-bar-fill--atbalsta{background:#34d399}
+      .stats-org-bar-fill--vadibas{background:#f59e0b}
+      .stats-org-bar-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+      .stats-org-help-btn{border:1px solid #94a3b8;background:#fff;border-radius:999px;width:22px;height:22px;line-height:20px;cursor:pointer;color:#1e3a8a;font-weight:700;padding:0;display:inline-flex;align-items:center;justify-content:center}
+      .stats-org-help-btn:hover{background:#eff6ff}
+      .stats-org-detail{margin:8px 0 10px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;padding:8px 10px}
+      .stats-org-detail.hidden{display:none}
+      .stats-org-detail-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 6px;font-size:12px;color:#0f172a;font-weight:700}
+      .stats-org-detail-close{border:1px solid #94a3b8;background:#fff;border-radius:999px;font-size:11px;padding:2px 8px;cursor:pointer}
+      .stats-org-detail-list{margin:0;padding-left:18px;color:#334155;font-size:12px;line-height:1.35;max-height:180px;overflow:auto}
+      .stats-org-detail-list li{margin:2px 0}
+      .stats-org-bar-track-group{display:flex;flex:1;height:18px;background:#e2e8f0;border-radius:6px;overflow:hidden}
+      .stats-org-group-cell{display:flex;align-items:center;justify-content:flex-end;padding:0 6px;font-size:11px;color:#0f172a;font-weight:700}
+      .stats-org-group-bars{flex:1;display:grid;grid-template-rows:repeat(3,1fr);gap:2px}
+      .stats-org-group-line{height:16px;background:#e2e8f0;border-radius:5px;overflow:hidden}
+      .stats-org-group-line-fill{height:100%;display:flex;align-items:center;justify-content:flex-end;padding:0 5px;font-size:10px;font-weight:700;color:#0f172a;white-space:nowrap}
+      .stats-org-group-legend{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 0;font-size:11px;color:#334155}
+      .stats-org-group-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:middle}
+      .stats-simple-bars{display:grid;gap:8px}
+      .stats-simple-row{display:flex;gap:8px;align-items:center;font-size:12px;min-width:380px}
+      .stats-simple-label{flex:0 0 min(260px,45%);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#334155}
+      .stats-simple-track{flex:1;height:20px;background:#e2e8f0;border-radius:6px;overflow:hidden}
+      .stats-simple-fill{height:100%;display:flex;align-items:center;justify-content:flex-end;padding:0 6px;font-size:11px;font-weight:700;color:#0f172a;background:linear-gradient(90deg,#c4b5fd,#7c3aed);white-space:nowrap}
+      .stats-simple-fill--joma{background:linear-gradient(90deg,#93c5fd,#2563eb)}
+      .stats-org-proc{margin:4px 0 0;padding-left:1.2em;line-height:1.35;color:#334155;font-size:12px}
+      .stats-org-proc li{margin:2px 0}
+      #orgStatsTable .stats-org-proc-cell{vertical-align:top;min-width:180px}
     `;
     document.head.appendChild(s);
   }
@@ -145,7 +190,7 @@
     if (!reportsWrap || !orgCard) return null;
 
     const orgTitle = orgCard.querySelector("h3");
-    if (orgTitle && !orgTitle.dataset.baseTitle) orgTitle.dataset.baseTitle = "Struktūrvienību statistika";
+    if (orgTitle) orgTitle.dataset.baseTitle = "Izpildītāju statistika";
 
     let orgBody = $("orgStatsBody");
     if (!orgBody) {
@@ -224,72 +269,371 @@
     host.querySelectorAll(".stats-table-total").forEach((n) => n.remove());
   }
 
-  function renderOrgTable(orgBody, processRows, catalogRows) {
+  function removeOrgStatsCharts(host) {
+    if (!host) return;
+    host.querySelectorAll(".stats-org-bar-wrap").forEach((n) => n.remove());
+  }
+
+  /** Tās pašas pārvalžu kā Izpildītāji skats: [,;\\n] + vienreizējīgi tokeni */
+  function executorTokensFromMergedRow(m) {
+    const raw = String((m && m.executorPatstaviga) || "").trim();
+    const seen = new Set();
+    const out = [];
+    raw
+      .split(/[,;\n]+/)
+      .map((x) => String(x || "").replace(/\.+$/g, "").trim())
+      .filter(Boolean)
+      .forEach((u) => {
+        const low = norm(u);
+        if (!low || seen.has(low)) return;
+        seen.add(low);
+        out.push(u.trim());
+      });
+    return out;
+  }
+
+  function ensureUnitAgg(map, unitLabel) {
+    if (!map.has(unitLabel)) {
+      map.set(unitLabel, {
+        processKeys: new Set(),
+        processLines: [],
+        gpSet: new Set(),
+        jomaSet: new Set(),
+        services: new Set(),
+        pamat: 0,
+        atbalsta: 0,
+        vadibas: 0,
+        gpTotal: 0,
+      });
+    }
+    return map.get(unitLabel);
+  }
+
+  function splitMultiValues(v) {
+    return String(v || "")
+      .split(/[,;\n]+/)
+      .map((x) => String(x || "").trim())
+      .filter(Boolean);
+  }
+
+  function renderOrgBarPanels(host, pairsProcesi, pairsGp, pairsServices, unitMap) {
+    const wrap = document.createElement("div");
+    wrap.className = "stats-org-bar-wrap";
+    wrap.setAttribute("role", "presentation");
+
+    function openDetail(setRef, key, detailBox) {
+      setRef.clear();
+      setRef.add(key);
+      detailBox.classList.remove("hidden");
+    }
+
+    function makeDetailBox(typeKey) {
+      const box = document.createElement("div");
+      box.className = "stats-org-detail hidden";
+      const title = document.createElement("div");
+      title.className = "stats-org-detail-title";
+      const label = document.createElement("span");
+      const close = document.createElement("button");
+      close.type = "button";
+      close.className = "stats-org-detail-close";
+      close.textContent = "Aizvērt";
+      close.onclick = () => {
+        const openSet = orgDetailOpenState[typeKey];
+        if (openSet && box.dataset.unitKey) openSet.delete(box.dataset.unitKey);
+        box.classList.add("hidden");
+      };
+      title.appendChild(label);
+      title.appendChild(close);
+      const list = document.createElement("ul");
+      list.className = "stats-org-detail-list";
+      box.appendChild(title);
+      box.appendChild(list);
+      box.__labelEl = label;
+      box.__listEl = list;
+      return box;
+    }
+
+    function fillPanel(panel, pairs, klass, subtitle, helpTitle, detailTypeKey, detailListGetter, customRowRenderer) {
+      const enableDetails = !!detailTypeKey && typeof detailListGetter === "function";
+      const enableHelp = !!String(helpTitle || "").trim();
+      const head = document.createElement("div");
+      head.className = "stats-org-bar-head";
+      const h = document.createElement("h4");
+      h.textContent = subtitle;
+      head.appendChild(h);
+      let help = null;
+      if (enableHelp) {
+        help = document.createElement("button");
+        help.type = "button";
+        help.className = "stats-org-help-btn";
+        help.textContent = "i";
+        help.title = helpTitle;
+        head.appendChild(help);
+      }
+      panel.appendChild(head);
+
+      const detail = enableDetails ? makeDetailBox(detailTypeKey) : null;
+      if (detail) panel.appendChild(detail);
+
+      if (help) {
+        help.onclick = () => {
+          alert(helpTitle);
+        };
+      }
+
+      const max = pairs.reduce((m, z) => Math.max(m, z.count), 0) || 1;
+      pairs.forEach(({ label, count }) => {
+        const pct = max > 0 ? (count / max) * 100 : 0;
+        const row = document.createElement("div");
+        row.className = "stats-org-bar-row";
+        const labEl = document.createElement("span");
+        labEl.className = "stats-org-bar-label";
+        labEl.textContent = label;
+        labEl.title = label;
+        const track = customRowRenderer
+          ? customRowRenderer({ label, count, pct, unitData: unitMap.get(label) })
+          : (() => {
+            const t = document.createElement("div");
+            t.className = "stats-org-bar-track";
+            const fill = document.createElement("div");
+            fill.className = klass;
+            fill.style.width = pct + "%";
+            fill.style.minWidth = "0";
+            fill.textContent = String(count);
+            t.appendChild(fill);
+            return t;
+          })();
+        if (enableDetails) {
+          row.style.cursor = "pointer";
+          row.title = helpTitle;
+          row.onclick = () => {
+            const unitData = unitMap.get(label);
+            if (!unitData) return;
+            detail.dataset.unitKey = label;
+            detail.__labelEl.textContent = label;
+            detail.__listEl.innerHTML = "";
+            const items = detailListGetter(unitData);
+            if (!items.length) {
+              const li = document.createElement("li");
+              li.textContent = "(nav datu)";
+              detail.__listEl.appendChild(li);
+            } else {
+              items.forEach((txt) => {
+                const li = document.createElement("li");
+                li.textContent = txt;
+                detail.__listEl.appendChild(li);
+              });
+            }
+            openDetail(orgDetailOpenState[detailTypeKey], label, detail);
+          };
+        }
+        if (enableDetails && orgDetailOpenState[detailTypeKey].has(label)) {
+          const unitData = unitMap.get(label);
+          if (!unitData) return;
+          detail.dataset.unitKey = label;
+          detail.__labelEl.textContent = label;
+          detail.__listEl.innerHTML = "";
+          const items = detailListGetter(unitData);
+          if (!items.length) {
+            const li = document.createElement("li");
+            li.textContent = "(nav datu)";
+            detail.__listEl.appendChild(li);
+          } else {
+            items.forEach((txt) => {
+              const li = document.createElement("li");
+              li.textContent = txt;
+              detail.__listEl.appendChild(li);
+            });
+          }
+          detail.classList.remove("hidden");
+        }
+        row.appendChild(labEl);
+        row.appendChild(track);
+        panel.appendChild(row);
+      });
+    }
+
+    const p1 = document.createElement("div");
+    p1.className = "stats-org-bar-panel";
+    fillPanel(
+      p1,
+      pairsProcesi,
+      "stats-org-bar-fill",
+      "Pārvaldēm piekritīgie procesi, skaits",
+      "Atverot, tiks parādīti procesi",
+      "process",
+      (unitData) => unitData.processLines.slice().sort((a, b) => a.localeCompare(b, "lv"))
+    );
+    const p2 = document.createElement("div");
+    p2.className = "stats-org-bar-panel";
+    fillPanel(
+      p2,
+      pairsGp,
+      "stats-org-bar-fill stats-org-bar-fill--gp",
+      "Pārvaldēm piekritīgie unikālie galaprodukti, skaits",
+      "Atverot, tiks parādīti galaprodukti",
+      "gp",
+      (unitData) => Array.from(unitData.gpSet).sort((a, b) => a.localeCompare(b, "lv"))
+    );
+    const p3 = document.createElement("div");
+    p3.className = "stats-org-bar-panel";
+    const groupMax = { pamat: 0, atbalsta: 0, vadibas: 0 };
+    unitMap.forEach((u) => {
+      groupMax.pamat = Math.max(groupMax.pamat, Number(u.pamat || 0));
+      groupMax.atbalsta = Math.max(groupMax.atbalsta, Number(u.atbalsta || 0));
+      groupMax.vadibas = Math.max(groupMax.vadibas, Number(u.vadibas || 0));
+    });
+    fillPanel(
+      p3,
+      pairsProcesi,
+      "",
+      "Pārvalžu sadalījums pa procesu grupām",
+      "",
+      "",
+      null,
+      ({ unitData }) => {
+        const track = document.createElement("div");
+        track.className = "stats-org-group-bars";
+        const segs = [
+          { k: "pamat", cls: "stats-org-bar-fill--pamat", v: Number(unitData.pamat || 0), max: groupMax.pamat || 1 },
+          { k: "atbalsta", cls: "stats-org-bar-fill--atbalsta", v: Number(unitData.atbalsta || 0), max: groupMax.atbalsta || 1 },
+          { k: "vadibas", cls: "stats-org-bar-fill--vadibas", v: Number(unitData.vadibas || 0), max: groupMax.vadibas || 1 },
+        ];
+        segs.forEach((seg) => {
+          const line = document.createElement("div");
+          line.className = "stats-org-group-line";
+          const fill = document.createElement("div");
+          fill.className = `stats-org-group-line-fill ${seg.cls}`;
+          const pct = seg.max > 0 ? (seg.v / seg.max) * 100 : 0;
+          fill.style.width = `${seg.v > 0 ? Math.max(8, pct) : 0}%`;
+          fill.textContent = String(seg.v);
+          line.appendChild(fill);
+          track.appendChild(line);
+        });
+        return track;
+      }
+    );
+    const lg = document.createElement("div");
+    lg.className = "stats-org-group-legend";
+    lg.innerHTML =
+      '<span><i style="background:#60a5fa"></i>Pamatdarbības</span><span><i style="background:#34d399"></i>Atbalsta</span><span><i style="background:#f59e0b"></i>Vadības</span>';
+    p3.appendChild(lg);
+    const p4 = document.createElement("div");
+    p4.className = "stats-org-bar-panel";
+    fillPanel(
+      p4,
+      pairsServices,
+      "stats-org-bar-fill stats-org-bar-fill--services",
+      "Pārvalžu sadalījums pēc pakalpojumu skaita",
+      "Atverot, tiks parādīti pakalpojumi",
+      "services",
+      (unitData) => Array.from(unitData.services).sort((a, b) => a.localeCompare(b, "lv"))
+    );
+
+    wrap.appendChild(p1);
+    wrap.appendChild(p2);
+    wrap.appendChild(p3);
+    wrap.appendChild(p4);
+    host.insertBefore(wrap, host.firstChild);
+  }
+
+  function renderOrgTable(orgBody, mergedProcessRows, catalogRows) {
     if (!orgBody) return;
+    removeOrgStatsCharts(orgBody);
     removeStatsTableTotals(orgBody);
-    const processIndex = new Map();
-    processRows.forEach((r) => {
-      const k = String((r && r.processNo) || "").trim();
-      if (k) processIndex.set(k, r);
-    });
-
+    const merged = Array.isArray(mergedProcessRows) ? mergedProcessRows : [];
     const byUnit = new Map();
-    catalogRows.forEach((c) => {
-      const unit = String((c && c.unit) || "").trim();
-      if (!unit) return;
-      if (!byUnit.has(unit)) {
-        byUnit.set(unit, { processGroupPairs: [], services: new Set(), pamat: 0, atbalsta: 0, vadibas: 0 });
-      }
-      const row = byUnit.get(unit);
-      const procNo = String((c && c.procNo) || "").trim();
-      const key = procNo;
-      const p = processIndex.get(key);
-      if (p) {
-        const procLabel = String((p && p.processNo) || "").trim() || procNo || "(bez procesa Nr.)";
-        const g = normalizeGroup(p.group);
-        row.processGroupPairs.push({ processNo: procLabel, group: g });
-        const svc = String((p && p.services) || "").trim();
-        if (svc) row.services.add(svc);
-        if (g === "pamat") row.pamat += 1;
-        else if (g === "atbalsta") row.atbalsta += 1;
-        else if (g === "vadibas") row.vadibas += 1;
-      } else if (procNo) {
-        row.processGroupPairs.push({ processNo: procNo, group: "cits" });
-      }
+
+    merged.forEach((r) => {
+      const gpN = countGalaproduktiOnMergedRow(r);
+      let units = executorTokensFromMergedRow(r);
+      if (!units.length) units = ["(nav norādītas pārvaldes)"];
+      const dk = mergedProcessDedupeKey(r);
+      const g = normalizeGroup(r.group);
+
+      units.forEach((unit) => {
+        const agg = ensureUnitAgg(byUnit, unit);
+        const isNew = !agg.processKeys.has(dk);
+        if (isNew) {
+          agg.processKeys.add(dk);
+          const pn = String((r && r.processNo) || "").trim();
+          const pnLabel = pn || "(bez procesa Nr.)";
+          const pName = String((r && r.process) || "").trim();
+          agg.processLines.push(pName ? `${pnLabel}: ${pName}` : pnLabel);
+          if (g === "pamat") agg.pamat += 1;
+          else if (g === "atbalsta") agg.atbalsta += 1;
+          else if (g === "vadibas") agg.vadibas += 1;
+          agg.gpTotal += gpN;
+          if (Array.isArray(r.gpItems) && r.gpItems.length) {
+            r.gpItems
+              .map((g) => String((g && g.name) || "").trim())
+              .filter(Boolean)
+              .forEach((g) => agg.gpSet.add(g));
+          } else {
+            String((r && r.productsText) || (r && r.products) || "")
+              .split(/[;\n]+/)
+              .map((x) => String(x || "").trim())
+              .filter(Boolean)
+              .forEach((g) => agg.gpSet.add(g));
+          }
+          {
+            const seenJomaInProc = new Set();
+            gpLinesForJomaStats(r).forEach((gp) => {
+              const label = String((gp && gp.jomaText) || "").trim();
+              const key = normalizeJomaKey(label);
+              if (!key || seenJomaInProc.has(key)) return;
+              seenJomaInProc.add(key);
+              agg.jomaSet.add(label);
+            });
+          }
+          String((r && r.services) || "")
+            .trim()
+            .split(/[\n;]+/)
+            .map((x) => String(x || "").trim())
+            .filter(Boolean)
+            .forEach((s) => agg.services.add(s));
+        }
+      });
     });
 
-    const old = $("orgStatsTable");
-    if (old && old.parentElement) old.parentElement.removeChild(old);
-    const tbl = document.createElement("table");
-    tbl.id = "orgStatsTable";
-    tbl.innerHTML =
-      "<thead><tr><th>Procesa izpildītājs, pārvalde</th><th>Procesi</th><th>Pamatdarbības procesi</th><th>Atbalsta procesi</th><th>Vadības procesi</th><th>Pakalpojumi</th></tr></thead><tbody></tbody>";
-    const tb = tbl.querySelector("tbody");
-    Array.from(byUnit.keys()).sort((a, b) => a.localeCompare(b, "lv")).forEach((unit) => {
-      const x = byUnit.get(unit);
-      const processUnique = new Set(x.processGroupPairs.map((it) => String(it.processNo || "").trim()).filter(Boolean));
-      const groupedList = `<strong>Procesi kopā: ${processUnique.size}</strong>`;
-      const tr = document.createElement("tr");
-      tr.innerHTML =
-        `<td>${unit}</td><td>${groupedList || "-"}</td><td>${x.pamat}</td><td>${x.atbalsta}</td><td>${x.vadibas}</td><td>${x.services.size}</td>`;
-      tb.appendChild(tr);
+    // Unikālie GP pa pārvaldēm no GP kataloga (nevis no procesu reģistra apvienotajām rindām).
+    const cat = Array.isArray(catalogRows) ? catalogRows : [];
+    cat.forEach((c) => {
+      const gpName = String((c && c.type) || "").trim();
+      if (!gpName) return;
+      const units = splitMultiValues((c && c.unit) || "");
+      const scopedUnits = units.length ? units : ["(nav norādītas pārvaldes)"];
+      scopedUnits.forEach((unit) => {
+        const agg = ensureUnitAgg(byUnit, unit);
+        agg.gpSet.add(gpName);
+      });
     });
+
+    const unitKeysSorted = Array.from(byUnit.keys()).sort((a, b) => a.localeCompare(b, "lv"));
+
+    const pairsProcesi = unitKeysSorted.map((u) => ({ label: u, count: byUnit.get(u).processKeys.size }));
+    const pairsGp = unitKeysSorted.map((u) => ({ label: u, count: byUnit.get(u).gpSet.size }));
+    const pairsServices = unitKeysSorted.map((u) => ({ label: u, count: byUnit.get(u).services.size }));
+    renderOrgBarPanels(orgBody, pairsProcesi, pairsGp, pairsServices, byUnit);
+
     const hint = $("orgStatsHint");
-    if (hint) hint.textContent = "Statistika pēc procesa izpildītāja, pārvaldes (no Galaproduktu kataloga).";
-    orgBody.appendChild(tbl);
-    const sumPamat = Array.from(byUnit.values()).reduce((s, x) => s + x.pamat, 0);
-    const sumAtbalsta = Array.from(byUnit.values()).reduce((s, x) => s + x.atbalsta, 0);
-    const sumVadibas = Array.from(byUnit.values()).reduce((s, x) => s + x.vadibas, 0);
-    const sumPak = Array.from(byUnit.values()).reduce((s, x) => s + x.services.size, 0);
+    if (hint) {
+      hint.textContent =
+        "Procesu skaiti/grupu sadalījums tiek rēķināts no apvienotajām Procesu reģistra rindām, bet unikālie galaprodukti pa pārvaldēm — no GP kataloga.";
+    }
+
+    const sumPamat = unitKeysSorted.reduce((s, u) => s + byUnit.get(u).pamat, 0);
+    const sumAtbalsta = unitKeysSorted.reduce((s, u) => s + byUnit.get(u).atbalsta, 0);
+    const sumVadibas = unitKeysSorted.reduce((s, u) => s + byUnit.get(u).vadibas, 0);
+    const sumPak = unitKeysSorted.reduce((s, u) => s + byUnit.get(u).services.size, 0);
+    const sumGpUniq = unitKeysSorted.reduce((s, u) => s + byUnit.get(u).gpSet.size, 0);
+
     const tot = document.createElement("p");
     tot.className = "stats-table-total";
     tot.style.cssText = "margin:8px 0 0;font-size:13px;font-weight:600;color:#0f172a;";
     tot.textContent =
-      `Kopskaits — tabulas rindas: ${byUnit.size}; pamatdarbības (summa): ${sumPamat}; atbalsta: ${sumAtbalsta}; vadības: ${sumVadibas}; atšķirīgu pakalpojumu (summa): ${sumPak}.`;
+      `Kopskaits — izpildītāju (pārvalžu) rindas: ${byUnit.size}; unikālie galaprodukti (summa pa pārvaldēm): ${sumGpUniq}; pamatdarbības: ${sumPamat}; atbalsta: ${sumAtbalsta}; vadības: ${sumVadibas}; pakalpojumu nosaukumu atšķirīgas vērtības (summa): ${sumPak}. Summas var pārsniegt vienreizējā procesu skaitu, ja viens process ir vairākās pārvaldēs.`;
     orgBody.appendChild(tot);
-    ensureHeaderFilters("orgStatsTable", "org");
-    refreshFilterOptions("orgStatsTable", "org");
-    applyFilters("orgStatsTable", "org");
   }
 
   function getStatsProcessRows() {
@@ -334,6 +678,12 @@
       .toLowerCase();
   }
 
+  function mergedProcessDedupeKey(r) {
+    const n = String((r && r.processNo) || "").trim();
+    const p = String((r && r.process) || "").trim();
+    return `${norm(n)}|${normProcessStatsKey(p)}`;
+  }
+
   /** Pārskats «Galaprodukti procesos» — apvienotas procesu reģistra rindas; viena rinda uz procesa nosaukumu, skaits = GP šim procesam. */
   function renderProcessOutputTable(processBody) {
     if (!processBody) return;
@@ -353,28 +703,36 @@
 
     const old = $("processOutputStatsTable");
     if (old && old.parentElement) old.parentElement.removeChild(old);
-    const tbl = document.createElement("table");
-    tbl.id = "processOutputStatsTable";
-    tbl.innerHTML =
-      "<thead><tr><th>Procesa numurs</th><th>Process</th><th>Galaproduktu skaits procesā</th></tr></thead><tbody></tbody>";
-    const tb = tbl.querySelector("tbody");
-    rows
-      .sort((a, b) => a.processName.localeCompare(b.processName, "lv"))
-      .forEach((x) => {
-        const tr = document.createElement("tr");
-        tr.innerHTML = `<td></td><td>${x.processName}</td><td>${x.gpCount}</td>`;
-        tb.appendChild(tr);
-      });
-    processBody.appendChild(tbl);
+    const wrap = document.createElement("div");
+    wrap.id = "processOutputStatsTable";
+    wrap.className = "stats-simple-bars";
+    const sorted = rows.sort((a, b) => b.gpCount - a.gpCount || a.processName.localeCompare(b.processName, "lv"));
+    const max = sorted.reduce((m, x) => Math.max(m, x.gpCount), 0) || 1;
+    sorted.forEach((x) => {
+      const row = document.createElement("div");
+      row.className = "stats-simple-row";
+      const label = document.createElement("span");
+      label.className = "stats-simple-label";
+      label.title = x.processName;
+      label.textContent = x.processName;
+      const track = document.createElement("div");
+      track.className = "stats-simple-track";
+      const fill = document.createElement("div");
+      fill.className = "stats-simple-fill";
+      fill.style.width = `${max > 0 ? (x.gpCount / max) * 100 : 0}%`;
+      fill.textContent = String(x.gpCount);
+      track.appendChild(fill);
+      row.appendChild(label);
+      row.appendChild(track);
+      wrap.appendChild(row);
+    });
+    processBody.appendChild(wrap);
     const totalGp = rows.reduce((s, x) => s + x.gpCount, 0);
     const tot = document.createElement("p");
     tot.className = "stats-table-total";
     tot.style.cssText = "margin:8px 0 0;font-size:13px;font-weight:600;color:#0f172a;";
     tot.textContent = `Kopskaits — procesi (ieraksti tabulā): ${rows.length}; galaprodukti (visiem procesiem kopā): ${totalGp}.`;
     processBody.appendChild(tot);
-    ensureHeaderFilters("processOutputStatsTable", "proc");
-    refreshFilterOptions("processOutputStatsTable", "proc");
-    applyFilters("processOutputStatsTable", "proc");
   }
 
   function gpLinesForJomaStats(r) {
@@ -387,71 +745,85 @@
     return gpLinesForJomaStats(r).some((gp) => String((gp && gp.jomaText) || "").trim() === jomaLabel);
   }
 
-  /** Jomu sadalījums pēc tām pašām vērtībām kā procesu tabulas «Joma» kolonnas filtrs (katrs GP). */
+  function normalizeJomaKey(label) {
+    return String(label || "")
+      .normalize("NFKC")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+  }
+
+  /** Jomu statistika: unikālo jomu skaits katrai pārvaldei. */
   function renderJomaStatsTable(jomaBody) {
     if (!jomaBody) return;
     removeStatsTableTotals(jomaBody);
     const merged = getStatsProcessRows();
-    const collect =
-      typeof window.collectProcessTableJomaFilterLikeValues === "function"
-        ? window.collectProcessTableJomaFilterLikeValues
-        : null;
-    const uniqJomas = collect ? collect(merged) : new Set();
-    if (!collect) {
-      merged.forEach((r) => {
-        const j = String((r && r.darbibasJoma) || "").trim() || "(nav jomas)";
-        uniqJomas.add(j);
-      });
-    }
-    let navJomas = 0;
+    const byUnitJoma = new Map();
     merged.forEach((r) => {
-      const any = gpLinesForJomaStats(r).some((gp) => String((gp && gp.jomaText) || "").trim());
-      if (!any) navJomas += 1;
-    });
-    const byJoma = new Map();
-    Array.from(uniqJomas)
-      .sort((a, b) => a.localeCompare(b, "lv"))
-      .forEach((joma) => {
-        let n = 0;
-        merged.forEach((r) => {
-          if (processTouchesJomaLabel(r, joma)) n += 1;
-        });
-        byJoma.set(joma, n);
+      let units = executorTokensFromMergedRow(r);
+      if (!units.length) units = ["(nav norādītas pārvaldes)"];
+      const jomasThisProc = new Map();
+      gpLinesForJomaStats(r).forEach((gp) => {
+        const label = String((gp && gp.jomaText) || "").trim();
+        const key = normalizeJomaKey(label);
+        if (!key) return;
+        if (!jomasThisProc.has(key)) jomasThisProc.set(key, label);
       });
-    if (navJomas > 0) byJoma.set("(nav jomas)", navJomas);
+      units.forEach((unit) => {
+        if (!byUnitJoma.has(unit)) byUnitJoma.set(unit, new Set());
+        const set = byUnitJoma.get(unit);
+        jomasThisProc.forEach((label) => set.add(label));
+      });
+    });
+
+    const byJoma = new Map();
+    Array.from(byUnitJoma.keys())
+      .sort((a, b) => a.localeCompare(b, "lv"))
+      .forEach((unit) => {
+        byJoma.set(unit, byUnitJoma.get(unit).size);
+      });
 
     const old = $("jomaStatsTable");
     if (old && old.parentElement) old.parentElement.removeChild(old);
-    const tbl = document.createElement("table");
-    tbl.id = "jomaStatsTable";
-    tbl.innerHTML = "<thead><tr><th>Joma</th><th>Procesu skaits</th></tr></thead><tbody></tbody>";
-    const tb = tbl.querySelector("tbody");
-    const jomaKeys = Array.from(byJoma.keys()).filter((k) => k !== "(nav jomas)");
-    jomaKeys.sort((a, b) => a.localeCompare(b, "lv"));
-    if (byJoma.has("(nav jomas)")) jomaKeys.push("(nav jomas)");
+    const wrap = document.createElement("div");
+    wrap.id = "jomaStatsTable";
+    wrap.className = "stats-simple-bars";
+    const jomaKeys = Array.from(byJoma.keys());
+    const max = jomaKeys.reduce((m, j) => Math.max(m, byJoma.get(j) || 0), 0) || 1;
     jomaKeys.forEach((joma) => {
-      const tr = document.createElement("tr");
-      tr.innerHTML = `<td>${joma}</td><td>${byJoma.get(joma)}</td>`;
-      tb.appendChild(tr);
+      const n = byJoma.get(joma) || 0;
+      const row = document.createElement("div");
+      row.className = "stats-simple-row";
+      const label = document.createElement("span");
+      label.className = "stats-simple-label";
+      label.title = joma;
+      label.textContent = joma;
+      const track = document.createElement("div");
+      track.className = "stats-simple-track";
+      const fill = document.createElement("div");
+      fill.className = "stats-simple-fill stats-simple-fill--joma";
+      fill.style.width = `${max > 0 ? (n / max) * 100 : 0}%`;
+      fill.textContent = String(n);
+      track.appendChild(fill);
+      row.appendChild(label);
+      row.appendChild(track);
+      wrap.appendChild(row);
     });
-    jomaBody.appendChild(tbl);
+    jomaBody.appendChild(wrap);
     const totalProcesi = merged.length;
     const tot = document.createElement("p");
     tot.className = "stats-table-total";
     tot.style.cssText = "margin:8px 0 0;font-size:13px;font-weight:600;color:#0f172a;";
-    tot.textContent = `Kopskaits — procesi (loģiskie): ${totalProcesi}; jomu grupas tabulā: ${byJoma.size}.`;
+    tot.textContent = `Kopskaits — procesi (loģiskie): ${totalProcesi}; pārvaldes ar jomu datiem: ${byJoma.size}.`;
     jomaBody.appendChild(tot);
-    ensureHeaderFilters("jomaStatsTable", "joma");
-    refreshFilterOptions("jomaStatsTable", "joma");
-    applyFilters("jomaStatsTable", "joma");
   }
 
   function renderOrgStats() {
     const refs = ensurePanelStructure();
     if (!refs) return;
-    const processRows = typeof window.getProcessRows === "function" ? window.getProcessRows() : [];
+    const mergedRows = getStatsProcessRows();
     const catalogRows = typeof window.getCatalogRows === "function" ? window.getCatalogRows() : [];
-    renderOrgTable(refs.orgBody, processRows, catalogRows);
+    renderOrgTable(refs.orgBody, mergedRows, catalogRows);
     renderProcessOutputTable(refs.processBody);
     renderJomaStatsTable(refs.jomaBody);
     if (typeof window.refreshClearFilterButtonActive === "function") window.refreshClearFilterButtonActive();
