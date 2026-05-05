@@ -2876,6 +2876,24 @@
         if(!match) return;
         openEditor(match);
       };
+      window.openProcessEditorByProcNoOrName = (procNo, procName) => {
+        let match = resolveProcessEditorRowByProcNo(procNo);
+        if(!match){
+          const nameKey = normTextKey(procName || "");
+          if(nameKey){
+            const src = (processRows || []).find((r)=>{
+              const k = normTextKey((r && r.process) || "");
+              if(!k) return false;
+              return k === nameKey || k.includes(nameKey) || nameKey.includes(k);
+            }) || null;
+            if(src){
+              match = resolveProcessEditorRowByProcNo(src.processNo) || Object.assign({}, src, { __sourceRow: src });
+            }
+          }
+        }
+        if(!match) return;
+        openEditor(match);
+      };
       function openCatalogEditor(r){
         const processVisible = !!($("processListCard") && !$("processListCard").classList.contains("hidden"));
         const catalogVisible = !!($("catalogListCard") && !$("catalogListCard").classList.contains("hidden"));

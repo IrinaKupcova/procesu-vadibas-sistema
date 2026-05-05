@@ -102,6 +102,10 @@
     return hit ? getText(hit.processNo) : "";
   }
   function openProcessCard(processRows, procNo, procName) {
+    if (typeof window.openProcessEditorByProcNoOrName === "function") {
+      window.openProcessEditorByProcNoOrName(procNo, procName);
+      return;
+    }
     const resolvedNo = resolveProcessNoFallback(processRows, procNo, procName);
     const fallbackName = getText(procName);
     if (!resolvedNo && !fallbackName) return;
