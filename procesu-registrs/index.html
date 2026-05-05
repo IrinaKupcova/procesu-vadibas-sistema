@@ -49,9 +49,9 @@
       #processTable tbody tr.process-accordion-hdr[aria-expanded="false"] td:first-child::before {
         content: "▶"; position: absolute; left: 6px; top: 8px; font-size: 10px; color: #475569; font-weight: 700;
       }
-      #processTable .pv-acc-cell { position: relative; vertical-align: top; }
+      #processTable .pv-acc-cell { position: relative; vertical-align: top; padding-right: 30px; }
       #processTable .pv-acc-badge {
-        position: absolute; top: 4px; right: 5px; min-width: 18px; height: 18px; padding: 0 5px;
+        position: absolute; top: 6px; right: 6px; min-width: 18px; height: 18px; padding: 0 5px;
         border-radius: 999px; background: #334155; color: #fff; font-size: 10px; font-weight: 700;
         display: inline-flex; align-items: center; justify-content: center; line-height: 1; z-index: 1;
         box-shadow: 0 1px 2px rgba(15,23,42,.2);
@@ -650,6 +650,9 @@
 
     <script>
       let processRows = [], csvRows = [], catalogRowsView = [], user = "daina", roles = {};
+      let processInlineEditMode = false;
+      let catalogInlineEditMode = false;
+      let executorsInlineEditMode = false;
       let processPage = 1;
       let processPageSize = 100;
       let gpDbSyncInProgress = false;
@@ -802,33 +805,59 @@
         });
         catalogRowsSorted.forEach(x=>{
           const tr=document.createElement("tr");
-          [x.typeNo || x.id,x.type,x.unit,x.department,x.procNo].forEach(v=>{
+          const edit = catalogInlineEditMode && canEdit();
+          const makeCell = (val)=>{
             const td=document.createElement("td");
-            td.textContent=v||"";
-            tr.appendChild(td);
-          });
-          const tdProcess=document.createElement("td");
-          tdProcess.textContent=x.process||"";
-          if(String(x.process||"").trim() && String(x.procNo||"").trim()){
-            const pBtn=document.createElement("button");
-            pBtn.type="button";
-            pBtn.className="catalog-jump";
-            pBtn.textContent="Procesu kartiņa";
-            pBtn.style.marginLeft="6px";
-            pBtn.onclick=()=>{ if(typeof window.openProcessEditorByTaskProcNos==="function") window.openProcessEditorByTaskProcNos("", x.procNo); };
-            tdProcess.appendChild(pBtn);
-          }
+            if(edit){
+              const inp=document.createElement("input");
+              inp.type="text";
+              inp.value=String(val||"");
+              inp.style.width="100%";
+              inp.style.boxSizing="border-box";
+              td.appendChild(inp);
+            }else{
+              td.textContent=val||"";
+            }
+            return td;
+          };
+          [x.typeNo || x.id,x.type,x.unit,x.department,x.procNo].forEach(v=>tr.appendChild(makeCell(v)));
+          const tdProcess=makeCell(x.process||"");
           tr.appendChild(tdProcess);
-          [x.group,x.darbibasJoma].forEach(v=>{
-            const td=document.createElement("td");
-            td.textContent=v||"";
-            tr.appendChild(td);
-          });
+          [x.group,x.darbibasJoma].forEach(v=>tr.appendChild(makeCell(v)));
           const td=document.createElement("td");
-          const b=document.createElement("button");
-          b.type="button"; b.className="secondary"; b.textContent="Atvērt kartiņu";
-          b.onclick=()=>openCatalogEditor(x && x.__catalogSourceRow ? x.__catalogSourceRow : x);
-          td.appendChild(b); tr.appendChild(td);
+          if(edit){
+            const b=document.createElement("button");
+            b.type="button"; b.className="secondary"; b.textContent="Saglabāt";
+            b.onclick=async()=>{
+              const tds=tr.querySelectorAll("td");
+              const vals = Array.from(tds).slice(0,8).map((c)=>String((c.querySelector("input")&&c.querySelector("input").value)||"").trim());
+              const draft = {
+                typeNo: vals[0],
+                type: vals[1],
+                unit: vals[2],
+                department: vals[3],
+                procNo: vals[4],
+                process: vals[5],
+                group: vals[6],
+                darbibasJoma: vals[7],
+              };
+              try{
+                await saveCatalogInlineRow(x, draft);
+                await loadCatalog();
+                status("Saglabāts.","ok");
+              }catch(err){
+                const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (z=>String(z));
+                status("Kataloga DB kļūda: "+mapper(err),"error");
+              }
+            };
+            td.appendChild(b);
+          }else{
+            const b=document.createElement("button");
+            b.type="button"; b.className="secondary"; b.textContent="Atvērt kartiņu";
+            b.onclick=()=>openCatalogEditor(x && x.__catalogSourceRow ? x.__catalogSourceRow : x);
+            td.appendChild(b);
+          }
+          tr.appendChild(td);
           tbody.appendChild(tr);
         });
         if (typeof window.__afterTableRenderFilters === "function") {
@@ -889,26 +918,17 @@
         const sourceCatalog = Array.isArray(csvRows) ? csvRows : [];
         const sourceProcess = Array.isArray(processRows) ? processRows : [];
         if(!sourceProcess.length) return sourceCatalog.slice();
-        const catalogByProcGp = new Map();
-        sourceCatalog.forEach((c)=>{
-          const procNo = String((c && c.procNo) || "").trim();
-          const gp = normText(String((c && c.type) || "").trim());
-          if(!procNo || !gp) return;
-          const k = `${procNo}|${gp}`;
-          if(!catalogByProcGp.has(k)) catalogByProcGp.set(k, c);
-        });
-        const out = [];
-        const seen = new Set();
+        const byGp = new Map();
         sourceProcess.forEach((r)=>{
           const procNo = String((r && r.processNo) || "").trim();
-          if(!procNo) return;
           const processName = String((r && r.process) || "").trim();
           const group = String((r && r.group) || "").trim();
           const joma = String((r && r.darbibasJoma) || "").trim();
           const department = String((r && r.executorDala) || "").trim();
-          const units = splitUnitValues((r && r.executorPatstaviga) || "");
-          const unitList = units.length ? units : [String((r && r.executorPatstaviga) || "").trim()];
-          const gpNames = splitProductValues((r && r.products) || "").map((x)=>String(x || "").trim()).filter(Boolean);
+          const unitList = splitUnitValues((r && r.executorPatstaviga) || "");
+          const gpNames = splitProductValues(
+            (r && (r.products || r.productsText || r.productTypes)) || ""
+          ).map((x)=>String(x || "").trim()).filter(Boolean);
           const raw = (r && r.raw) || {};
           const typeNos = splitTypeNoValues(
             String(
@@ -920,30 +940,58 @@
             )
           );
           gpNames.forEach((gp, idx)=>{
-            const gpNorm = normText(gp);
-            const source = catalogByProcGp.get(`${procNo}|${gpNorm}`) || null;
-            const typeNo = String(typeNos[idx] || (source && (source.typeNo || source.id)) || "").trim();
-            unitList.forEach((unitRaw)=>{
-              const unit = String(unitRaw || "").trim();
-              const sig = `${procNo}|${gpNorm}|${normText(unit)}|${normText(department)}|${normText(joma)}|${typeNo}`;
-              if(seen.has(sig)) return;
-              seen.add(sig);
-              const row = Object.assign({}, source || {}, {
-                typeNo,
+            const gpNorm = normTextKey(gp);
+            if(!gpNorm) return;
+            if(!byGp.has(gpNorm)){
+              byGp.set(gpNorm, {
                 type: gp,
-                unit,
-                department,
-                procNo,
-                process: processName || String((source && source.process) || "").trim(),
-                group: group || String((source && source.group) || "").trim(),
-                darbibasJoma: joma || String((source && source.darbibasJoma) || "").trim(),
+                typeNoSet: new Set(),
+                unitSet: new Set(),
+                departmentSet: new Set(),
+                procNoSet: new Set(),
+                processSet: new Set(),
+                groupSet: new Set(),
+                jomaSet: new Set(),
               });
-              if(source) row.__catalogSourceRow = source;
-              out.push(row);
-            });
+            }
+            const x = byGp.get(gpNorm);
+            const tn = String(typeNos[idx] || "").trim();
+            if(tn) x.typeNoSet.add(tn);
+            unitList.forEach((u)=>x.unitSet.add(String(u || "").trim()));
+            if(department) x.departmentSet.add(department);
+            if(procNo) x.procNoSet.add(procNo);
+            if(processName) x.processSet.add(processName);
+            if(group) x.groupSet.add(group);
+            if(joma) x.jomaSet.add(joma);
           });
         });
-        return out.length ? out : sourceCatalog.slice();
+        const catalogByGp = new Map();
+        sourceCatalog.forEach((c)=>{
+          const gpNorm = normTextKey(String((c && c.type) || "").trim());
+          if(gpNorm && !catalogByGp.has(gpNorm)) catalogByGp.set(gpNorm, c);
+        });
+        const out = Array.from(byGp.entries()).map(([gpNorm, x])=>({
+          typeNo: Array.from(x.typeNoSet).join(", "),
+          type: x.type,
+          unit: Array.from(x.unitSet).filter(Boolean).join(", "),
+          department: Array.from(x.departmentSet).join(", "),
+          procNo: Array.from(x.procNoSet).join(", "),
+          process: Array.from(x.processSet).join(", "),
+          group: Array.from(x.groupSet).join(", "),
+          darbibasJoma: Array.from(x.jomaSet).join(", "),
+          additionalInfo: "",
+          __catalogSourceRow: catalogByGp.get(gpNorm) || undefined,
+        }));
+        // Ja no processRows neizdevās iegūt GP, atgriežam fallback no kataloga DB.
+        if(!out.length) return sourceCatalog.slice();
+        out.sort((a,b)=>{
+          const ta = String((a && a.type) || "");
+          const tb = String((b && b.type) || "");
+          const c = ta.localeCompare(tb, "lv", { sensitivity: "base" });
+          if(c !== 0) return c;
+          return compareTypeNoAsc(a && (a.typeNo || ""), b && (b.typeNo || ""));
+        });
+        return out;
       }
       function compareTypeNoAsc(a, b){
         const av = String(a || "").trim();
@@ -1279,7 +1327,7 @@
       }
       /** Unikālās «Joma» kolonnas vērtības kā procesu tabulas galvenes filtrā (Filtrs.js: katras rindas 6. šūnas teksts = GP rindas joma). */
       function collectProcessTableJomaFilterLikeValues(mergedRows){
-        const uniqVals = new Set();
+        const uniqMap = new Map();
         (mergedRows || []).forEach((r)=>{
           const lines = Array.isArray(r.gpItems) && r.gpItems.length
             ? r.gpItems
@@ -1287,10 +1335,18 @@
           lines.forEach((gp)=>{
             const raw = String((gp && gp.jomaText) || "").trim();
             if(!raw) return;
-            uniqVals.add(raw);
+            raw
+              .split(/[,\n;]+/)
+              .map((x)=>String(x || "").trim())
+              .filter(Boolean)
+              .forEach((token)=>{
+                const k = normTextKey(token);
+                if(!k || uniqMap.has(k)) return;
+                uniqMap.set(k, token);
+              });
           });
         });
-        return uniqVals;
+        return new Set(Array.from(uniqMap.values()));
       }
       window.collectProcessTableJomaFilterLikeValues = collectProcessTableJomaFilterLikeValues;
 
@@ -1605,12 +1661,26 @@
                 tr.setAttribute("data-accordion-block", accordionBlockId);
               }
             }
-            const c=(t,cls)=>{const td=document.createElement("td"); if(cls) String(cls).split(/\s+/).filter(Boolean).forEach((cn)=>td.classList.add(cn)); td.textContent=t||""; tr.appendChild(td);};
+            const makeTd = (val, cls, editable)=>{
+              const td=document.createElement("td");
+              if(cls) String(cls).split(/\s+/).filter(Boolean).forEach((cn)=>td.classList.add(cn));
+              if(editable && canEdit()){
+                const inp=document.createElement("input");
+                inp.type="text";
+                inp.value=String(val || "");
+                inp.style.width="100%";
+                inp.style.boxSizing="border-box";
+                td.appendChild(inp);
+              }else{
+                td.textContent=val||"";
+              }
+              tr.appendChild(td);
+            };
 
-            c(idx===0 ? r.group : "","col-gray");
-            c(idx===0 ? r.processNo : "","col-gray");
-            c(idx===0 ? r.process : "","col-gray");
-            c(String(gpItem.typeNosText || ""),"col-gray");
+            makeTd(idx===0 ? r.group : "","col-gray", processInlineEditMode && idx===0);
+            makeTd(idx===0 ? r.processNo : "","col-gray", processInlineEditMode && idx===0);
+            makeTd(idx===0 ? r.process : "","col-gray", processInlineEditMode && idx===0);
+            makeTd(String(gpItem.typeNosText || ""),"col-gray", processInlineEditMode);
 
             const tdType=document.createElement("td"); tdType.classList.add("col-gray");
             let gpName = String(gpItem.name || "").trim();
@@ -1645,7 +1715,17 @@
 
             const tdJoma = document.createElement("td");
             tdJoma.classList.add("col-gray");
-            tdJoma.textContent = String(gpItem.jomaText || "") || "";
+            if(processInlineEditMode && canEdit()){
+              const inp = document.createElement("input");
+              inp.type = "text";
+              inp.value = String(gpItem.jomaText || r.darbibasJoma || "");
+              inp.style.width = "100%";
+              inp.style.boxSizing = "border-box";
+              inp.style.minWidth = "140px";
+              tdJoma.appendChild(inp);
+            }else{
+              tdJoma.textContent = String(gpItem.jomaText || "") || "";
+            }
             if(multiGp && idx === 0 && badgeJoma > 0){
               tdJoma.classList.add("pv-acc-cell");
               const bJ = document.createElement("span");
@@ -1658,7 +1738,16 @@
 
             const tdExec = document.createElement("td");
             tdExec.classList.add("col-gray");
-            tdExec.textContent = String(gpItem.executorText || "") || "";
+            if(processInlineEditMode && canEdit()){
+              const inp = document.createElement("input");
+              inp.type = "text";
+              inp.value = String(gpItem.executorText || r.executorPatstaviga || "");
+              inp.style.width = "100%";
+              inp.style.boxSizing = "border-box";
+              tdExec.appendChild(inp);
+            }else{
+              tdExec.textContent = String(gpItem.executorText || "") || "";
+            }
             if(multiGp && idx === 0 && badgeExec > 0){
               tdExec.classList.add("pv-acc-cell");
               const bE = document.createElement("span");
@@ -1669,16 +1758,66 @@
             }
             tr.appendChild(tdExec);
 
-            c(idx===0 ? r.input : "","col-green col-extended");
-            c(idx===0 ? r.relatedProcesses : "","col-green col-extended");
-            c(idx===0 ? r.services : "","col-green col-extended");
-            c(idx===0 ? r.flowcharts : "","col-green col-extended");
-            c(idx===0 ? r.itResources : "","col-green col-extended");
-            c(idx===0 ? r.optimization : "","col-green col-extended");
-            c(idx===0 ? r.otherMetrics : "","col-green col-extended");
+            makeTd(idx===0 ? r.input : "","col-green col-extended", processInlineEditMode && idx===0);
+            makeTd(idx===0 ? r.relatedProcesses : "","col-green col-extended", processInlineEditMode && idx===0);
+            makeTd(idx===0 ? r.services : "","col-green col-extended", processInlineEditMode && idx===0);
+            makeTd(idx===0 ? r.flowcharts : "","col-green col-extended", processInlineEditMode && idx===0);
+            makeTd(idx===0 ? r.itResources : "","col-green col-extended", processInlineEditMode && idx===0);
+            makeTd(idx===0 ? r.optimization : "","col-green col-extended", processInlineEditMode && idx===0);
+            makeTd(idx===0 ? r.otherMetrics : "","col-green col-extended", processInlineEditMode && idx===0);
 
             const td=document.createElement("td");
-            if(idx===0){
+            if(processInlineEditMode && canEdit()){
+              const save=document.createElement("button");
+              save.type="button";
+              save.className="secondary";
+              save.textContent="Saglabāt";
+              save.onclick=async()=>{
+                try{
+                  if(idx===0){
+                    await saveProcessInlineRow(r, {
+                      group: readCellValue(tr.children[0]),
+                      processNo: readCellValue(tr.children[1]),
+                      process: readCellValue(tr.children[2]),
+                      darbibasJoma: readCellValue(tr.children[5]),
+                      executorPatstaviga: readCellValue(tr.children[6]),
+                      input: readCellValue(tr.children[7]),
+                      relatedProcesses: readCellValue(tr.children[8]),
+                      services: readCellValue(tr.children[9]),
+                      flowcharts: readCellValue(tr.children[10]),
+                      itResources: readCellValue(tr.children[11]),
+                      optimization: readCellValue(tr.children[12]),
+                      otherMetrics: readCellValue(tr.children[13]),
+                    });
+                    await loadDb();
+                    renderTable();
+                    status("Saglabāts.","ok");
+                  }else{
+                    const procNo = String(gpItem.procNo || r.processNo || "").trim();
+                    const gpName = String(gpItem.name || "").trim();
+                    const base = findCatalogRowByProcAndGp(procNo, gpName) || {};
+                    await saveCatalogInlineRow(base, {
+                      typeNo: readCellValue(tr.children[3]),
+                      type: gpName || readCellValue(tr.children[4]),
+                      unit: readCellValue(tr.children[6]),
+                      department: String(base.department || ""),
+                      procNo,
+                      process: String(r.process || ""),
+                      group: String(r.group || ""),
+                      darbibasJoma: readCellValue(tr.children[5]),
+                    });
+                    await loadCatalog();
+                    await loadDb();
+                    renderTable();
+                    status("Saglabāts.","ok");
+                  }
+                }catch(err){
+                  const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (x=>String(x));
+                  status("DB kļūda: "+mapper(err),"error");
+                }
+              };
+              td.appendChild(save);
+            }else if(idx===0){
               const b=document.createElement("button");
               b.type="button"; b.className="secondary"; b.textContent="Atvērt kartiņu"; b.onclick=()=>openEditor(r);
               td.appendChild(b);
@@ -1896,6 +2035,71 @@
       function formVals(){ return {group:$("eGroup").value.trim(),processNo:$("eProcNo").value.trim(),process:$("eProcess").value.trim(),
         darbibasJoma:$("eDarbibasJoma").value.trim(),products:$("eLaws").value.trim(),productTypes:$("eDocs").value.trim(),input:$("eInput").value.trim(),executorPatstaviga:$("eExecutorPatstaviga").value.trim(),executorDala:$("eExecutorDala").value.trim(),relatedProcesses:$("eOutCount").value.trim(),
         services:$("eAvg").value.trim(),flowcharts:$("eKpi").value.trim(),itResources:$("eRisk").value.trim(),optimization:$("eOpt").value.trim(),otherMetrics:$("eOther").value.trim()};}
+      function processFormValsFromRow(r, overrides){
+        const src = r || {};
+        return Object.assign({
+          group: String(src.group || "").trim(),
+          processNo: String(src.processNo || "").trim(),
+          process: String(src.process || "").trim(),
+          darbibasJoma: String(src.darbibasJoma || "").trim(),
+          products: String(src.productsText || src.products || "").trim(),
+          productTypes: String(src.productTypes || "").trim(),
+          input: String(src.input || "").trim(),
+          executorPatstaviga: String(src.executorPatstaviga || "").trim(),
+          executorDala: String(src.executorDala || "").trim(),
+          relatedProcesses: String(src.relatedProcesses || "").trim(),
+          services: String(src.services || "").trim(),
+          flowcharts: String(src.flowcharts || "").trim(),
+          itResources: String(src.itResources || "").trim(),
+          optimization: String(src.optimization || "").trim(),
+          otherMetrics: String(src.otherMetrics || "").trim(),
+        }, overrides || {});
+      }
+      async function saveProcessInlineJoma(row, newJoma){
+        const src = row && row.__sourceRow ? row.__sourceRow : row;
+        if(!src || !window.DB || typeof window.DB.update !== "function"){
+          alert("DB API nav pieejams: update.");
+          return;
+        }
+        const payload = processFormValsFromRow(src, { darbibasJoma: String(newJoma || "").trim() });
+        await window.DB.update(src, payload);
+      }
+      async function saveProcessInlineRow(row, overrides){
+        const src = row && row.__sourceRow ? row.__sourceRow : row;
+        if(!src || !window.DB || typeof window.DB.update !== "function"){
+          throw new Error("DB API nav pieejams: update.");
+        }
+        const payload = processFormValsFromRow(src, overrides || {});
+        await window.DB.update(src, payload);
+      }
+      function readCellValue(td){
+        if(!td) return "";
+        const inp = td.querySelector("input,textarea,select");
+        if(inp) return String(inp.value || "").trim();
+        return String(td.textContent || "").trim();
+      }
+      function findCatalogRowByProcAndGp(procNo, gpName){
+        const p = String(procNo || "").trim();
+        const g = normTextKey(gpName || "");
+        const src = (Array.isArray(catalogRowsView) && catalogRowsView.length) ? catalogRowsView : csvRows;
+        return (src || []).find((x)=>String((x && x.procNo) || "").trim()===p && normTextKey((x && x.type) || "")===g) || null;
+      }
+      async function saveCatalogInlineRow(row, fields){
+        const base = row && row.__catalogSourceRow ? row.__catalogSourceRow : row;
+        if(!window.DB) throw new Error("DB API nav pieejams.");
+        const payload = Object.assign({}, base || {}, fields || {});
+        payload.type = String(payload.type || "").trim();
+        if(!payload.type) throw new Error("GP nosaukums ir obligāts.");
+        if(base && typeof window.DB.updateCatalog === "function"){
+          await window.DB.updateCatalog(base, payload);
+          return;
+        }
+        if(typeof window.DB.insertCatalog === "function"){
+          await window.DB.insertCatalog(payload);
+          return;
+        }
+        throw new Error("DB API nav pieejams: updateCatalog/insertCatalog.");
+      }
       function getVisibleMainSection(){
         const ids = ["tasksViewCard","processListCard","catalogListCard","executorsCard","reportsCard","metricsCard","manualCard","skaidrojumiAdminCard"];
         for (const id of ids){
@@ -1969,7 +2173,7 @@
         $("editorTitle").innerHTML = procName
           ? `<span style="color:#1d4ed8;font-weight:700">${procName}</span> — Procesa kartiņa`
           : `<span style="color:#1d4ed8;font-weight:700">Jauns process</span> — kartiņa`;
-        fillForm(r || src);
+        fillForm(src || r);
         const e=canEdit(); $("deleteBtn").classList.toggle("hidden", !(src&&e));
         $("editorForm").querySelectorAll("input,select,textarea,button").forEach(el=>{ if(el.id==="closeBtn") return; el.disabled=!e;});
         $("modeHint").textContent=e?"Labošanas režīms ieslēgts.":"Skatīšanās režīms.";

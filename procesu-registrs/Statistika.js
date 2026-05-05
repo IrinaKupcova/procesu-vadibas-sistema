@@ -10,6 +10,8 @@
     process: new Set(),
     gp: new Set(),
     services: new Set(),
+    joma: new Set(),
+    jomaProcesses: new Set(),
   };
 
   function $(id) {
@@ -53,9 +55,10 @@
       .stats-org-bar-panel{overflow-x:auto}
       .stats-org-bar-label{flex:0 0 min(220px,36%);overflow:hidden;text-overflow:ellipsis;color:#334155;line-height:1.25}
       .stats-org-bar-track{flex:1;height:18px;background:#e2e8f0;border-radius:6px;overflow:hidden;position:relative}
-      .stats-org-bar-fill{height:100%;border-radius:6px;display:flex;align-items:center;padding:0 6px;justify-content:flex-end;font-size:11px;font-weight:700;color:#0f172a;background:linear-gradient(90deg,#93c5fd,#3b82f6);white-space:nowrap}
+      .stats-org-bar-fill{height:100%;border-radius:6px;display:flex;align-items:center;padding:0 6px;justify-content:flex-start;font-size:11px;font-weight:700;color:#0f172a;background:linear-gradient(90deg,#93c5fd,#3b82f6);white-space:nowrap;overflow:visible}
       .stats-org-bar-fill--gp{background:linear-gradient(90deg,#6ee7b7,#059669)}
       .stats-org-bar-fill--services{background:linear-gradient(90deg,#fca5a5,#dc2626)}
+      .stats-org-bar-fill--jomaexec{background:linear-gradient(90deg,#c4b5fd,#7c3aed)}
       .stats-org-bar-fill--pamat{background:#60a5fa}
       .stats-org-bar-fill--atbalsta{background:#34d399}
       .stats-org-bar-fill--vadibas{background:#f59e0b}
@@ -72,15 +75,21 @@
       .stats-org-group-cell{display:flex;align-items:center;justify-content:flex-end;padding:0 6px;font-size:11px;color:#0f172a;font-weight:700}
       .stats-org-group-bars{flex:1;display:grid;grid-template-rows:repeat(3,1fr);gap:2px}
       .stats-org-group-line{height:16px;background:#e2e8f0;border-radius:5px;overflow:hidden}
-      .stats-org-group-line-fill{height:100%;display:flex;align-items:center;justify-content:flex-end;padding:0 5px;font-size:10px;font-weight:700;color:#0f172a;white-space:nowrap}
+      .stats-org-group-line-fill{height:100%;display:flex;align-items:center;justify-content:flex-start;padding:0 5px;font-size:10px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:visible}
       .stats-org-group-legend{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 0;font-size:11px;color:#334155}
       .stats-org-group-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:middle}
       .stats-simple-bars{display:grid;gap:8px}
       .stats-simple-row{display:flex;gap:8px;align-items:center;font-size:12px;min-width:380px}
       .stats-simple-label{flex:0 0 min(260px,45%);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#334155}
       .stats-simple-track{flex:1;height:20px;background:#e2e8f0;border-radius:6px;overflow:hidden}
-      .stats-simple-fill{height:100%;display:flex;align-items:center;justify-content:flex-end;padding:0 6px;font-size:11px;font-weight:700;color:#0f172a;background:linear-gradient(90deg,#c4b5fd,#7c3aed);white-space:nowrap}
+      .stats-simple-fill{height:100%;display:flex;align-items:center;padding:0 6px;justify-content:flex-start;font-size:11px;font-weight:700;color:#0f172a;background:linear-gradient(90deg,#c4b5fd,#7c3aed);white-space:nowrap;overflow:visible}
       .stats-simple-fill--joma{background:linear-gradient(90deg,#93c5fd,#2563eb)}
+      .stats-simple-row-clickable{cursor:pointer}
+      .stats-simple-detail{margin:8px 0 10px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;padding:8px 10px}
+      .stats-simple-detail.hidden{display:none}
+      .stats-simple-detail-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 6px;font-size:12px;color:#0f172a;font-weight:700}
+      .stats-simple-detail-close{border:1px solid #94a3b8;background:#fff;border-radius:999px;font-size:11px;padding:2px 8px;cursor:pointer}
+      .stats-simple-detail-list{margin:0;padding-left:18px;color:#334155;font-size:12px;line-height:1.35;max-height:220px;overflow:auto}
       .stats-org-proc{margin:4px 0 0;padding-left:1.2em;line-height:1.35;color:#334155;font-size:12px}
       .stats-org-proc li{margin:2px 0}
       #orgStatsTable .stats-org-proc-cell{vertical-align:top;min-width:180px}
@@ -219,13 +228,13 @@
       processCard.id = "processOutputStatsCard";
       processCard.style.cssText = "margin-top:12px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:14px;";
       processCard.innerHTML =
-        '<h3 id="processOutputStatsTitle" style="margin:0 0 8px;font-size:16px;color:#0f172a;cursor:pointer;user-select:none">Galaprodukti procesos</h3>' +
+        '<h3 id="processOutputStatsTitle" style="margin:0 0 8px;font-size:16px;color:#0f172a;cursor:pointer;user-select:none">Galaproduktu statistika</h3>' +
         '<div id="processOutputStatsBody" class="hidden"></div>';
       reportsWrap.appendChild(processCard);
     }
     const processTitle = $("processOutputStatsTitle");
     const processBody = $("processOutputStatsBody");
-    if (processTitle) processTitle.dataset.baseTitle = "Galaprodukti procesos";
+    if (processTitle) processTitle.dataset.baseTitle = "Galaproduktu statistika";
     if (processTitle && !processTitle.dataset.toggleBound) {
       processTitle.addEventListener("click", () => {
         processOpen = !processOpen;
@@ -316,7 +325,7 @@
       .filter(Boolean);
   }
 
-  function renderOrgBarPanels(host, pairsProcesi, pairsGp, pairsServices, unitMap) {
+  function renderOrgBarPanels(host, pairsProcesi, pairsGp, pairsServices, pairsJoma, unitMap) {
     const wrap = document.createElement("div");
     wrap.className = "stats-org-bar-wrap";
     wrap.setAttribute("role", "presentation");
@@ -529,11 +538,23 @@
       "services",
       (unitData) => Array.from(unitData.services).sort((a, b) => a.localeCompare(b, "lv"))
     );
+    const p5 = document.createElement("div");
+    p5.className = "stats-org-bar-panel";
+    fillPanel(
+      p5,
+      pairsJoma,
+      "stats-org-bar-fill stats-org-bar-fill--jomaexec",
+      "Pārvaldēm piekrītīgās jomas, skaits",
+      "Atverot, tiks parādītas jomas",
+      "joma",
+      (unitData) => Array.from(unitData.jomaSet).sort((a, b) => a.localeCompare(b, "lv"))
+    );
 
     wrap.appendChild(p1);
     wrap.appendChild(p2);
     wrap.appendChild(p3);
     wrap.appendChild(p4);
+    wrap.appendChild(p5);
     host.insertBefore(wrap, host.firstChild);
   }
 
@@ -614,7 +635,8 @@
     const pairsProcesi = unitKeysSorted.map((u) => ({ label: u, count: byUnit.get(u).processKeys.size }));
     const pairsGp = unitKeysSorted.map((u) => ({ label: u, count: byUnit.get(u).gpSet.size }));
     const pairsServices = unitKeysSorted.map((u) => ({ label: u, count: byUnit.get(u).services.size }));
-    renderOrgBarPanels(orgBody, pairsProcesi, pairsGp, pairsServices, byUnit);
+    const pairsJoma = unitKeysSorted.map((u) => ({ label: u, count: byUnit.get(u).jomaSet.size }));
+    renderOrgBarPanels(orgBody, pairsProcesi, pairsGp, pairsServices, pairsJoma, byUnit);
 
     const hint = $("orgStatsHint");
     if (hint) {
@@ -741,10 +763,6 @@
       : [{ jomaText: String((r && r.darbibasJoma) || "") }];
   }
 
-  function processTouchesJomaLabel(r, jomaLabel) {
-    return gpLinesForJomaStats(r).some((gp) => String((gp && gp.jomaText) || "").trim() === jomaLabel);
-  }
-
   function normalizeJomaKey(label) {
     return String(label || "")
       .normalize("NFKC")
@@ -753,68 +771,116 @@
       .toLowerCase();
   }
 
-  /** Jomu statistika: unikālo jomu skaits katrai pārvaldei. */
+  /** Jomu statistika: joma un tajā ietverto unikālo procesu skaits. */
   function renderJomaStatsTable(jomaBody) {
     if (!jomaBody) return;
     removeStatsTableTotals(jomaBody);
     const merged = getStatsProcessRows();
-    const byUnitJoma = new Map();
+    const byJoma = new Map();
     merged.forEach((r) => {
-      let units = executorTokensFromMergedRow(r);
-      if (!units.length) units = ["(nav norādītas pārvaldes)"];
+      const procNo = String((r && r.processNo) || "").trim();
+      const procName = String((r && r.process) || "").trim();
+      const procLabel = procName ? `${procNo || "(bez procesa Nr.)"}: ${procName}` : (procNo || "(bez procesa Nr.)");
+      const procKey = mergedProcessDedupeKey(r);
       const jomasThisProc = new Map();
       gpLinesForJomaStats(r).forEach((gp) => {
         const label = String((gp && gp.jomaText) || "").trim();
         const key = normalizeJomaKey(label);
-        if (!key) return;
-        if (!jomasThisProc.has(key)) jomasThisProc.set(key, label);
+        if (!key || jomasThisProc.has(key)) return;
+        jomasThisProc.set(key, label);
       });
-      units.forEach((unit) => {
-        if (!byUnitJoma.has(unit)) byUnitJoma.set(unit, new Set());
-        const set = byUnitJoma.get(unit);
-        jomasThisProc.forEach((label) => set.add(label));
+      jomasThisProc.forEach((label, key) => {
+        if (!byJoma.has(key)) byJoma.set(key, { label, processes: new Map() });
+        byJoma.get(key).processes.set(procKey, procLabel);
       });
     });
-
-    const byJoma = new Map();
-    Array.from(byUnitJoma.keys())
-      .sort((a, b) => a.localeCompare(b, "lv"))
-      .forEach((unit) => {
-        byJoma.set(unit, byUnitJoma.get(unit).size);
-      });
 
     const old = $("jomaStatsTable");
     if (old && old.parentElement) old.parentElement.removeChild(old);
     const wrap = document.createElement("div");
     wrap.id = "jomaStatsTable";
     wrap.className = "stats-simple-bars";
-    const jomaKeys = Array.from(byJoma.keys());
-    const max = jomaKeys.reduce((m, j) => Math.max(m, byJoma.get(j) || 0), 0) || 1;
-    jomaKeys.forEach((joma) => {
-      const n = byJoma.get(joma) || 0;
+    const detail = document.createElement("div");
+    detail.className = "stats-simple-detail hidden";
+    const detailTitle = document.createElement("div");
+    detailTitle.className = "stats-simple-detail-title";
+    const detailLabel = document.createElement("span");
+    const detailClose = document.createElement("button");
+    detailClose.type = "button";
+    detailClose.className = "stats-simple-detail-close";
+    detailClose.textContent = "Aizvērt";
+    detailClose.onclick = () => {
+      if (detail.dataset.jomaKey) orgDetailOpenState.jomaProcesses.delete(detail.dataset.jomaKey);
+      detail.classList.add("hidden");
+    };
+    detailTitle.appendChild(detailLabel);
+    detailTitle.appendChild(detailClose);
+    const detailList = document.createElement("ul");
+    detailList.className = "stats-simple-detail-list";
+    detail.appendChild(detailTitle);
+    detail.appendChild(detailList);
+    wrap.appendChild(detail);
+
+    const entries = Array.from(byJoma.entries())
+      .map(([key, info]) => ({ key, label: info.label, count: info.processes.size }))
+      .sort((a, b) => b.count - a.count || a.label.localeCompare(b.label, "lv"));
+    const max = entries.reduce((m, x) => Math.max(m, x.count), 0) || 1;
+    entries.forEach((entry) => {
       const row = document.createElement("div");
-      row.className = "stats-simple-row";
+      row.className = "stats-simple-row stats-simple-row-clickable";
       const label = document.createElement("span");
       label.className = "stats-simple-label";
-      label.title = joma;
-      label.textContent = joma;
+      label.title = entry.label;
+      label.textContent = entry.label;
       const track = document.createElement("div");
       track.className = "stats-simple-track";
       const fill = document.createElement("div");
       fill.className = "stats-simple-fill stats-simple-fill--joma";
-      fill.style.width = `${max > 0 ? (n / max) * 100 : 0}%`;
-      fill.textContent = String(n);
+      fill.style.width = `${max > 0 ? (entry.count / max) * 100 : 0}%`;
+      fill.textContent = String(entry.count);
       track.appendChild(fill);
       row.appendChild(label);
       row.appendChild(track);
+      row.onclick = () => {
+        const info = byJoma.get(entry.key);
+        if (!info) return;
+        orgDetailOpenState.jomaProcesses.clear();
+        orgDetailOpenState.jomaProcesses.add(entry.key);
+        detail.dataset.jomaKey = entry.key;
+        detailLabel.textContent = info.label;
+        detailList.innerHTML = "";
+        Array.from(info.processes.values())
+          .sort((a, b) => a.localeCompare(b, "lv"))
+          .forEach((proc) => {
+            const li = document.createElement("li");
+            li.textContent = proc;
+            detailList.appendChild(li);
+          });
+        detail.classList.remove("hidden");
+      };
       wrap.appendChild(row);
     });
+    const openKey = Array.from(orgDetailOpenState.jomaProcesses)[0];
+    if (openKey && byJoma.has(openKey)) {
+      const info = byJoma.get(openKey);
+      detail.dataset.jomaKey = openKey;
+      detailLabel.textContent = info.label;
+      detailList.innerHTML = "";
+      Array.from(info.processes.values())
+        .sort((a, b) => a.localeCompare(b, "lv"))
+        .forEach((proc) => {
+          const li = document.createElement("li");
+          li.textContent = proc;
+          detailList.appendChild(li);
+        });
+      detail.classList.remove("hidden");
+    }
     jomaBody.appendChild(wrap);
-    const totalProcesi = merged.length;
+    const totalProcesi = new Set(merged.map((r) => mergedProcessDedupeKey(r))).size;
     const tot = document.createElement("p");
     tot.className = "stats-table-total";
     tot.style.cssText = "margin:8px 0 0;font-size:13px;font-weight:600;color:#0f172a;";
-    tot.textContent = `Kopskaits — procesi (loģiskie): ${totalProcesi}; pārvaldes ar jomu datiem: ${byJoma.size}.`;
+    tot.textContent = `Kopskaits — jomas: ${byJoma.size}; unikālie procesi: ${totalProcesi}.`;
     jomaBody.appendChild(tot);
   }
 

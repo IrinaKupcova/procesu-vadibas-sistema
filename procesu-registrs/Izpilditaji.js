@@ -10,6 +10,7 @@
 
   const TABLE_ID = "executorsTable";
   const ROWS_ID = "executorsTableBody";
+  let inlineEditMode = false;
 
   function getText(v) {
     return v === null || v === undefined ? "" : String(v).trim();
@@ -62,6 +63,35 @@
       .split(/[;,\n]/)
       .map((x) => String(x || "").trim())
       .filter(Boolean);
+  }
+
+  function canEdit() {
+    const role = document.getElementById("roleSelect");
+    return !!(role && role.value === "admin_edit");
+  }
+
+  function processFormValsFromRow(r, overrides) {
+    const o = overrides || {};
+    return {
+      group: o.group !== undefined ? o.group : (r.group || ""),
+      taskNo: o.taskNo !== undefined ? o.taskNo : (r.taskNo || ""),
+      task: o.task !== undefined ? o.task : (r.task || ""),
+      processNo: o.processNo !== undefined ? o.processNo : (r.processNo || ""),
+      process: o.process !== undefined ? o.process : (r.process || ""),
+      darbibasJoma: o.darbibasJoma !== undefined ? o.darbibasJoma : (r.darbibasJoma || ""),
+      owner: o.owner !== undefined ? o.owner : (r.owner || ""),
+      products: o.products !== undefined ? o.products : (r.products || ""),
+      productTypes: o.productTypes !== undefined ? o.productTypes : (r.productTypes || ""),
+      input: o.input !== undefined ? o.input : (r.input || ""),
+      relatedProcesses: o.relatedProcesses !== undefined ? o.relatedProcesses : (r.relatedProcesses || ""),
+      services: o.services !== undefined ? o.services : (r.services || ""),
+      flowcharts: o.flowcharts !== undefined ? o.flowcharts : (r.flowcharts || ""),
+      itResources: o.itResources !== undefined ? o.itResources : (r.itResources || ""),
+      optimization: o.optimization !== undefined ? o.optimization : (r.optimization || ""),
+      executorPatstaviga: o.executorPatstaviga !== undefined ? o.executorPatstaviga : (r.executorPatstaviga || ""),
+      executorDala: o.executorDala !== undefined ? o.executorDala : (r.executorDala || ""),
+      otherMetrics: o.otherMetrics !== undefined ? o.otherMetrics : (r.otherMetrics || ""),
+    };
   }
 
   function computeRows(processRows, catalogRows) {
@@ -127,9 +157,20 @@
     tb.innerHTML = "";
     for (const r of rows) {
       const tr = document.createElement("tr");
+      const procRows = (p || []).filter((x) => getText(x && x.processNo) === getText(r.procNo));
+      const baseProc = procRows[0] || null;
       const td = (txt) => {
         const el = document.createElement("td");
-        el.textContent = txt == null ? "" : String(txt);
+        if (inlineEditMode && canEdit()) {
+          const inp = document.createElement("input");
+          inp.type = "text";
+          inp.value = txt == null ? "" : String(txt);
+          inp.style.width = "100%";
+          inp.style.boxSizing = "border-box";
+          el.appendChild(inp);
+        } else {
+          el.textContent = txt == null ? "" : String(txt);
+        }
         return el;
       };
       tr.appendChild(td(r.executor || ""));
@@ -137,16 +178,41 @@
       tr.appendChild(td([r.procNo, r.proc].filter(Boolean).join(" - ")));
 
       const tdBtn = document.createElement("td");
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "secondary";
-      btn.textContent = "Atvērt kartiņu";
-      btn.addEventListener("click", () => {
-        if (typeof window.openProcessEditorByTaskProcNos === "function") {
-          window.openProcessEditorByTaskProcNos("", r.procNo);
-        }
-      });
-      tdBtn.appendChild(btn);
+      if (inlineEditMode && canEdit()) {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "secondary";
+        btn.textContent = "Saglabāt";
+        btn.addEventListener("click", async () => {
+          if (!baseProc || !window.DB || typeof window.DB.update !== "function") return;
+          const tds = tr.querySelectorAll("td");
+          const executor = String((tds[0].querySelector("input") && tds[0].querySelector("input").value) || "").trim();
+          const department = String((tds[1].querySelector("input") && tds[1].querySelector("input").value) || "").trim();
+          const procText = String((tds[2].querySelector("input") && tds[2].querySelector("input").value) || "").trim();
+          const procName = procText.includes(" - ") ? procText.split(" - ").slice(1).join(" - ").trim() : procText;
+          try {
+            await window.DB.update(baseProc, processFormValsFromRow(baseProc, {
+              executorPatstaviga: executor,
+              executorDala: department,
+              process: procName || baseProc.process || "",
+            }));
+            if (typeof window.renderTable === "function") window.renderTable();
+            if (typeof window.loadCatalog === "function") await window.loadCatalog();
+          } catch (_) {}
+        });
+        tdBtn.appendChild(btn);
+      } else {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "secondary";
+        btn.textContent = "Atvērt kartiņu";
+        btn.addEventListener("click", () => {
+          if (typeof window.openProcessEditorByTaskProcNos === "function") {
+            window.openProcessEditorByTaskProcNos("", r.procNo);
+          }
+        });
+        tdBtn.appendChild(btn);
+      }
       tr.appendChild(tdBtn);
 
       const tdGp = document.createElement("td");
@@ -215,6 +281,19 @@
 
       const card = document.getElementById("executorsCard");
       if (!card) return;
+      const toggleBtn = document.getElementById("executorsInlineEditToggleBtn");
+      if (toggleBtn && !toggleBtn.dataset.boundInlineEdit) {
+        toggleBtn.dataset.boundInlineEdit = "1";
+        toggleBtn.addEventListener("click", () => {
+          if (!canEdit()) {
+            alert("Tabulas labošanas režīms pieejams tikai administrators (labot).");
+            return;
+          }
+          inlineEditMode = !inlineEditMode;
+          toggleBtn.textContent = inlineEditMode ? "Pabeigt tabulas labošanu" : "Labot tabulas režīmā";
+          renderExecutorsView();
+        });
+      }
 
       const rerenderIfVisible = () => {
         if (!card.classList.contains("hidden")) renderExecutorsView();
