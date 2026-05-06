@@ -14,14 +14,43 @@
   const executorProcessExpanded = new Set();
   const executorProcessSectionExpanded = new Set();
   const executorGpSectionExpanded = new Set();
+  const BULK_BTN_ID = "executorsBulkAccordionToggleBtn";
+
+  function ensureControls(card) {
+    if (!card) return;
+    if (document.getElementById(BULK_BTN_ID)) return;
+    const controls = document.createElement("div");
+    controls.style.cssText = "display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 10px;";
+    const bulk = document.createElement("button");
+    bulk.type = "button";
+    bulk.id = BULK_BTN_ID;
+    bulk.className = "secondary";
+    bulk.textContent = "Atvērt visus akordeonus";
+    controls.appendChild(bulk);
+    // Ieliekam pēc virsraksta (ja ir), pirms tabulas.
+    const h2or3 = card.querySelector("h2,h3");
+    if (h2or3 && h2or3.parentElement === card) h2or3.insertAdjacentElement("afterend", controls);
+    else card.insertBefore(controls, card.firstChild);
+  }
 
   function getText(v) {
     return v === null || v === undefined ? "" : String(v).trim();
   }
 
+  function normKey(v) {
+    return String(v || "")
+      .normalize("NFKC")
+      .replace(/\u00a0/g, " ")
+      .replace(/\s+/g, " ")
+      .replace(/\s*[,;.\-–—]+\s*$/g, "")
+      .trim()
+      .toLowerCase();
+  }
+
   function ensureTable(card) {
     if (!card) return null;
 
+    ensureControls(card);
     let table = document.getElementById(TABLE_ID);
     if (!table) {
       table = document.createElement("table");
@@ -93,6 +122,21 @@
       .map((x) => String(x || "").trim())
       .filter(Boolean);
   }
+
+  function splitUnitValues(v) {
+    return String(v || "")
+      .split(/[,;\n]/)
+      .map((x) => String(x || "").replace(/\.+$/g, "").replace(/\s+/g, " ").trim())
+      .filter(Boolean);
+  }
+
+  function splitProductValues(v) {
+    // GP nosaukumos komats var būt daļa no teksta, tāpēc NEdalām pēc komata.
+    return String(v || "")
+      .split(/[;\n]/)
+      .map((x) => String(x || "").replace(/\s+/g, " ").trim())
+      .filter(Boolean);
+  }
   function resolveProcessNoFallback(processRows, procNo, procName) {
     const direct = getText(procNo);
     if (direct) return direct;
@@ -146,12 +190,18 @@
   function computeExecutors(processRows, catalogRows) {
     const byUnit = new Map();
     const getUnitEntry = (unit) => {
-      const key = getText(unit) || "—";
+      const display = getText(unit) || "—";
+      const key = normKey(display) || "—";
       if (!byUnit.has(key)) {
         byUnit.set(key, {
-          unit: key,
+          unit: display,
+          unitKey: key,
           processMap: new Map(), // procKey -> { procNo, proc, gpMap }
         });
+      } else {
+        // Saglabājam pilnāko/garāko variantiņu kā rādāmo, lai "salauzti" varianti neuzvar.
+        const prev = byUnit.get(key);
+        if (String(display).length > String(prev.unit || "").length) prev.unit = display;
       }
       return byUnit.get(key);
     };
@@ -168,23 +218,22 @@
       const procNo = getText(p.processNo);
       const proc = getText(p.process);
       if (!procNo && !proc) return;
-      const procKey = `${procNo}¦${proc}`;
+      const procKey = `${normKey(procNo)}¦${normKey(proc)}`;
       const linkedCatalog = catalogByProc.get(procNo) || [];
       const units = Array.from(new Set([]
-        .concat(splitValues(p.executorPatstaviga))
-        .concat(linkedCatalog.flatMap((x) => splitValues(x.unit)))
+        .concat(splitUnitValues(p.executorPatstaviga))
+        .concat(linkedCatalog.flatMap((x) => splitUnitValues(x.unit)))
         .filter(Boolean)));
       const finalUnits = units.length ? units : ["—"];
 
       finalUnits.forEach((u) => {
         const unitEntry = getUnitEntry(u);
-        if (!unitEntry.processMap.has(procKey)) unitEntry.processMap.set(procKey, { procNo, proc, gpMap: new Map() });
+        if (!unitEntry.processMap.has(procKey)) unitEntry.processMap.set(procKey, { procNo, proc, procKey, gpMap: new Map() });
         const processEntry = unitEntry.processMap.get(procKey);
 
-        const gpFromProcess = splitValues(p.products).map((name) => ({ no: "", name, procNo, proc }));
         const gpFromCatalog = linkedCatalog
           .filter((x) => {
-            const unitVals = splitValues(x.unit);
+            const unitVals = splitUnitValues(x.unit);
             if (!unitVals.length || u === "—") return true;
             return unitVals.some((uv) => getText(uv).toLowerCase() === getText(u).toLowerCase());
           })
@@ -194,15 +243,43 @@
             procNo: getText(x.procNo) || procNo,
             proc: getText(x.process) || proc,
           }));
+        // Ja procesam ir GP kataloga ieraksti, lietojam tos kā autoritatīvo avotu.
+        // No procesa brīvteksta GP velkam tikai tad, ja katalogā nav neviena GP.
+        const gpFromProcess = gpFromCatalog.length
+          ? []
+          : splitProductValues(p.products).map((name) => ({ no: "", name, procNo, proc }));
         gpFromProcess.concat(gpFromCatalog).forEach((g) => {
           if (!getText(g.name)) return;
-          const gpKey = `${getText(g.no)}¦${getText(g.name)}¦${getText(g.procNo)}`;
+          const gpKey = `${normKey(getText(g.no))}¦${normKey(getText(g.name))}¦${normKey(getText(g.procNo))}`;
           if (!processEntry.gpMap.has(gpKey)) processEntry.gpMap.set(gpKey, g);
         });
       });
     });
 
-    return Array.from(byUnit.values()).sort((a, b) => a.unit.localeCompare(b.unit, "lv", { sensitivity: "base" }));
+    return Array.from(byUnit.values()).sort((a, b) => String(a.unit || "").localeCompare(String(b.unit || ""), "lv", { sensitivity: "base" }));
+  }
+
+  function hasAnyExecutorAccordionOpen() {
+    return executorProcessSectionExpanded.size > 0 || executorGpSectionExpanded.size > 0 || executorProcessExpanded.size > 0;
+  }
+
+  function setAllExecutorAccordionsOpen(processRows, catalogRows, open) {
+    if (!open) {
+      executorProcessSectionExpanded.clear();
+      executorGpSectionExpanded.clear();
+      executorProcessExpanded.clear();
+      return;
+    }
+    const units = computeExecutors(processRows, catalogRows);
+    units.forEach((u) => {
+      const unitKey = u.unitKey || normKey(u.unit) || "—";
+      executorProcessSectionExpanded.add(unitKey);
+      executorGpSectionExpanded.add(unitKey);
+      Array.from(u.processMap.values()).forEach((pr) => {
+        const pKey = `${unitKey}¦${pr.procNo}¦${pr.proc}`;
+        executorProcessExpanded.add(pKey);
+      });
+    });
   }
 
   function renderExecutorsView() {
@@ -220,9 +297,23 @@
     const c = typeof window.getCatalogRows === "function" ? window.getCatalogRows() : [];
     const units = computeExecutors(p, c);
 
+    const bulkBtn = document.getElementById(BULK_BTN_ID);
+    if (bulkBtn && !bulkBtn.dataset.bound) {
+      bulkBtn.addEventListener("click", () => {
+        // Poga pārslēdz visus: ja kaut kas ir vaļā -> aizver visu; citādi -> atver visu.
+        const wantOpen = !hasAnyExecutorAccordionOpen();
+        const pp = typeof window.getProcessRows === "function" ? window.getProcessRows() : [];
+        const cc = typeof window.getCatalogRows === "function" ? window.getCatalogRows() : [];
+        setAllExecutorAccordionsOpen(pp, cc, wantOpen);
+        renderExecutorsView();
+      });
+      bulkBtn.dataset.bound = "1";
+    }
+    if (bulkBtn) bulkBtn.textContent = hasAnyExecutorAccordionOpen() ? "Aizvērt visus akordeonus" : "Atvērt visus akordeonus";
+
     tb.innerHTML = "";
     units.forEach((u) => {
-      const unitKey = u.unit;
+      const unitKey = u.unitKey || normKey(u.unit) || "—";
       const processList = Array.from(u.processMap.values()).sort((a, b) =>
         `${a.procNo} ${a.proc}`.localeCompare(`${b.procNo} ${b.proc}`, "lv", { sensitivity: "base" })
       );
@@ -241,8 +332,17 @@
       const processChip = hdr.children[1] && hdr.children[1].querySelector(".ex-chip-btn");
       if (processChip) {
         const toggle = () => {
-          if (executorProcessSectionExpanded.has(unitKey)) executorProcessSectionExpanded.delete(unitKey);
-          else executorProcessSectionExpanded.add(unitKey);
+          if (executorProcessSectionExpanded.has(unitKey)) {
+            // Aizverot "Procesu" kolonnas čipu, aizveram arī GP šai pārvaldei,
+            // lai rinda patiešām pilnībā aizveras.
+            executorProcessSectionExpanded.delete(unitKey);
+            executorGpSectionExpanded.delete(unitKey);
+            Array.from(executorProcessExpanded).forEach((k) => {
+              if (String(k).startsWith(`${unitKey}¦`)) executorProcessExpanded.delete(k);
+            });
+          } else {
+            executorProcessSectionExpanded.add(unitKey);
+          }
           renderExecutorsView();
         };
         processChip.addEventListener("click", toggle);

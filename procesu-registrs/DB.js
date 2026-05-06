@@ -246,7 +246,45 @@
       "executorDala",
     ],
     otherMetrics: ["citi_raditaji", "otherMetrics"],
+    additionalInfo: [
+      "Papildu informācija",
+      "Papildu informacija",
+      "papildu_informacija",
+      "additionalInfo",
+    ],
+    kartinasPielikumiJson: [
+      "Kartiņas_pielikumi_JSON",
+      "Kartiņu_pielikumi_JSON",
+      "kartinu_pielikumi_json",
+      "Pielikumi_JSON",
+      "card_attachments_json",
+    ],
   };
+
+  const GP_KARTINA_META_JSON_KEYS = [
+    "GP_kartinas_papildu_JSON",
+    "gp_kartinas_papildu_json",
+    "GP_kartinas_metadata_JSON",
+  ];
+
+  function readGpKartinaMetaMapFromRaw(raw) {
+    const txt = gv(raw || {}, GP_KARTINA_META_JSON_KEYS);
+    try {
+      const o = JSON.parse(String(txt || "{}"));
+      return o && typeof o === "object" && !Array.isArray(o) ? o : {};
+    } catch (_) {
+      return {};
+    }
+  }
+
+  function mergeGpKartinaMeta(raw, gpType, row) {
+    const map = readGpKartinaMetaMapFromRaw(raw);
+    map[nkey(gpType)] = {
+      additionalInfo: String((row && row.additionalInfo) != null ? row.additionalInfo : ""),
+      cardAttachments: Array.isArray(row && row.cardAttachments) ? row.cardAttachments : [],
+    };
+    return JSON.stringify(map);
+  }
 
   // Papildu aliasi, lai saskaņotu ar tavu tabulas shēmu:
   // "Procesa_numurs", "Procesa_galaprodukti", "Pakalpojumi" u.c.
@@ -268,10 +306,23 @@
     const raw = rowRawOrNull || null;
     const p = {};
     Object.keys(aliasMap).forEach((logicalKey) => {
+      if (logicalKey === "kartinasPielikumiJson") return;
       const choices = aliasMap[logicalKey];
       const key = pickKey(raw, choices);
-      if (key) p[key] = formVals[logicalKey] || "";
+      if (key) {
+        const v = formVals[logicalKey];
+        p[key] = v == null ? "" : v;
+      }
     });
+    if (formVals.cardAttachments != null) {
+      const choices = aliasMap.kartinasPielikumiJson;
+      const key = pickKey(raw, choices);
+      const col = key || (dbCols && dbCols.size ? choices.find((c) => dbCols.has(c)) : null);
+      if (col) {
+        const arr = Array.isArray(formVals.cardAttachments) ? formVals.cardAttachments : [];
+        p[col] = JSON.stringify(arr);
+      }
+    }
     // Atļaujam tiešos DB kolonnu nosaukumus (piem., Procesa_galaprodukta_Nr.)
     // updateCatalog/insertCatalog single-table režīmā tos nodod tieši.
     Object.keys(formVals || {}).forEach((k) => {
@@ -357,6 +408,27 @@
       itResources: gv(d, ["it_resursi", "IT_resursi", "itResources", "riski", "riskInfo", "Risku_vadiba"]),
       optimization: gv(d, ["optimizacija", "optimization", "Optimizacija"]),
       otherMetrics: gv(d, ["citi_raditaji", "Citi_raditaji", "otherMetrics", "Uzdevuma_procesa_KPI"]),
+      additionalInfo: gv(d, [
+        "Papildu informācija",
+        "Papildu informacija",
+        "papildu_informacija",
+        "additionalInfo",
+      ]),
+      cardAttachments: (() => {
+        const js = gv(d, [
+          "Kartiņas_pielikumi_JSON",
+          "Kartiņu_pielikumi_JSON",
+          "kartinu_pielikumi_json",
+          "Pielikumi_JSON",
+          "card_attachments_json",
+        ]);
+        try {
+          const a = JSON.parse(String(js || "[]"));
+          return Array.isArray(a) ? a : [];
+        } catch (_) {
+          return [];
+        }
+      })(),
     };
   }
 
@@ -562,6 +634,21 @@
         "Korupcijas_riska_sasaiste",
       ]),
       additionalInfo: gv(r, ["Papildu informācija", "Papildu informācija", "additionalInfo"]),
+      cardAttachments: (() => {
+        const js = gv(r, [
+          "Kartiņas_pielikumi_JSON",
+          "Kartiņu_pielikumi_JSON",
+          "kartinu_pielikumi_json",
+          "Pielikumi_JSON",
+          "card_attachments_json",
+        ]);
+        try {
+          const a = JSON.parse(String(js || "[]"));
+          return Array.isArray(a) ? a : [];
+        } catch (_) {
+          return [];
+        }
+      })(),
       raw: r,
     };
   }
@@ -726,6 +813,9 @@
         gps.forEach((gp) => {
           const type = String(gp || "").trim();
           if (!type) return;
+          const raw = (p && p.raw) || {};
+          const metaMap = readGpKartinaMetaMapFromRaw(raw);
+          const slot = metaMap[nkey(type)] || {};
           out.push({
             key: p.idKey,
             id: p.id,
@@ -739,7 +829,8 @@
             process: String((p && p.process) || "").trim(),
             group: String((p && p.group) || "").trim(),
             darbibasJoma: String((p && p.darbibasJoma) || "").trim(),
-            additionalInfo: "",
+            additionalInfo: slot.additionalInfo != null ? String(slot.additionalInfo) : "",
+            cardAttachments: Array.isArray(slot.cardAttachments) ? slot.cardAttachments : [],
             raw: p.raw || null,
           });
         });
@@ -783,7 +874,7 @@
       if (!existingNos.length && existing.length) existingNos.push("");
       existingNos[existing.length - 1] = String((row && row.typeNo) || existingNos[existing.length - 1] || "").trim();
       const payload = {
-        group: row.group != null ? row.group : targetResolved.group,
+        group: row.group != null ? row.group : target.group,
         taskNo: row.taskNo != null ? row.taskNo : target.taskNo,
         task: target.task,
         processNo: procNo,
@@ -803,6 +894,8 @@
         executorDala: row.department != null ? row.department : target.executorDala,
         otherMetrics: target.otherMetrics,
       };
+      const metaColIns = GP_KARTINA_META_JSON_KEYS.find((c) => dbCols && dbCols.has(c));
+      if (metaColIns) payload[metaColIns] = mergeGpKartinaMeta(raw, gp, row);
       await update(target, payload);
       emitSync("catalog", "html");
       return payload;
@@ -852,14 +945,23 @@
     const jomaCol = pickCatalogExistingCol(["Darbibas_joma", "darbibas_joma", "Darbības joma", "darbibasJoma", "Joma_piesaiste_galaproduktam"]);
 
     const typeNoVal = String(row.typeNo || "").trim();
-    const payload = {
-      [typeCol]: String(row.type || "").trim(),
-      [unitCol]: String(row.unit || "").trim(),
-      "Uzdevuma_Nr.": String(row.taskNo || "").trim(),
-      "Procesa_Nr.": String(row.procNo || "").trim(),
-      [deptCol]: String(row.department || "").trim(),
-      "Papildu informācija": String(row.additionalInfo || "").trim(),
+      const payload = {
+        [typeCol]: String(row.type || "").trim(),
+        [unitCol]: String(row.unit || "").trim(),
+        "Uzdevuma_Nr.": String(row.taskNo || "").trim(),
+        "Procesa_Nr.": String(row.procNo || "").trim(),
+        [deptCol]: String(row.department || "").trim(),
+        "Papildu informācija": String(row.additionalInfo || "").trim(),
     };
+    const attachInsCol = pickCatalogExistingCol([
+      "Kartiņas_pielikumi_JSON",
+      "Kartiņu_pielikumi_JSON",
+      "kartinu_pielikumi_json",
+      "Pielikumi_JSON",
+    ]);
+    if (attachInsCol) {
+      payload[attachInsCol] = JSON.stringify(Array.isArray(row.cardAttachments) ? row.cardAttachments : []);
+    }
     if (typeNoVal) payload[typeNoCol] = typeNoVal;
     if (processCol) payload[processCol] = String(row.process || "").trim();
     if (groupCol) payload[groupCol] = String(row.group || "").trim();
@@ -911,8 +1013,8 @@
       }
       list = pairs.map((x) => x.name);
       nos = pairs.map((x) => x.no);
-      const payload = {
-        group: row.group != null ? row.group : target.group,
+    const payload = {
+      group: row.group != null ? row.group : targetResolved.group,
         taskNo: row.taskNo != null ? row.taskNo : targetResolved.taskNo,
         task: targetResolved.task,
         processNo: procNo,
@@ -932,6 +1034,8 @@
         executorDala: row.department != null ? row.department : targetResolved.executorDala,
         otherMetrics: targetResolved.otherMetrics,
       };
+      const metaColUp = GP_KARTINA_META_JSON_KEYS.find((c) => dbCols && dbCols.has(c));
+      if (metaColUp) payload[metaColUp] = mergeGpKartinaMeta(raw, nextType, row);
       await update(targetResolved, payload);
       emitSync("catalog", "html");
       return payload;
@@ -1033,6 +1137,15 @@
       [deptCol]: String(row.department || "").trim(),
       "Papildu informācija": String(row.additionalInfo || "").trim(),
     };
+    const attachUpCol = pickCatalogExistingCol([
+      "Kartiņas_pielikumi_JSON",
+      "Kartiņu_pielikumi_JSON",
+      "kartinu_pielikumi_json",
+      "Pielikumi_JSON",
+    ]);
+    if (attachUpCol) {
+      payload[attachUpCol] = JSON.stringify(Array.isArray(row.cardAttachments) ? row.cardAttachments : []);
+    }
     if (processCol) payload[processCol] = String(row.process || "").trim();
     if (groupCol) payload[groupCol] = String(row.group || "").trim();
     if (jomaCol) payload[jomaCol] = String(row.darbibasJoma || "").trim();
@@ -1194,6 +1307,7 @@
 
   const STORAGE_PREFIX_ATTACH = "pielikumi_uz_pieteikumiem";
   const STORAGE_PREFIX_VESTURE = "vesture";
+  const STORAGE_PREFIX_KARTINAS = "kartinu_pielikumi";
 
   function sanitizeFileName(name) {
     return String(name || "file")
@@ -1247,6 +1361,35 @@
     if (error) throw error;
     const { data: pub } = supabaseClient.storage.from(bucket).getPublicUrl(path);
     return { path, publicUrl: pub.publicUrl, id };
+  }
+
+  async function uploadCardAttachmentFiles(fileList, subfolder) {
+    const files = Array.from(fileList || []).filter((f) => f && f.size > 0);
+    if (!files.length) return [];
+    const out = [];
+    const safeSub = String(subfolder || "misc")
+      .normalize("NFKC")
+      .replace(/[^\w\-\u0100-\u024F]/g, "_")
+      .slice(0, 100);
+    for (const file of files) {
+      const safe = sanitizeFileName(file.name);
+      const bucket = getPieteikumiStorageBucket();
+      const path = `${STORAGE_PREFIX_KARTINAS}/${safeSub}/${Date.now()}_${Math.random().toString(36).slice(2, 10)}_${safe}`;
+      const { error } = await supabaseClient.storage.from(bucket).upload(path, file, {
+        contentType: file.type || "application/octet-stream",
+        upsert: true,
+        cacheControl: "3600",
+      });
+      if (error) throw error;
+      const { data: pub } = supabaseClient.storage.from(bucket).getPublicUrl(path);
+      out.push({
+        name: file.name,
+        path,
+        url: pub.publicUrl,
+        uploadedAt: new Date().toISOString(),
+      });
+    }
+    return out;
   }
 
   function stopSync() {
@@ -1429,6 +1572,7 @@
     stopSync,
     mapDbError,
     uploadChangeRequestFiles,
+    uploadCardAttachmentFiles,
     savePieteikumuVestureSnapshot,
     getPieteikumiStorageBucket,
     get STORAGE_BUCKET_PIETEIKUMI() {

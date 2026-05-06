@@ -21,8 +21,9 @@
   function normalizeGroup(g) {
     const t = String(g || "").trim().toLowerCase();
     if (t.includes("pamatdarb")) return "pamat";
-    if (t.includes("atbalsta")) return "atbalsta";
+    if (t.includes("atbalst")) return "atbalsta";
     if (t.includes("vad")) return "vadibas";
+    if (t.includes("pārvald")) return "vadibas";
     return "cits";
   }
 
@@ -68,7 +69,8 @@
       .stats-org-detail{margin:8px 0 10px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;padding:8px 10px}
       .stats-org-detail.hidden{display:none}
       .stats-org-detail-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 6px;font-size:12px;color:#0f172a;font-weight:700}
-      .stats-org-detail-close{border:1px solid #94a3b8;background:#fff;border-radius:999px;font-size:11px;padding:2px 8px;cursor:pointer}
+      .stats-org-detail-close{border:1px solid #64748b;background:#e2e8f0;color:#0f172a;border-radius:999px;font-size:11px;padding:2px 8px;cursor:pointer}
+      .stats-org-detail-close:hover{background:#cbd5e1}
       .stats-org-detail-list{margin:0;padding-left:18px;color:#334155;font-size:12px;line-height:1.35;max-height:180px;overflow:auto}
       .stats-org-detail-list li{margin:2px 0}
       .stats-org-bar-track-group{display:flex;flex:1;height:18px;background:#e2e8f0;border-radius:6px;overflow:hidden}
@@ -76,8 +78,9 @@
       .stats-org-group-bars{flex:1;display:grid;grid-template-rows:repeat(3,1fr);gap:2px}
       .stats-org-group-line{height:16px;background:#e2e8f0;border-radius:5px;overflow:hidden}
       .stats-org-group-line-fill{height:100%;display:flex;align-items:center;justify-content:flex-start;padding:0 5px;font-size:10px;font-weight:700;color:#0f172a;white-space:nowrap;overflow:visible}
-      .stats-org-group-legend{display:flex;flex-wrap:wrap;gap:10px;margin:8px 0 0;font-size:11px;color:#334155}
+      .stats-org-group-legend{display:flex;flex-wrap:wrap;gap:10px;margin:0 0 10px;font-size:11px;color:#334155}
       .stats-org-group-legend i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:4px;vertical-align:middle}
+      .stats-metric-hint{margin:0 0 8px;font-size:11px;color:#475569}
       .stats-simple-bars{display:grid;gap:8px}
       .stats-simple-row{display:flex;gap:8px;align-items:center;font-size:12px;min-width:380px}
       .stats-simple-label{flex:0 0 min(260px,45%);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#334155}
@@ -88,7 +91,8 @@
       .stats-simple-detail{margin:8px 0 10px;border:1px solid #cbd5e1;border-radius:8px;background:#f8fafc;padding:8px 10px}
       .stats-simple-detail.hidden{display:none}
       .stats-simple-detail-title{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0 0 6px;font-size:12px;color:#0f172a;font-weight:700}
-      .stats-simple-detail-close{border:1px solid #94a3b8;background:#fff;border-radius:999px;font-size:11px;padding:2px 8px;cursor:pointer}
+      .stats-simple-detail-close{border:1px solid #64748b;background:#e2e8f0;color:#0f172a;border-radius:999px;font-size:11px;padding:2px 8px;cursor:pointer}
+      .stats-simple-detail-close:hover{background:#cbd5e1}
       .stats-simple-detail-list{margin:0;padding-left:18px;color:#334155;font-size:12px;line-height:1.35;max-height:220px;overflow:auto}
       .stats-org-proc{margin:4px 0 0;padding-left:1.2em;line-height:1.35;color:#334155;font-size:12px}
       .stats-org-proc li{margin:2px 0}
@@ -283,6 +287,15 @@
     host.querySelectorAll(".stats-org-bar-wrap").forEach((n) => n.remove());
   }
 
+  function appendMetricHint(container, text) {
+    const t = String(text || "").trim();
+    if (!container || !t) return;
+    const p = document.createElement("p");
+    p.className = "stats-metric-hint";
+    p.textContent = t;
+    container.appendChild(p);
+  }
+
   /** Tās pašas pārvalžu kā Izpildītāji skats: [,;\\n] + vienreizējīgi tokeni */
   function executorTokensFromMergedRow(m) {
     const raw = String((m && m.executorPatstaviga) || "").trim();
@@ -362,7 +375,7 @@
       return box;
     }
 
-    function fillPanel(panel, pairs, klass, subtitle, helpTitle, detailTypeKey, detailListGetter, customRowRenderer) {
+    function fillPanel(panel, pairs, klass, subtitle, helpTitle, detailTypeKey, detailListGetter, customRowRenderer, metricHint, detailPrefix) {
       const enableDetails = !!detailTypeKey && typeof detailListGetter === "function";
       const enableHelp = !!String(helpTitle || "").trim();
       const head = document.createElement("div");
@@ -380,6 +393,7 @@
         head.appendChild(help);
       }
       panel.appendChild(head);
+      appendMetricHint(panel, metricHint);
 
       const detail = enableDetails ? makeDetailBox(detailTypeKey) : null;
       if (detail) panel.appendChild(detail);
@@ -419,7 +433,7 @@
             const unitData = unitMap.get(label);
             if (!unitData) return;
             detail.dataset.unitKey = label;
-            detail.__labelEl.textContent = label;
+            detail.__labelEl.textContent = detailPrefix ? `${detailPrefix}: ${label}` : label;
             detail.__listEl.innerHTML = "";
             const items = detailListGetter(unitData);
             if (!items.length) {
@@ -440,7 +454,7 @@
           const unitData = unitMap.get(label);
           if (!unitData) return;
           detail.dataset.unitKey = label;
-          detail.__labelEl.textContent = label;
+          detail.__labelEl.textContent = detailPrefix ? `${detailPrefix}: ${label}` : label;
           detail.__listEl.innerHTML = "";
           const items = detailListGetter(unitData);
           if (!items.length) {
@@ -471,7 +485,10 @@
       "Pārvaldēm piekritīgie procesi, skaits",
       "Atverot, tiks parādīti procesi",
       "process",
-      (unitData) => unitData.processLines.slice().sort((a, b) => a.localeCompare(b, "lv"))
+      (unitData) => unitData.processLines.slice().sort((a, b) => a.localeCompare(b, "lv")),
+      null,
+      "Stabiņi rāda procesu skaitu katrā pārvaldē.",
+      "Procesi pārvaldē"
     );
     const p2 = document.createElement("div");
     p2.className = "stats-org-bar-panel";
@@ -482,7 +499,10 @@
       "Pārvaldēm piekritīgie unikālie galaprodukti, skaits",
       "Atverot, tiks parādīti galaprodukti",
       "gp",
-      (unitData) => Array.from(unitData.gpSet).sort((a, b) => a.localeCompare(b, "lv"))
+      (unitData) => Array.from(unitData.gpSet).sort((a, b) => a.localeCompare(b, "lv")),
+      null,
+      "Stabiņi rāda unikālo galaproduktu skaitu katrā pārvaldē.",
+      "Galaprodukti pārvaldē"
     );
     const p3 = document.createElement("div");
     p3.className = "stats-org-bar-panel";
@@ -496,7 +516,7 @@
       p3,
       pairsProcesi,
       "",
-      "Pārvalžu sadalījums pa procesu grupām",
+      "Pārvalžu procesu sadalījums pa procesu grupām",
       "",
       "",
       null,
@@ -520,13 +540,17 @@
           track.appendChild(line);
         });
         return track;
-      }
+      },
+      "Stabiņi rāda procesu skaitu pa grupām katrā pārvaldē.",
+      ""
     );
     const lg = document.createElement("div");
     lg.className = "stats-org-group-legend";
     lg.innerHTML =
       '<span><i style="background:#60a5fa"></i>Pamatdarbības</span><span><i style="background:#34d399"></i>Atbalsta</span><span><i style="background:#f59e0b"></i>Vadības</span>';
-    p3.appendChild(lg);
+    const p3Head = p3.querySelector(".stats-org-bar-head");
+    if (p3Head) p3Head.insertAdjacentElement("afterend", lg);
+    else p3.insertBefore(lg, p3.firstChild);
     const p4 = document.createElement("div");
     p4.className = "stats-org-bar-panel";
     fillPanel(
@@ -536,7 +560,10 @@
       "Pārvalžu sadalījums pēc pakalpojumu skaita",
       "Atverot, tiks parādīti pakalpojumi",
       "services",
-      (unitData) => Array.from(unitData.services).sort((a, b) => a.localeCompare(b, "lv"))
+      (unitData) => Array.from(unitData.services).sort((a, b) => a.localeCompare(b, "lv")),
+      null,
+      "Stabiņi rāda pakalpojumu skaitu katrā pārvaldē.",
+      "Pakalpojumi pārvaldē"
     );
     const p5 = document.createElement("div");
     p5.className = "stats-org-bar-panel";
@@ -547,7 +574,10 @@
       "Pārvaldēm piekrītīgās jomas, skaits",
       "Atverot, tiks parādītas jomas",
       "joma",
-      (unitData) => Array.from(unitData.jomaSet).sort((a, b) => a.localeCompare(b, "lv"))
+      (unitData) => Array.from(unitData.jomaSet).sort((a, b) => a.localeCompare(b, "lv")),
+      null,
+      "Stabiņi rāda jomu skaitu katrā pārvaldē.",
+      "Jomas pārvaldē"
     );
 
     wrap.appendChild(p1);
@@ -585,18 +615,6 @@
           else if (g === "atbalsta") agg.atbalsta += 1;
           else if (g === "vadibas") agg.vadibas += 1;
           agg.gpTotal += gpN;
-          if (Array.isArray(r.gpItems) && r.gpItems.length) {
-            r.gpItems
-              .map((g) => String((g && g.name) || "").trim())
-              .filter(Boolean)
-              .forEach((g) => agg.gpSet.add(g));
-          } else {
-            String((r && r.productsText) || (r && r.products) || "")
-              .split(/[;\n]+/)
-              .map((x) => String(x || "").trim())
-              .filter(Boolean)
-              .forEach((g) => agg.gpSet.add(g));
-          }
           {
             const seenJomaInProc = new Set();
             gpLinesForJomaStats(r).forEach((gp) => {
@@ -617,7 +635,7 @@
       });
     });
 
-    // Unikālie GP pa pārvaldēm no GP kataloga (nevis no procesu reģistra apvienotajām rindām).
+    // Unikālie galaprodukti pa pārvaldēm jāņem no GP kataloga (nevis no procesa lauka teksta).
     const cat = Array.isArray(catalogRows) ? catalogRows : [];
     cat.forEach((c) => {
       const gpName = String((c && c.type) || "").trim();
@@ -661,9 +679,34 @@
   function getStatsProcessRows() {
     if (typeof window.getMergedProcessRegisterRows === "function") {
       const m = window.getMergedProcessRegisterRows();
-      if (Array.isArray(m) && m.length) return m;
+      if (Array.isArray(m) && m.length) return addCanonicalProcessNos(m);
     }
-    return typeof window.getProcessRows === "function" ? window.getProcessRows() : [];
+    const base = typeof window.getProcessRows === "function" ? window.getProcessRows() : [];
+    return addCanonicalProcessNos(base);
+  }
+
+  /**
+   * Vienādot procesa deduplikāciju:
+   * ja vienam un tam pašam procesa nosaukumam kādā rindā ir aizpildīts "Procesa Nr.",
+   * tad arī rindām bez Nr. piešķiram to pašu kanonisko Nr. (lai statistika nesaskaita kā vairākus procesus).
+   */
+  function addCanonicalProcessNos(rows) {
+    const list = Array.isArray(rows) ? rows : [];
+    if (!list.length) return list;
+    const nameToNo = new Map();
+    list.forEach((r) => {
+      const nameKey = normProcessStatsKey(String((r && r.process) || "").trim());
+      if (!nameKey) return;
+      const no = String((r && r.processNo) || "").trim();
+      if (no && !nameToNo.has(nameKey)) nameToNo.set(nameKey, no);
+    });
+    list.forEach((r) => {
+      if (!r || typeof r !== "object") return;
+      const nameKey = normProcessStatsKey(String((r && r.process) || "").trim());
+      const no = String((r && r.processNo) || "").trim();
+      r.__canonProcessNo = no || (nameKey ? (nameToNo.get(nameKey) || "") : "");
+    });
+    return list;
   }
 
   function countGalaproduktiInProcess(r) {
@@ -701,7 +744,7 @@
   }
 
   function mergedProcessDedupeKey(r) {
-    const n = String((r && r.processNo) || "").trim();
+    const n = String((r && (r.__canonProcessNo != null ? r.__canonProcessNo : r.processNo)) || "").trim();
     const p = String((r && r.process) || "").trim();
     return `${norm(n)}|${normProcessStatsKey(p)}`;
   }
@@ -728,6 +771,7 @@
     const wrap = document.createElement("div");
     wrap.id = "processOutputStatsTable";
     wrap.className = "stats-simple-bars";
+    appendMetricHint(wrap, "Stabiņi rāda galaproduktu skaitu katrā procesā.");
     const sorted = rows.sort((a, b) => b.gpCount - a.gpCount || a.processName.localeCompare(b.processName, "lv"));
     const max = sorted.reduce((m, x) => Math.max(m, x.gpCount), 0) || 1;
     sorted.forEach((x) => {
@@ -758,15 +802,27 @@
   }
 
   function gpLinesForJomaStats(r) {
-    return Array.isArray(r.gpItems) && r.gpItems.length
-      ? r.gpItems
-      : [{ jomaText: String((r && r.darbibasJoma) || "") }];
+    const out = [];
+    if (Array.isArray(r && r.gpItems) && r.gpItems.length) {
+      r.gpItems.forEach((g) => {
+        out.push({ jomaText: String((g && g.jomaText) || "") });
+      });
+    }
+    // Fallback: ja GP ierakstos joma nav aizpildīta (vai vispār nav GP masīva),
+    // izmantojam procesa jomas lauku, lai jomu statistika neskaitītos par maz.
+    const fallback = String((r && r.darbibasJoma) || "").trim();
+    const hasNonEmpty = out.some((x) => String((x && x.jomaText) || "").trim());
+    if (fallback && !hasNonEmpty) out.push({ jomaText: fallback });
+    // Papildu drošība: ja procesa joma ir aizpildīta un nav jau iekļauta, pievienojam.
+    if (fallback && out.every((x) => String((x && x.jomaText) || "").trim() !== fallback)) out.push({ jomaText: fallback });
+    return out.length ? out : [{ jomaText: fallback }];
   }
 
   function normalizeJomaKey(label) {
     return String(label || "")
       .normalize("NFKC")
       .replace(/\s+/g, " ")
+      .replace(/\s*[,;.\-–—]+\s*$/g, "")
       .trim()
       .toLowerCase();
   }
@@ -778,7 +834,7 @@
     const merged = getStatsProcessRows();
     const byJoma = new Map();
     merged.forEach((r) => {
-      const procNo = String((r && r.processNo) || "").trim();
+      const procNo = String((r && (r.__canonProcessNo != null ? r.__canonProcessNo : r.processNo)) || "").trim();
       const procName = String((r && r.process) || "").trim();
       const procLabel = procName ? `${procNo || "(bez procesa Nr.)"}: ${procName}` : (procNo || "(bez procesa Nr.)");
       const procKey = mergedProcessDedupeKey(r);
@@ -800,6 +856,7 @@
     const wrap = document.createElement("div");
     wrap.id = "jomaStatsTable";
     wrap.className = "stats-simple-bars";
+    appendMetricHint(wrap, "Stabiņi rāda procesu skaitu katrā jomā.");
     const detail = document.createElement("div");
     detail.className = "stats-simple-detail hidden";
     const detailTitle = document.createElement("div");
@@ -847,7 +904,7 @@
         orgDetailOpenState.jomaProcesses.clear();
         orgDetailOpenState.jomaProcesses.add(entry.key);
         detail.dataset.jomaKey = entry.key;
-        detailLabel.textContent = info.label;
+        detailLabel.textContent = `Procesi jomā: ${info.label}`;
         detailList.innerHTML = "";
         Array.from(info.processes.values())
           .sort((a, b) => a.localeCompare(b, "lv"))
@@ -864,7 +921,7 @@
     if (openKey && byJoma.has(openKey)) {
       const info = byJoma.get(openKey);
       detail.dataset.jomaKey = openKey;
-      detailLabel.textContent = info.label;
+      detailLabel.textContent = `Procesi jomā: ${info.label}`;
       detailList.innerHTML = "";
       Array.from(info.processes.values())
         .sort((a, b) => a.localeCompare(b, "lv"))

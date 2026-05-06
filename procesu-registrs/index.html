@@ -584,6 +584,15 @@
           <div class="form-group"><label>Optimizācija</label><input id="eOpt" /></div>
           <div class="form-group"><label>Citi rādītāji</label><input id="eOther" /></div>
         </div>
+        <div class="form-row">
+          <div class="form-group" style="flex:1 1 420px; min-width:280px;">
+            <label>Papildu informācija</label>
+            <textarea id="eAdditionalInfo" rows="6" style="width:100%;min-height:120px;resize:vertical;box-sizing:border-box" placeholder="Brīvs teksts; garums neierobežots."></textarea>
+            <div class="hint" style="margin-top:6px">Pielikumi (attēli, PDF, Office):</div>
+            <input type="file" id="eAttachmentsFile" multiple="" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf" style="margin-top:4px;font-size:13px;max-width:100%" />
+            <div id="eAttachmentsList"></div>
+          </div>
+        </div>
         <div class="editor-actions">
           <button type="button" id="editBtn" class="secondary">Labot</button>
           <button type="submit">Saglabāt</button>
@@ -705,8 +714,11 @@
         </div>
         <div class="form-row">
           <div class="form-group" style="flex:1 1 420px; min-width:280px;">
-            <label>Papildu informacija</label>
-            <textarea id="cAdditionalInfo" placeholder="Ievadiet jebkuru papildus informāciju par šo procesa galaproduktu."></textarea>
+            <label>Papildu informācija</label>
+            <textarea id="cAdditionalInfo" placeholder="Ievadiet jebkuru papildu informāciju par šo procesa galaproduktu. Garums neierobežots."></textarea>
+            <div class="hint" style="margin-top:8px">Pielikumi (attēli, PDF, Office):</div>
+            <input type="file" id="cAttachmentsFile" multiple="" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf" style="margin-top:4px;font-size:13px;max-width:100%" />
+            <div id="cAttachmentsList"></div>
           </div>
         </div><div class="editor-actions">
           <button type="submit">Saglabāt</button>
@@ -755,6 +767,7 @@
     window.PV_SUPABASE_STORAGE_BUCKET = "pieteikumu-vesture";
   </script>
   <script src="DB.js"></script>
+  <script src="Procesa%20kartina.js"></script>
   <script src="GP%20kataogs.js"></script>
 
     <script>
@@ -1727,13 +1740,19 @@
 
       function renderProcessInlineStats(rows){
         const list = Array.isArray(rows) ? rows : [];
-        const jomaSet = collectProcessTableJomaFilterLikeValues(list);
+        const normJomaKey = (label)=>normTextKey(String(label || "").replace(/\s*[,;.\-–—]+\s*$/g,"").trim());
+        const jomaKeysDb = new Set();
+        (Array.isArray(processRows) ? processRows : list).forEach((r)=>{
+          const raw = String((r && r.darbibasJoma) || "").trim();
+          const k = normJomaKey(raw);
+          if(k) jomaKeysDb.add(k);
+        });
         const groups = { "Pamatdarbība": 0, "Atbalsts": 0, "Pārvaldība": 0 };
         list.forEach((r)=>{
           const g = normalizeGroupLabel(r.group || "");
           if(groups[g] != null) groups[g] += 1;
         });
-        if($("statProcessJomaCount")) $("statProcessJomaCount").textContent = String(jomaSet.size);
+        if($("statProcessJomaCount")) $("statProcessJomaCount").textContent = String(jomaKeysDb.size);
         if($("statProcessUniqueCount")) $("statProcessUniqueCount").textContent = String(list.length);
         const total = list.length || 1;
         const slices = [
@@ -1792,8 +1811,14 @@
           if(!byGroup.has(g)) byGroup.set(g, []);
           byGroup.get(g).push(r);
         });
-        const jomaSet = collectProcessTableJomaFilterLikeValues(list);
-        if($("pgStatProcessJomaCount")) $("pgStatProcessJomaCount").textContent = String(jomaSet.size);
+        const normJomaKey = (label)=>normTextKey(String(label || "").replace(/\s*[,;.\-–—]+\s*$/g,"").trim());
+        const jomaKeysDb = new Set();
+        (Array.isArray(processRows) ? processRows : list).forEach((r)=>{
+          const raw = String((r && r.darbibasJoma) || "").trim();
+          const k = normJomaKey(raw);
+          if(k) jomaKeysDb.add(k);
+        });
+        if($("pgStatProcessJomaCount")) $("pgStatProcessJomaCount").textContent = String(jomaKeysDb.size);
         if($("pgStatProcessUniqueCount")) $("pgStatProcessUniqueCount").textContent = String(list.length);
         const total = list.length || 1;
         const slices = [
@@ -1876,30 +1901,72 @@
         wireProcessJomasAccordionOnce();
         const tbody = table.querySelector("tbody");
         if(!tbody) return;
-        let rows = buildProcessRegisterRows(processRows || []);
+        // Lietojam to pašu apvienoto (merged) avotu kā statistika, lai skaiti sakrīt.
+        let rows = (typeof window.getMergedProcessRegisterRows === "function")
+          ? window.getMergedProcessRegisterRows()
+          : buildProcessRegisterRows(processRows || []);
         if (typeof window.applyProcessRegisterDataPatch === "function") {
           rows = window.applyProcessRegisterDataPatch(rows, processRows || []);
         }
         const list = Array.isArray(rows) ? rows : [];
-        const byJoma = new Map();
+        const normalizeJomaKeyLocal = (label)=>{
+          return normTextKey(String(label || "").replace(/\s*[,;.\-–—]+\s*$/g,"").trim()) || "";
+        };
+        const processKeyOf = (r)=>{
+          const no = String((r && r.processNo) || "").trim();
+          const name = String((r && r.process) || "").trim();
+          const nKey = normTextKey(no);
+          const pKey = normTextKey(name);
+          // Ja nav procesa Nr., deduplikācijai izmantojam procesa nosaukumu (nevis random atslēgas).
+          if (nKey) return `${nKey}│${pKey}`;
+          if (pKey) return `name│${pKey}`;
+          return "";
+        };
+        const allProcKeys = new Set();
+        const uniqueProcMap = new Map(); // procKey -> representative row
+        const byJoma = new Map(); // jomaKey -> { display, procMap: Map(procKey -> row) }
+        const getRowJomas = (r)=>{
+          const out = new Set();
+          const gp = r && Array.isArray(r.gpItems) ? r.gpItems : [];
+          gp.forEach((g)=>{
+            const j = String((g && g.jomaText) || "").trim();
+            if(j) out.add(j);
+          });
+          const base = String((r && r.darbibasJoma) || "").trim();
+          if(base) out.add(base);
+          if(!out.size) out.add("—");
+          return Array.from(out);
+        };
         list.forEach((r)=>{
-          const rawJoma = String((r && r.darbibasJoma) || "").trim();
-          const jomaKey = normTextKey(rawJoma) || "—";
-          const displayJoma = rawJoma || "—";
-          if(!byJoma.has(jomaKey)) byJoma.set(jomaKey, { display: displayJoma, rows: [] });
-          const bucket = byJoma.get(jomaKey);
-          if(String(displayJoma).length > String(bucket.display || "").length) bucket.display = displayJoma;
-          bucket.rows.push(r);
+          const pKey = processKeyOf(r);
+          if(pKey) allProcKeys.add(pKey);
+          if(pKey && !uniqueProcMap.has(pKey)) uniqueProcMap.set(pKey, r);
+          getRowJomas(r).forEach((jomaLabel)=>{
+            const displayJoma = String(jomaLabel || "").trim() || "—";
+            const jomaKey = normalizeJomaKeyLocal(displayJoma) || "—";
+            if(!byJoma.has(jomaKey)) byJoma.set(jomaKey, { display: displayJoma, procMap: new Map() });
+            const bucket = byJoma.get(jomaKey);
+            if(String(displayJoma).length > String(bucket.display || "").length) bucket.display = displayJoma;
+            if(pKey && !bucket.procMap.has(pKey)) bucket.procMap.set(pKey, r);
+          });
         });
-        const jomaSet = collectProcessTableJomaFilterLikeValues(list);
-        if($("pjStatJomaCount")) $("pjStatJomaCount").textContent = String(jomaSet.size);
-        if($("pjStatProcessCount")) $("pjStatProcessCount").textContent = String(list.length);
+        // Unikālo jomu skaitu ņemam tieši no DB procesu_registrs (processRows), lai skaitlis ir "kā DB".
+        const jomaKeysDb = new Set();
+        const srcDb = (Array.isArray(processRows) && processRows.length) ? processRows : list;
+        srcDb.forEach((r)=>{
+          const raw = String((r && r.darbibasJoma) || "").trim();
+          if(!raw) return;
+          const k = normalizeJomaKeyLocal(raw);
+          if(k) jomaKeysDb.add(k);
+        });
+        if($("pjStatJomaCount")) $("pjStatJomaCount").textContent = String(jomaKeysDb.size);
+        if($("pjStatProcessCount")) $("pjStatProcessCount").textContent = String(allProcKeys.size);
         const groups = { "Pamatdarbība": 0, "Atbalsts": 0, "Pārvaldība": 0 };
-        list.forEach((r)=>{
+        Array.from(uniqueProcMap.values()).forEach((r)=>{
           const g = normalizeGroupLabel(r.group || "");
           if(groups[g] != null) groups[g] += 1;
         });
-        const total = list.length || 1;
+        const total = allProcKeys.size || 1;
         const topSlices = [
           { name: "Pamatdarbība", val: groups["Pamatdarbība"], color: "#3b82f6" },
           { name: "Atbalsts", val: groups["Atbalsts"], color: "#22c55e" },
@@ -1922,7 +1989,7 @@
           const y2 = cy + r * Math.sin(rad(end - 90));
           const large = angle > 180 ? 1 : 0;
           paths.push(`<path d="M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z" fill="${s.color}" />`);
-          const pct = list.length ? Math.round((s.val / list.length) * 100) : 0;
+          const pct = allProcKeys.size ? Math.round((s.val / allProcKeys.size) * 100) : 0;
           labels.push({ text: `${s.name}: ${s.val} (${pct}%)`, color: s.color });
         });
         pie.setAttribute("viewBox", "0 0 420 240");
@@ -1930,14 +1997,15 @@
           const y = 96 + (i * 30);
           return `<circle cx="220" cy="${y-4}" r="5" fill="${x.color}"></circle><text x="232" y="${y}" font-size="12" fill="#334155">${x.text}</text>`;
         }).join("");
-        pie.innerHTML = `${paths.join("")}<circle cx="${cx}" cy="${cy}" r="44" fill="#fff"></circle><text x="${cx}" y="${cy+4}" text-anchor="middle" font-size="12" fill="#334155">${list.length}</text>${legendSvg}`;
+        pie.innerHTML = `${paths.join("")}<circle cx="${cx}" cy="${cy}" r="44" fill="#fff"></circle><text x="${cx}" y="${cy+4}" text-anchor="middle" font-size="12" fill="#334155">${allProcKeys.size}</text>${legendSvg}`;
         legend.innerHTML = "";
 
         const sortedJomas = Array.from(byJoma.values()).sort((a,b)=>String(a.display || "").localeCompare(String(b.display || ""),"lv",{sensitivity:"base"}));
         tbody.innerHTML = "";
         sortedJomas.forEach((jomaBlock)=>{
           const jomaName = String((jomaBlock && jomaBlock.display) || "—");
-          const jomaRows = (jomaBlock && Array.isArray(jomaBlock.rows) ? jomaBlock.rows : []).slice().sort((a,b)=>String(a.process || "").localeCompare(String(b.process || ""),"lv",{sensitivity:"base"}));
+          const jomaRows = Array.from((jomaBlock && jomaBlock.procMap ? jomaBlock.procMap.values() : [])).slice()
+            .sort((a,b)=>String(a.process || "").localeCompare(String(b.process || ""),"lv",{sensitivity:"base"}));
           const jomaOpen = processJomasExpanded.has(jomaName);
           const hdr = document.createElement("tr");
           hdr.className = "process-accordion-hdr";
@@ -2456,11 +2524,28 @@
       function fillForm(r){
         const isNew = !r;
         $("eId").value=r?String(r.id||""):""; $("eGroup").value=r?normalizeGroupLabel(r.group):"Pamatdarbība";
-        $("eProcNo").value=r?r.processNo:""; $("eProcess").value=r?r.process:""; $("eDarbibasJoma").value=r?r.darbibasJoma:"";
+        $("eProcNo").value=r?r.processNo:""; $("eProcess").value=r?r.process:"";
+        // Ja procesā ir GP ar dažādām jomām, kartiņā rādām visas jomas ar komatu.
+        (function(){
+          const base = r ? String(r.darbibasJoma || "").trim() : "";
+          const gp = r && Array.isArray(r.gpItems) ? r.gpItems : [];
+          const set = new Set();
+          gp.forEach((g)=>{
+            const j = String((g && g.jomaText) || "").trim();
+            if(j) set.add(j);
+          });
+          if(base) set.add(base);
+          const joined = Array.from(set).sort((a,b)=>a.localeCompare(b,"lv",{sensitivity:"base"})).join(", ");
+          $("eDarbibasJoma").value = r ? joined : "";
+        })();
         const gpAllowedKeys = !isNew && r ? processRowGpAllowKeySet(r) : null;
         $("eLaws").value=isNew ? "" : buildEditorGpText(r ? r.processNo : "", r ? (r.productsText || r.products) : "", gpAllowedKeys);
         $("eDocs").value=isNew ? "" : (r ? r.productTypes : "");
-        $("eInput").value=r?r.input:""; $("eExecutorPatstaviga").value=r?r.executorPatstaviga:""; $("eExecutorDala").value=r?r.executorDala:""; $("eOutCount").value=r?r.relatedProcesses:""; $("eAvg").value=r?r.services:""; $("eKpi").value=r?r.flowcharts:""; $("eRisk").value=r?r.itResources:""; $("eOpt").value=r?r.optimization:""; $("eOther").value=r?r.otherMetrics:"";
+        $("eInput").value=r?r.input:""; $("eExecutorPatstaviga").value=r?r.executorPatstaviga:""; $("eExecutorDala").value=r?r.executorDala:""; $("eOutCount").value=r?r.relatedProcesses:""; $("eAvg").value=r?r.services:""; $("eKpi").value=r?r.flowcharts:""; $("eRisk").value=r?r.itResources:""; $("eOpt").value=r?r.optimization:"";         $("eOther").value=r?r.otherMetrics:"";
+        if($("eAdditionalInfo")) $("eAdditionalInfo").value = r ? String(r.additionalInfo != null ? r.additionalInfo : "") : "";
+        if(window.ProcesaKartina && typeof ProcesaKartina.setAttachments==="function"){
+          ProcesaKartina.setAttachments("process", r && Array.isArray(r.cardAttachments) ? r.cardAttachments : []);
+        }
         if($("eLaws")){ $("eLaws").placeholder = ""; }
         if($("eAvg")){ $("eAvg").placeholder = isNew ? "Katrs pakalpojums savā rindā" : ""; }
         if(isNew){
@@ -2479,7 +2564,10 @@
         if($("cGroup")) $("cGroup").value = r ? (r.group || "") : "";
         if($("cDarbibasJoma")) $("cDarbibasJoma").value = r ? (r.darbibasJoma || "") : "";
         if($("cDepartment")) $("cDepartment").value = r ? String(r.department || "").trim() : "";
-        if ($("cAdditionalInfo")) $("cAdditionalInfo").value = r ? String(r.additionalInfo || "").trim() : "";
+        if ($("cAdditionalInfo")) $("cAdditionalInfo").value = r ? String(r.additionalInfo != null ? r.additionalInfo : "") : "";
+        if(window.ProcesaKartina && typeof ProcesaKartina.setAttachments==="function"){
+          ProcesaKartina.setAttachments("catalog", r && Array.isArray(r.cardAttachments) ? r.cardAttachments : []);
+        }
         $("catalogDeleteBtn").classList.toggle("hidden", !r);
       }
       function catalogFormVals(){
@@ -2492,7 +2580,11 @@
           group: $("cGroup") ? $("cGroup").value.trim() : "",
           darbibasJoma: $("cDarbibasJoma") ? $("cDarbibasJoma").value.trim() : "",
           department: $("cDepartment") ? $("cDepartment").value.trim() : "",
-          additionalInfo: $("cAdditionalInfo") ? $("cAdditionalInfo").value.trim() : "",
+          additionalInfo: $("cAdditionalInfo") ? $("cAdditionalInfo").value : "",
+          cardAttachments:
+            window.ProcesaKartina && typeof ProcesaKartina.getAttachments === "function"
+              ? ProcesaKartina.getAttachments("catalog")
+              : [],
         };
       }
       function processRowToFormVals(r, overrides){
@@ -2516,6 +2608,8 @@
           executorPatstaviga: o.executorPatstaviga !== undefined ? o.executorPatstaviga : (r.executorPatstaviga || ""),
           executorDala: o.executorDala !== undefined ? o.executorDala : (r.executorDala || ""),
           otherMetrics: o.otherMetrics !== undefined ? o.otherMetrics : (r.otherMetrics || ""),
+          additionalInfo: o.additionalInfo !== undefined ? o.additionalInfo : (r.additionalInfo != null ? r.additionalInfo : ""),
+          cardAttachments: o.cardAttachments !== undefined ? o.cardAttachments : (Array.isArray(r.cardAttachments) ? r.cardAttachments : []),
         };
       }
       function addGpToProductsList(productsStr, gpName){
@@ -2664,7 +2758,13 @@
       }
       function formVals(){ return {group:$("eGroup").value.trim(),processNo:$("eProcNo").value.trim(),process:$("eProcess").value.trim(),
         darbibasJoma:$("eDarbibasJoma").value.trim(),products:$("eLaws").value.trim(),productTypes:$("eDocs").value.trim(),input:$("eInput").value.trim(),executorPatstaviga:$("eExecutorPatstaviga").value.trim(),executorDala:$("eExecutorDala").value.trim(),relatedProcesses:$("eOutCount").value.trim(),
-        services:$("eAvg").value.trim(),flowcharts:$("eKpi").value.trim(),itResources:$("eRisk").value.trim(),optimization:$("eOpt").value.trim(),otherMetrics:$("eOther").value.trim()};}
+        services:$("eAvg").value.trim(),flowcharts:$("eKpi").value.trim(),itResources:$("eRisk").value.trim(),optimization:$("eOpt").value.trim(),otherMetrics:$("eOther").value.trim(),
+        additionalInfo: $("eAdditionalInfo") ? $("eAdditionalInfo").value : "",
+        cardAttachments:
+          window.ProcesaKartina && typeof ProcesaKartina.getAttachments === "function"
+            ? ProcesaKartina.getAttachments("process")
+            : [],
+      };}
       function processFormValsFromRow(r, overrides){
         const src = r || {};
         return Object.assign({
@@ -2683,6 +2783,8 @@
           itResources: String(src.itResources || "").trim(),
           optimization: String(src.optimization || "").trim(),
           otherMetrics: String(src.otherMetrics || "").trim(),
+          additionalInfo: String(src.additionalInfo != null ? src.additionalInfo : ""),
+          cardAttachments: Array.isArray(src.cardAttachments) ? src.cardAttachments : [],
         }, overrides || {});
       }
       async function saveProcessInlineJoma(row, newJoma){
@@ -3830,10 +3932,10 @@
     <script src="Filtrs.js"></script>
     <script src="Procesu%20registrs.js"></script>
     <script src="Pievienot%20jaunu%20procesu.js"></script>
-    <script src="Procesa%20kartina.js"></script>
     <script src="Statistika.js"></script>
     <script src="Izmainu_pieteikums.js"></script>
     <script src="Skaidrojumi.js"></script>
+    <script src="Abreviaturas.js"></script>
     <script src="Navigacija.js"></script>
   </body>
   </html>
