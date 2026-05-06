@@ -11,6 +11,7 @@
     processJomasHeader: {}
   };
   let extraRefreshRunning = false;
+  let filterUiWired = false;
 
   function norm(v) {
     return String(v || "").trim().toLowerCase();
@@ -97,6 +98,7 @@
       .search-icon-badge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid #94a3b8;border-radius:999px;background:#fff;color:#334155;font-size:13px;cursor:pointer;flex-shrink:0}
       .main-filter-wrap select,.main-filter-wrap input{font-size:12px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:4px}
       .th-filter-wrap{display:flex;align-items:center;gap:4px;justify-content:space-between}
+      .th-filter-zone{position:relative}
       .th-filter-btn{font-size:10px;padding:2px 5px;border:1px solid #94a3b8;border-radius:999px;background:#fff;color:#334155;cursor:pointer;line-height:1}
       .th-filter-btn.active{background:#dc2626;color:#fff;border-color:#dc2626;box-shadow:0 0 14px rgba(220,38,38,.45)}
       .th-filter-box{display:none;margin-top:4px}
@@ -104,6 +106,26 @@
       .th-filter-box select{width:100%;font-size:11px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px;background:#fff}
     `;
     document.head.appendChild(s);
+  }
+
+  function closeAllHeaderFilterBoxes(exceptBox) {
+    document.querySelectorAll(".th-filter-box.open").forEach((box) => {
+      if (exceptBox && box === exceptBox) return;
+      box.classList.remove("open");
+    });
+  }
+
+  function wireFilterUiEvents() {
+    if (filterUiWired) return;
+    filterUiWired = true;
+    document.addEventListener("click", (e) => {
+      const zone = e.target && e.target.closest ? e.target.closest(".th-filter-zone") : null;
+      if (!zone) closeAllHeaderFilterBoxes();
+    });
+    document.addEventListener("focusin", (e) => {
+      const zone = e.target && e.target.closest ? e.target.closest(".th-filter-zone") : null;
+      if (!zone) closeAllHeaderFilterBoxes();
+    });
   }
 
   function ensureQuickFilters() {
@@ -154,6 +176,8 @@
 
       const wrap = document.createElement("div");
       wrap.className = "th-filter-wrap";
+      const zone = document.createElement("div");
+      zone.className = "th-filter-zone";
 
       const label = document.createElement("span");
       label.textContent = title;
@@ -179,6 +203,7 @@
         const col = select.dataset.colIndex;
         state[key][col] = value;
         btn.classList.toggle("active", norm(value) !== "");
+        box.classList.remove("open");
         if (tableId === "executorsTable") {
           applyExecutorsFilters();
           refreshClearFilterButtonActive();
@@ -189,16 +214,22 @@
       };
       select.addEventListener("change", (e) => onFilterChange(e.target.value));
 
-      btn.addEventListener("click", () => {
-        box.classList.toggle("open");
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const willOpen = !box.classList.contains("open");
+        closeAllHeaderFilterBoxes(willOpen ? box : null);
+        box.classList.toggle("open", willOpen);
         if (box.classList.contains("open")) select.focus();
       });
+      box.addEventListener("click", (e) => e.stopPropagation());
+      zone.addEventListener("mouseleave", () => box.classList.remove("open"));
 
       box.appendChild(select);
       wrap.appendChild(label);
       wrap.appendChild(btn);
-      th.appendChild(wrap);
-      th.appendChild(box);
+      zone.appendChild(wrap);
+      zone.appendChild(box);
+      th.appendChild(zone);
     });
 
     headRow.dataset.filtersReady = "1";
@@ -595,6 +626,7 @@
 
   function init() {
     injectFilterStyles();
+    wireFilterUiEvents();
     ensureQuickFilters();
     ensureHeaderFilters("processTable", "processHeader", true);
     ensureHeaderFilters("catalogTable", "catalogHeader", false);
