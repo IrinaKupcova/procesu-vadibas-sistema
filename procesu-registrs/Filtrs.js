@@ -12,6 +12,8 @@
   };
   let extraRefreshRunning = false;
   let filterUiWired = false;
+  let openFilterRef = null; // { tableId, colIndex }
+  let suspendRestoreUntil = 0;
 
   function norm(v) {
     return String(v || "").trim().toLowerCase();
@@ -113,18 +115,33 @@
       if (exceptBox && box === exceptBox) return;
       box.classList.remove("open");
     });
+    if (!exceptBox) openFilterRef = null;
+  }
+
+  function restoreOpenFilterBox() {
+    if (Date.now() < suspendRestoreUntil) return;
+    if (!openFilterRef || !openFilterRef.tableId) return;
+    const table = document.getElementById(openFilterRef.tableId);
+    if (!table) return;
+    const sel = table.querySelector(`.th-filter-box select[data-col-index="${openFilterRef.colIndex}"]`);
+    if (!sel) return;
+    const box = sel.closest(".th-filter-box");
+    if (!box) return;
+    closeAllHeaderFilterBoxes(box);
+    box.classList.add("open");
   }
 
   function wireFilterUiEvents() {
     if (filterUiWired) return;
     filterUiWired = true;
-    document.addEventListener("click", (e) => {
-      const zone = e.target && e.target.closest ? e.target.closest(".th-filter-zone") : null;
-      if (!zone) closeAllHeaderFilterBoxes();
-    });
-    document.addEventListener("focusin", (e) => {
-      const zone = e.target && e.target.closest ? e.target.closest(".th-filter-zone") : null;
-      if (!zone) closeAllHeaderFilterBoxes();
+    // Hard-lock režīms: neaizveram filtrus ar ārēju klikšķi,
+    // lai native select ritināšana/izvēle neizsistu popupu.
+    // Aizvēršana notiek:
+    // - pēc izvēles (change handler),
+    // - ar atkārtotu klikšķi uz "Filtrs" pogas,
+    // - ar Esc.
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" || e.key === "Esc") closeAllHeaderFilterBoxes();
     });
   }
 
@@ -204,6 +221,7 @@
         state[key][col] = value;
         btn.classList.toggle("active", norm(value) !== "");
         box.classList.remove("open");
+        openFilterRef = null;
         if (tableId === "executorsTable") {
           applyExecutorsFilters();
           refreshClearFilterButtonActive();
@@ -216,14 +234,34 @@
 
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        const willOpen = !box.classList.contains("open");
+        // Klikšķis uz "degošas" ikonas = notīrīt šīs kolonnas filtru.
+        if (btn.classList.contains("active")) {
+          select.value = "";
+          onFilterChange("");
+          closeAllHeaderFilterBoxes();
+          openFilterRef = null;
+          suspendRestoreUntil = Date.now() + 1200;
+          return;
+        }
+        const isOpen = box.classList.contains("open");
+        // Uz klikšķa pa jau atvērtu ikonu — vienmēr aizveram.
+        if (isOpen) {
+          closeAllHeaderFilterBoxes();
+          openFilterRef = null;
+          suspendRestoreUntil = Date.now() + 1200;
+          return;
+        }
+        const willOpen = true;
         closeAllHeaderFilterBoxes(willOpen ? box : null);
         box.classList.toggle("open", willOpen);
-        if (box.classList.contains("open")) select.focus();
+        if (box.classList.contains("open")) {
+          openFilterRef = { tableId, colIndex: String(idx) };
+          select.focus();
+        } else {
+          openFilterRef = null;
+        }
       });
       box.addEventListener("click", (e) => e.stopPropagation());
-      zone.addEventListener("mouseleave", () => box.classList.remove("open"));
-
       box.appendChild(select);
       wrap.appendChild(label);
       wrap.appendChild(btn);
@@ -558,6 +596,7 @@
       const btn = select.closest("th")?.querySelector(".th-filter-btn");
       if (btn) btn.classList.toggle("active", norm(selected) !== "");
     });
+    restoreOpenFilterBox();
   }
 
   function rerender() {
