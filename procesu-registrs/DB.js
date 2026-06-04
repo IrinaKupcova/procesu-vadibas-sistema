@@ -79,8 +79,59 @@
       .split(/[;,\n]+/)
       .map((x) => String(x || "").trim());
   }
+  /** Viena GP Nr. šūna pēc trim; ja sākas ar cipariem — ņem pirmo veselo daļu (DB integer kolonnām). */
+  function sanitizeCatalogTypeNoToken(v) {
+    const s = String(v || "")
+      .trim()
+      .replace(/^[,;\s]+/, "")
+      .replace(/[,;\s]+$/, "")
+      .trim();
+    if (!s) return "";
+    const m = s.match(/^-?\d+/);
+    return m ? m[0] : s;
+  }
   function joinCatalogTypeNos(arr) {
-    return (arr || []).map((x) => String(x || "").trim()).join("; ");
+    const parts = (arr || []).map((x) => sanitizeCatalogTypeNoToken(x));
+    let s = parts.join("; ");
+    s = s.replace(/^\s*(;\s*)+/, "");
+    return s;
+  }
+  /** Pirms rakstīšanas procesu tabulā — novāc `"; 93"` u.tml., ko DB integer kolonnas noraida. */
+  const PAYLOAD_GALAPRODUKTA_NR_KEYS = new Set([
+    "Procesa_galaprodukta_Nr.",
+    "Procesa_galaprodukta_Nr",
+    "procesa_galaprodukta_nr",
+    "Procesa_galaprodukta_nr",
+    "Galaproduktu_veida_Nr.",
+    "Galaproduktu_veida_Nr",
+  ]);
+  function sanitizePayloadGalaproduktaNrFields(payload) {
+    if (!payload || typeof payload !== "object") return;
+    Object.keys(payload).forEach((k) => {
+      if (!PAYLOAD_GALAPRODUKTA_NR_KEYS.has(k)) return;
+      const v = payload[k];
+      if (v == null) return;
+      if (typeof v === "number" && Number.isFinite(v)) return;
+      const s = String(v).trim();
+      if (!s) {
+        delete payload[k];
+        return;
+      }
+      if (/[;,\n]/.test(s)) {
+        const joined = joinCatalogTypeNos(splitCatalogTypeNos(s));
+        if (!String(joined || "").trim()) delete payload[k];
+        else payload[k] = joined;
+      } else {
+        const t = sanitizeCatalogTypeNoToken(s);
+        if (!String(t || "").trim()) delete payload[k];
+        else payload[k] = t || s;
+      }
+    });
+    ["Uzdevuma_Nr.", "uzdevuma_nr", "Uzdevuma Nr.", "taskNo"].forEach((k) => {
+      if (!Object.prototype.hasOwnProperty.call(payload, k)) return;
+      const v = payload[k];
+      if (v === "" || (typeof v === "string" && !String(v).trim())) delete payload[k];
+    });
   }
   function getProcessTypeNoColFromRaw(raw) {
     const candidates = [
@@ -464,6 +515,7 @@
       });
       payload = cleaned;
     }
+    sanitizePayloadGalaproduktaNrFields(payload);
     const result = await runWriteWithMissingColumnRetry(payload, (p) => {
       return supabaseClient.from(TABLE).insert(p);
     });
@@ -474,6 +526,7 @@
   async function update(row, formVals) {
     if (!row) throw new Error("Nav derīga ieraksta atjaunināšanai.");
     const payload = toPayload(formVals, row.raw || null);
+    sanitizePayloadGalaproduktaNrFields(payload);
     const keys = Array.isArray(row.matchKeys) ? row.matchKeys.filter((k) => k && k.key && k.value !== undefined && k.value !== null && String(k.value) !== "") : [];
     if (!keys.length && !(row.idKey && row.id !== undefined && row.id !== null)) {
       throw new Error("Nav derīgas primārās atslēgas atjaunināšanai.");
@@ -495,23 +548,32 @@
 
   async function remove(row) {
     if (!row) throw new Error("Nav derīga ieraksta dzēšanai.");
-    let q = supabaseClient.from(TABLE).delete();
 
-    const keys = Array.isArray(row.matchKeys) ? row.matchKeys.filter((k) => k && k.key && k.value !== undefined && k.value !== null && String(k.value) !== "") : [];
-    if (keys.length) {
-      keys.forEach((k) => {
-        q = qeq(q, k.key, k.value);
-      });
-    } else if (row.idKey && row.id !== undefined && row.id !== null) {
-      q = qeq(q, row.idKey, row.id);
-    } else {
-      throw new Error("Nav derīgas primārās atslēgas dzēšanai.");
+    const allKeys = Array.isArray(row.matchKeys)
+      ? row.matchKeys.filter((k) => k && k.key && k.value !== undefined && k.value !== null && String(k.value) !== "")
+      : [];
+    // Dzēšanas mēģinājumi prioritātes secībā: vispirms ar id (visdrošākais), tad ar visām atslēgām, tad ar katru atsevišķi.
+    const attempts = [];
+    if (row.idKey && row.id !== undefined && row.id !== null && String(row.id) !== "") {
+      attempts.push([{ key: row.idKey, value: row.id }]);
     }
+    if (allKeys.length) attempts.push(allKeys);
+    allKeys.forEach((k) => attempts.push([k]));
+    if (!attempts.length) throw new Error("Nav derīgas primārās atslēgas dzēšanai.");
 
-    const { error } = await q;
-    if (error) throw error;
+    let lastError = null;
+    let deletedCount = 0;
+    for (const keySet of attempts) {
+      let q = supabaseClient.from(TABLE).delete({ count: "exact" });
+      keySet.forEach((k) => { q = qeq(q, k.key, k.value); });
+      const { count, error } = await q;
+      if (error) { lastError = error; continue; }
+      deletedCount = typeof count === "number" ? count : 0;
+      if (deletedCount > 0) break;
+    }
+    if (deletedCount === 0 && lastError) throw lastError;
     emitSync("process", "html");
-    return true;
+    return deletedCount;
   }
 
   function mapCatalogRow(r) {
@@ -872,7 +934,9 @@
       const existingNos = splitCatalogTypeNos(raw ? raw[typeNoCol] : "");
       if (!existing.some((x) => nkey(x) === nkey(gp))) existing.push(gp);
       if (!existingNos.length && existing.length) existingNos.push("");
-      existingNos[existing.length - 1] = String((row && row.typeNo) || existingNos[existing.length - 1] || "").trim();
+      existingNos[existing.length - 1] = sanitizeCatalogTypeNoToken(
+        String((row && row.typeNo) || existingNos[existing.length - 1] || "").trim()
+      );
       const payload = {
         group: row.group != null ? row.group : target.group,
         taskNo: row.taskNo != null ? row.taskNo : target.taskNo,
@@ -944,14 +1008,14 @@
     const groupCol = pickCatalogCol(["Procesa_grupa", "Procesu_grupa", "procesa_grupa", "procesu_grupa", "group"], null);
     const jomaCol = pickCatalogExistingCol(["Darbibas_joma", "darbibas_joma", "Darbības joma", "darbibasJoma", "Joma_piesaiste_galaproduktam"]);
 
-    const typeNoVal = String(row.typeNo || "").trim();
-      const payload = {
-        [typeCol]: String(row.type || "").trim(),
-        [unitCol]: String(row.unit || "").trim(),
-        "Uzdevuma_Nr.": String(row.taskNo || "").trim(),
-        "Procesa_Nr.": String(row.procNo || "").trim(),
-        [deptCol]: String(row.department || "").trim(),
-        "Papildu informācija": String(row.additionalInfo || "").trim(),
+    const typeNoVal = sanitizeCatalogTypeNoToken(String(row.typeNo || "").trim());
+    const payload = {
+      [typeCol]: String(row.type || "").trim(),
+      [unitCol]: String(row.unit || "").trim(),
+      "Uzdevuma_Nr.": String(row.taskNo || "").trim(),
+      "Procesa_Nr.": String(row.procNo || "").trim(),
+      [deptCol]: String(row.department || "").trim(),
+      "Papildu informācija": String(row.additionalInfo || "").trim(),
     };
     const attachInsCol = pickCatalogExistingCol([
       "Kartiņas_pielikumi_JSON",
@@ -969,6 +1033,7 @@
     if (!String(payload[typeCol] || "").trim()) {
       throw new Error("Galaprodukta veids ir obligāts.");
     }
+    sanitizePayloadGalaproduktaNrFields(payload);
     const result = await runWriteWithMissingColumnRetry(payload, (p) => {
       return supabaseClient
         .from(CATALOG_TABLE)
@@ -1002,14 +1067,14 @@
         for (let i = 0; i < pairs.length; i += 1) {
           if (nkey(pairs[i].name) === prevKey) {
             pairs[i].name = nextType;
-            pairs[i].no = String((row && row.typeNo) || "").trim();
+            pairs[i].no = sanitizeCatalogTypeNoToken(String((row && row.typeNo) || "").trim());
             replaced = true;
             break;
           }
         }
       }
       if (!replaced && !pairs.some((x) => nkey(x.name) === nkey(nextType))) {
-        pairs.push({ name: nextType, no: String((row && row.typeNo) || "").trim() });
+        pairs.push({ name: nextType, no: sanitizeCatalogTypeNoToken(String((row && row.typeNo) || "").trim()) });
       }
       list = pairs.map((x) => x.name);
       nos = pairs.map((x) => x.no);
@@ -1045,7 +1110,8 @@
       const knownKeys = new Set(Object.keys((s && s.raw) || s || {}));
       const canUse = (k) => !knownKeys.size || knownKeys.has(k);
       const out = [];
-      const typeNo = String(s.typeNo || s.id || "").trim();
+      const rawTypeNo = String(s.typeNo || "").trim();
+      const typeNo = rawTypeNo ? sanitizeCatalogTypeNoToken(rawTypeNo) : String(s.id || "").trim();
       const procNo = String(s.procNo || "").trim();
       const type = String(s.type || "").trim();
       if (typeNo) {
@@ -1152,6 +1218,7 @@
     if (!String(payload[typeCol] || "").trim()) {
       throw new Error("Galaprodukta veids ir obligāts.");
     }
+    sanitizePayloadGalaproduktaNrFields(payload);
     const result = await runWriteWithMissingColumnRetry(payload, (p) => {
       let q = supabaseClient
         .from(CATALOG_TABLE)
@@ -1220,7 +1287,8 @@
       const knownKeys = new Set(Object.keys((s && s.raw) || s || {}));
       const canUse = (k) => !knownKeys.size || knownKeys.has(k);
       const out = [];
-      const typeNo = String(s.typeNo || s.id || "").trim();
+      const rawTypeNo = String(s.typeNo || "").trim();
+      const typeNo = rawTypeNo ? sanitizeCatalogTypeNoToken(rawTypeNo) : String(s.id || "").trim();
       const procNo = String(s.procNo || "").trim();
       const type = String(s.type || "").trim();
       if (typeNo) {

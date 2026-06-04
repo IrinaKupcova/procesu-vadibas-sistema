@@ -419,7 +419,7 @@
         tr.appendChild(c0); tr.appendChild(c1); tr.appendChild(c2);
         if (processSectionOpen || gpSectionOpen) tb.appendChild(tr);
 
-        if (!gpSectionOpen) return;
+        if (!gpSectionOpen && !pOpen) return;
         gpList.forEach((gp) => {
           const gtr = document.createElement("tr");
           gtr.className = "ex-gp-row";

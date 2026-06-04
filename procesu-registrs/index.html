@@ -59,8 +59,8 @@
       .form-row { display:flex; gap:12px; flex-wrap:wrap; margin-bottom:8px; } .form-group{display:flex;flex-direction:column;flex:1 1 220px;min-width:200px}
       label{font-size:11px;font-weight:bold;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;color:#4b5563}
       input,select,textarea{font-size:13px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:4px;font-family:inherit}
-      #editorCard #eProcessWrap{display:none}
-      #editorCard.editor-new-process #eProcessWrap{display:flex}
+      /* Procesa nosaukums redzams arī esošas kartiņas labošanā (ne tikai «jauns process»). */
+      #editorCard #eProcessWrap{display:flex}
       #editorCard.editor-new-process #eJomaWrap{display:none!important}
       #editorCard.editor-new-process #eGpEditorWrap{display:none!important}
       #editorCard #eAvgHint{display:none}
@@ -622,7 +622,7 @@
           <th data-filter-label="Procesa galaprodukta Nr.">Procesa galaprodukta Nr.<br><strong class="th-db-col">Procesa_galaprodukta_Nr.</strong></th>
           <th data-filter-label="Procesa galaprodukts">Procesa galaprodukts<br><strong class="th-db-col">Procesa_galaprodukti</strong></th>
           <th data-filter-label="Procesa izpildītājs, pārvalde">Procesa izpildītājs, pārvalde<br><strong class="th-db-col">Procesa_izpilditajs-patstaviga_strukturvieniba</strong></th>
-          <th data-filter-label="Procesa izpildītājs, daļa">Procesa izpildītājs, daļa<br><strong class="th-db-col">Daļa,_nodaļa</strong></th>
+          <th data-filter-label="Daļas nosaukums">Daļas nosaukums<br><strong class="th-db-col">Strukturvieniba_dala</strong></th>
           <th data-filter-label="Procesa Nr.">Procesa Nr.<br><strong class="th-db-col">Procesa_Nr.</strong></th>
           <th data-filter-label="Process">Process<br><strong class="th-db-col">Process</strong></th>
           <th data-filter-label="Procesa grupa">Procesa grupa<br><strong class="th-db-col">Procesa_grupa</strong></th>
@@ -915,12 +915,11 @@
           catalogRowsView = buildCatalogRowsForView();
           // Nerādām ielādēto galaproduktu skaitu augšā.
         }catch(err){
-          csvRows = [];
-          catalogRowsView = [];
           const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (e => (e && e.message) ? e.message : String(e));
           const msg = mapper(err);
           console.error("Catalog DB load error:", err);
           status("Kataloga DB kļūda: " + msg, "error");
+          // Neiztīrām csvRows: pēc veiksmīgas saglabāšanas lietotājs saglabā datus UI, pat ja atkārtota ielāde kļūdās.
         }
 
         const tbody=$("catalogTable").querySelector("tbody");
@@ -936,6 +935,7 @@
           return {
             typeNo: uniqNos.join(", "),
             type: sanitizeGpName(first.type || ""),
+            department: String((first && first.department) || "").trim(),
             __catalogSourceRow: first.__catalogSourceRow || first,
           };
         }).sort((a,b)=>{
@@ -955,7 +955,7 @@
             return td;
           };
           if(!catalogFullViewMode){
-            [x.typeNo, sanitizeGpName(x.type)].forEach(v=>tr.appendChild(makeCell(v)));
+            [x.typeNo, sanitizeGpName(x.type), x.department].forEach(v=>tr.appendChild(makeCell(v)));
           }else{
             [x.typeNo, sanitizeGpName(x.type), x.unit, x.department, x.procNo, x.process, x.group, x.darbibasJoma].forEach(v=>tr.appendChild(makeCell(v)));
           }
@@ -1051,7 +1051,13 @@
           const processName = String((r && r.process) || "").trim();
           const group = String((r && r.group) || "").trim();
           const joma = String((r && r.darbibasJoma) || "").trim();
-          const department = String((r && r.executorDala) || "").trim();
+          const rawProc = (r && r.raw) || {};
+          const department = String(
+            (r && r.executorDala)
+            || rawProc.Strukturvieniba_dala
+            || rawProc.strukturvieniba_dala
+            || ""
+          ).trim();
           const unitList = splitUnitValues((r && r.executorPatstaviga) || "");
           const gpNames = splitProductValues(
             (r && (r.products || r.productsText || r.productTypes)) || ""
@@ -1152,6 +1158,7 @@
           thead.innerHTML = `<tr>
             <th data-filter-label="Procesa galaprodukta Nr.">Procesa galaprodukta Nr.</th>
             <th data-filter-label="Procesa galaprodukts">Procesa galaprodukts</th>
+            <th data-filter-label="Daļas nosaukums">Daļas nosaukums<br><strong class="th-db-col">Strukturvieniba_dala</strong></th>
             <th data-filter-label="GP kartiņa">GP kartiņa</th>
           </tr>`;
         }else{
@@ -1159,7 +1166,7 @@
             <th data-filter-label="Procesa galaprodukta Nr.">Procesa galaprodukta Nr.</th>
             <th data-filter-label="Procesa galaprodukts">Procesa galaprodukts</th>
             <th data-filter-label="Procesa izpildītājs, pārvalde">Procesa izpildītājs, pārvalde</th>
-            <th data-filter-label="Procesa izpildītājs, daļa">Procesa izpildītājs, daļa</th>
+            <th data-filter-label="Daļas nosaukums">Daļas nosaukums<br><strong class="th-db-col">Strukturvieniba_dala</strong></th>
             <th data-filter-label="Procesa Nr.">Procesa Nr.</th>
             <th data-filter-label="Process">Process</th>
             <th data-filter-label="Procesa grupa">Procesa grupa</th>
@@ -1926,16 +1933,9 @@
         const uniqueProcMap = new Map(); // procKey -> representative row
         const byJoma = new Map(); // jomaKey -> { display, procMap: Map(procKey -> row) }
         const getRowJomas = (r)=>{
-          const out = new Set();
-          const gp = r && Array.isArray(r.gpItems) ? r.gpItems : [];
-          gp.forEach((g)=>{
-            const j = String((g && g.jomaText) || "").trim();
-            if(j) out.add(j);
-          });
-          const base = String((r && r.darbibasJoma) || "").trim();
-          if(base) out.add(base);
-          if(!out.size) out.add("—");
-          return Array.from(out);
+          const src = (r && r.__sourceRow) ? r.__sourceRow : r;
+          const base = String((src && src.darbibasJoma) || (r && r.darbibasJoma) || "").trim();
+          return base ? [base] : ["—"];
         };
         list.forEach((r)=>{
           const pKey = processKeyOf(r);
@@ -2525,19 +2525,22 @@
         const isNew = !r;
         $("eId").value=r?String(r.id||""):""; $("eGroup").value=r?normalizeGroupLabel(r.group):"Pamatdarbība";
         $("eProcNo").value=r?r.processNo:""; $("eProcess").value=r?r.process:"";
-        // Ja procesā ir GP ar dažādām jomām, kartiņā rādām visas jomas ar komatu.
+        // Viena joma kartiņā = DB «Darbibas_joma» (nevis GP saraksta apkopošana ar komatu), lai <select> un saglabāšana sakrist.
         (function(){
-          const base = r ? String(r.darbibasJoma || "").trim() : "";
-          const gp = r && Array.isArray(r.gpItems) ? r.gpItems : [];
-          const set = new Set();
-          gp.forEach((g)=>{
-            const j = String((g && g.jomaText) || "").trim();
-            if(j) set.add(j);
-          });
-          if(base) set.add(base);
-          const joined = Array.from(set).sort((a,b)=>a.localeCompare(b,"lv",{sensitivity:"base"})).join(", ");
-          $("eDarbibasJoma").value = r ? joined : "";
+          if (!r) {
+            $("eDarbibasJoma").value = "";
+            return;
+          }
+          const src = r.__sourceRow || r;
+          const v = String(src.darbibasJoma != null ? src.darbibasJoma : (r.darbibasJoma || "")).trim();
+          $("eDarbibasJoma").value = v;
         })();
+        if (window.Joma && typeof Joma.refreshOptions === "function") {
+          Joma.refreshOptions({
+            eDarbibasJoma: $("eDarbibasJoma") ? $("eDarbibasJoma").value : "",
+            cDarbibasJoma: $("cDarbibasJoma") ? $("cDarbibasJoma").value : "",
+          });
+        }
         const gpAllowedKeys = !isNew && r ? processRowGpAllowKeySet(r) : null;
         $("eLaws").value=isNew ? "" : buildEditorGpText(r ? r.processNo : "", r ? (r.productsText || r.products) : "", gpAllowedKeys);
         $("eDocs").value=isNew ? "" : (r ? r.productTypes : "");
@@ -2563,7 +2566,23 @@
         if($("cProcess")) $("cProcess").value = r ? (r.process || "") : "";
         if($("cGroup")) $("cGroup").value = r ? (r.group || "") : "";
         if($("cDarbibasJoma")) $("cDarbibasJoma").value = r ? (r.darbibasJoma || "") : "";
-        if($("cDepartment")) $("cDepartment").value = r ? String(r.department || "").trim() : "";
+        if (window.Joma && typeof Joma.refreshOptions === "function") {
+          Joma.refreshOptions({
+            eDarbibasJoma: $("eDarbibasJoma") ? $("eDarbibasJoma").value : "",
+            cDarbibasJoma: $("cDarbibasJoma") ? $("cDarbibasJoma").value : "",
+          });
+        }
+        if($("cDepartment")) {
+          const raw = r && r.raw ? r.raw : null;
+          const dep = r
+            ? String(
+                r.department
+                || (raw && (raw.Strukturvieniba_dala || raw.strukturvieniba_dala))
+                || ""
+              ).trim()
+            : "";
+          $("cDepartment").value = dep;
+        }
         if ($("cAdditionalInfo")) $("cAdditionalInfo").value = r ? String(r.additionalInfo != null ? r.additionalInfo : "") : "";
         if(window.ProcesaKartina && typeof ProcesaKartina.setAttachments==="function"){
           ProcesaKartina.setAttachments("catalog", r && Array.isArray(r.cardAttachments) ? r.cardAttachments : []);
@@ -3026,7 +3045,7 @@
           : "Galaprodukta kartiņa (jauns)";
         fillCatalogForm(editingCatalogRow);
         const e = canEdit();
-        $("catalogEditorForm").querySelectorAll("input,textarea,button").forEach(el=>{ if(el.id==="catalogCloseBtn") return; el.disabled=!e;});
+        $("catalogEditorForm").querySelectorAll("input,select,textarea,button").forEach(el=>{ if(el.id==="catalogCloseBtn") return; el.disabled=!e;});
       }
 
       function openTaskEditor(task){
@@ -3777,11 +3796,38 @@
             status(msg,"error");
             return;
           }
-          await api.remove(row);
+          // Viens loģiskais process var aptvert vairākas DB rindas (sadalīts pa GP); dzēšam visas, kas pieder šim procesam.
+          const procNo = String((row && row.processNo) || "").trim();
+          const nameKey = normTextKey((row && row.process) || "");
+          const src = Array.isArray(processRows) ? processRows : [];
+          let targets = src.filter((x)=>{
+            const xNo = String((x && x.processNo) || "").trim();
+            const xNameKey = normTextKey((x && x.process) || "");
+            if(procNo && xNo === procNo) return true;
+            if(nameKey && xNameKey === nameKey) return true;
+            return false;
+          });
+          if(!targets.length) targets = [row];
+          if(!targets.includes(row)) targets.push(row);
+          const seen = new Set();
+          let deletedTotal = 0;
+          for(const t of targets){
+            const sig = (t && t.id != null ? String(t.id) : "") + "|" + String((t && t.processNo) || "") + "|" + normTextKey((t && t.process) || "");
+            if(seen.has(sig)) continue;
+            seen.add(sig);
+            const n = await api.remove(t);
+            deletedTotal += (typeof n === "number" ? n : 1);
+          }
           editingRow=null;
           const ecDel=$("editorCard");
           if(ecDel){ ecDel.classList.add("hidden"); ecDel.classList.remove("editor-new-process"); }
-          await reloadAllData(); status("Dzēsts.","ok");
+          restoreEditorReturnContext("processListCard");
+          await reloadAllData();
+          if(deletedTotal > 0){
+            status("Dzēsts (" + deletedTotal + " ieraksts/-i).","ok");
+          } else {
+            status("Dzēšana neizdevās — datubāzē netika izdzēsta neviena rinda (iespējams, atslēgas nesakrīt vai DB tiesības/RLS bloķē dzēšanu).","error");
+          }
         }catch(err){
           const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (e => (e && e.message) ? e.message : String(e));
           console.error("DB delete error:", err);
@@ -3842,7 +3888,13 @@
           await window.DB.removeCatalog(rowForDelete);
           editingCatalogRow=null;
           $("catalogEditorCard").classList.add("hidden");
+          restoreEditorReturnContext(
+            catalogOpenReturnTarget === "process"
+              ? "processListCard"
+              : (catalogOpenReturnTarget === "executors" ? "executorsCard" : "catalogListCard")
+          );
           await reloadAllData();
+          status("Dzēsts.","ok");
         }catch(err){
           const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (x=>String(x));
           const msg = mapper(err);
@@ -3937,6 +3989,7 @@
     <script src="Skaidrojumi.js"></script>
     <script src="Abreviaturas.js"></script>
     <script src="Navigacija.js"></script>
+    <script src="Joma.js"></script>
   </body>
   </html>
 
