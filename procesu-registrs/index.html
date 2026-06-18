@@ -563,7 +563,7 @@
         <input id="eId" type="hidden" />
         <div class="form-row">
           <div class="form-group" id="eGroupWrap"><label>Procesa grupa</label><select id="eGroup"><option>Pamatdarbība</option><option>Atbalsts</option><option>Pārvaldība</option></select></div>
-          <div class="form-group"><label>Procesa Nr.</label><input id="eProcNo" /></div>
+          <div class="form-group"><label>Procesa Nr.</label><input id="eProcNo" placeholder="Nav obligāts" /></div>
         </div>
         <div class="form-row">
           <div class="form-group" id="eProcessWrap"><label>Process</label><input id="eProcess" type="text" autocomplete="off" placeholder="Jaunā procesa nosaukums" /></div>
@@ -699,7 +699,7 @@
           <div class="form-group"><label>Galaprodukta nosaukums</label><input id="cType" /></div>
         </div>
         <div class="form-row">
-          <div class="form-group"><label>Procesa Nr.</label><input id="cProcNo" /></div>
+          <div class="form-group"><label>Procesa Nr.</label><input id="cProcNo" placeholder="Nav obligāts" /></div>
         </div>
         <div class="form-row">
           <div class="form-group"><label>Process</label><input id="cProcess" /></div>
@@ -2659,14 +2659,33 @@
         const newProc = String(f.procNo || "").trim();
         const newType = sanitizeGpName(String(f.type || "").trim());
         const newProcessLabel = String(f.process || "").trim();
-        const findRow = (procNo)=>{
+        const findRow = (procNo, processLabel)=>{
           const pn = String(procNo || "").trim();
-          return processRows.find((r)=>String(r && r.processNo || "").trim() === pn) || null;
+          if(pn){
+            const byNo = processRows.find((r)=>String(r && r.processNo || "").trim() === pn);
+            if(byNo) return byNo;
+          }
+          const nameKey = normTextKey(processLabel || "");
+          if(!nameKey) return null;
+          return processRows.find((r)=>normTextKey((r && r.process) || "") === nameKey) || null;
         };
         if(!prev){
-          if(!newProc || !newType) return;
-          const r = findRow(newProc);
-          if(!r) return;
+          if(!newType) return;
+          const r = findRow(newProc, newProcessLabel);
+          if(!r){
+            if(newProcessLabel && typeof api.insert === "function"){
+              await api.insert(processRowToFormVals({}, {
+                group: f.group || "",
+                processNo: newProc,
+                process: newProcessLabel,
+                darbibasJoma: f.darbibasJoma || "",
+                products: newType,
+                executorPatstaviga: f.unit || "",
+                executorDala: f.department || "",
+              }));
+            }
+            return;
+          }
           const products = addGpToProductsList(r.products, newType);
           const patch = { products };
           if(newProcessLabel) patch.process = newProcessLabel;
@@ -2675,8 +2694,9 @@
         }
         const oldProc = String(prev.procNo || "").trim();
         const oldType = sanitizeGpName(String(prev.type || "").trim());
+        const oldProcessLabel = String(prev.process || "").trim();
         if(oldProc === newProc){
-          const r = findRow(oldProc);
+          const r = findRow(oldProc || newProc, newProcessLabel || oldProcessLabel);
           if(!r) return;
           let products = String(r.products || "");
           let productsTouched = false;
@@ -2699,20 +2719,30 @@
           }
           return;
         }
-        if(oldProc){
-          const rOld = findRow(oldProc);
+        if(oldProc || oldProcessLabel){
+          const rOld = findRow(oldProc, oldProcessLabel);
           if(rOld && oldType){
             const products = removeGpFromProductsList(rOld.products, oldType);
             await api.update(rOld, processRowToFormVals(rOld, { products }));
           }
         }
-        if(newProc && newType){
-          const rNew = findRow(newProc);
+        if(newType){
+          const rNew = findRow(newProc, newProcessLabel);
           if(rNew){
             const products = addGpToProductsList(rNew.products, newType);
             const patch = { products };
             if(newProcessLabel) patch.process = newProcessLabel;
             await api.update(rNew, processRowToFormVals(rNew, patch));
+          } else if(newProcessLabel && typeof api.insert === "function"){
+            await api.insert(processRowToFormVals({}, {
+              group: f.group || "",
+              processNo: newProc,
+              process: newProcessLabel,
+              darbibasJoma: f.darbibasJoma || "",
+              products: newType,
+              executorPatstaviga: f.unit || "",
+              executorDala: f.department || "",
+            }));
           }
         }
       }
@@ -3857,7 +3887,9 @@
           }else{
             await api.updateCatalog(prevCatalogRow, f);
           }
-          await syncCatalogGpToProcessRegister(prevCatalogRow, f);
+          if(!api.singleTableMode){
+            await syncCatalogGpToProcessRegister(prevCatalogRow, f);
+          }
           editingCatalogRow=null;
           $("catalogEditorCard").classList.add("hidden");
           restoreEditorReturnContext(

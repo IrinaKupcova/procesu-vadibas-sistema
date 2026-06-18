@@ -148,12 +148,22 @@
     }
     return "Procesa_galaprodukta_Nr.";
   }
-  function findSingleTableTargetRow(rows, procNo, type) {
+  function findProcessRowByName(rows, processName) {
+    const key = nkey(processName || "");
+    if (!key) return null;
+    return (rows || []).find((r) => nkey((r && r.process) || "") === key) || null;
+  }
+  function findSingleTableTargetRow(rows, procNo, type, processName) {
     const p = String(procNo || "").trim();
     const tKey = nkey(type || "");
+    const procLabel = String(processName || "").trim();
     if (p) {
       const byProc = (rows || []).find((r) => String((r && r.processNo) || "").trim() === p);
       if (byProc) return byProc;
+    }
+    if (procLabel) {
+      const byName = findProcessRowByName(rows, procLabel);
+      if (byName) return byName;
     }
     if (tKey) {
       const byToken = (rows || []).find((r) => splitCatalogProducts((r && r.products) || "").some((x) => nkey(x) === tKey));
@@ -166,6 +176,44 @@
       return null;
     }
     return null;
+  }
+  async function insertSingleTableProcessWithGp(row) {
+    const procNo = String((row && row.procNo) || "").trim();
+    const gp = String((row && row.type) || "").trim();
+    const processName = String((row && row.process) || "").trim();
+    if (!gp) throw new Error("Galaprodukta veids ir obligāts.");
+    if (!processName && !procNo) {
+      throw new Error("Norādiet procesa nosaukumu vai Procesa Nr., lai piesaistītu galaproduktu.");
+    }
+    let payload = toPayload(
+      {
+        group: row.group != null ? row.group : "",
+        processNo: procNo,
+        process: processName,
+        darbibasJoma: row.darbibasJoma != null ? row.darbibasJoma : "",
+        products: gp,
+        executorPatstaviga: row.unit != null ? row.unit : "",
+        executorDala: row.department != null ? row.department : "",
+      },
+      null
+    );
+    if (dbCols && dbCols.size > 0) {
+      const cleaned = {};
+      Object.keys(payload).forEach((k) => {
+        if (dbCols.has(k)) cleaned[k] = payload[k];
+      });
+      payload = cleaned;
+    }
+    const typeNoCol = getProcessTypeNoColFromRaw({});
+    const typeNoVal = sanitizeCatalogTypeNoToken(String((row && row.typeNo) || "").trim());
+    if (typeNoVal) payload[typeNoCol] = typeNoVal;
+    const metaColIns = GP_KARTINA_META_JSON_KEYS.find((c) => dbCols && dbCols.has(c));
+    if (metaColIns) payload[metaColIns] = mergeGpKartinaMeta({}, gp, row);
+    sanitizePayloadGalaproduktaNrFields(payload);
+    const result = await runWriteWithMissingColumnRetry(payload, (p) => supabaseClient.from(TABLE).insert(p));
+    emitSync("process", "html");
+    emitSync("catalog", "html");
+    return result.payload;
   }
   function joinCatalogProducts(arr) {
     return (arr || []).map((x) => String(x || "").trim()).filter(Boolean).join("; ");
@@ -924,10 +972,11 @@
     if (SINGLE_TABLE_MODE) {
       const procNo = String((row && row.procNo) || "").trim();
       const gp = String((row && row.type) || "").trim();
+      const processName = String((row && row.process) || "").trim();
       if (!gp) throw new Error("Galaprodukta veids ir obligāts.");
       const processRows = await load();
-      const target = findSingleTableTargetRow(processRows || [], procNo, gp);
-      if (!target) throw new Error("Nav atrasts process ar norādīto procesa Nr.");
+      let target = findSingleTableTargetRow(processRows || [], procNo, gp, processName);
+      if (!target) return insertSingleTableProcessWithGp(row);
       const existing = splitCatalogProducts(target.products);
       const raw = (target && target.raw) || {};
       const typeNoCol = getProcessTypeNoColFromRaw(raw);
@@ -941,7 +990,7 @@
         group: row.group != null ? row.group : target.group,
         taskNo: row.taskNo != null ? row.taskNo : target.taskNo,
         task: target.task,
-        processNo: procNo,
+        processNo: procNo || target.processNo,
         process: row.process != null ? row.process : target.process,
         darbibasJoma: row.darbibasJoma != null ? row.darbibasJoma : target.darbibasJoma,
         owner: target.owner,
@@ -1049,11 +1098,17 @@
       const prevProcNo = String((current && current.procNo) || "").trim();
       const nextProcNo = String((row && row.procNo) || "").trim();
       const procNo = nextProcNo || prevProcNo;
-      const target = (processRows || []).find((r) => String((r && r.processNo) || "").trim() === procNo);
+      const processName = String((row && row.process) || (current && current.process) || "").trim();
+      const target = procNo
+        ? (processRows || []).find((r) => String((r && r.processNo) || "").trim() === procNo)
+        : null;
       const prevType = String((current && current.type) || "").trim();
       const nextType = String((row && row.type) || "").trim();
       if (!nextType) throw new Error("Galaprodukta veids ir obligāts.");
-      const targetResolved = target || findSingleTableTargetRow(processRows || [], procNo, prevType || nextType);
+      const targetResolved =
+        target ||
+        findSingleTableTargetRow(processRows || [], procNo, prevType || nextType, processName) ||
+        findProcessRowByName(processRows || [], processName);
       if (!targetResolved) throw new Error("Nav atrasts process atjaunināšanai.");
       let list = splitCatalogProducts(targetResolved.products);
       const raw = (targetResolved && targetResolved.raw) || {};
@@ -1082,7 +1137,7 @@
       group: row.group != null ? row.group : targetResolved.group,
         taskNo: row.taskNo != null ? row.taskNo : targetResolved.taskNo,
         task: targetResolved.task,
-        processNo: procNo,
+        processNo: procNo || targetResolved.processNo,
         process: row.process != null ? row.process : targetResolved.process,
         darbibasJoma: row.darbibasJoma != null ? row.darbibasJoma : targetResolved.darbibasJoma,
         owner: targetResolved.owner,
@@ -1624,6 +1679,7 @@
 
   window.DB = {
     TABLE,
+    singleTableMode: SINGLE_TABLE_MODE,
     load,
     insert,
     update,
