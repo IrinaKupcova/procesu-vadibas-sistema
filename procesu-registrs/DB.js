@@ -445,6 +445,9 @@
     const p = {};
     Object.keys(aliasMap).forEach((logicalKey) => {
       if (logicalKey === "kartinasPielikumiJson") return;
+      if (logicalKey === "darbibasJoma" && !Object.prototype.hasOwnProperty.call(formVals, "darbibasJoma")) {
+        return;
+      }
       const choices = aliasMap[logicalKey];
       const key = pickKey(raw, choices);
       if (key) {
@@ -1770,17 +1773,47 @@
     return cleaned;
   }
 
+  function ensureJomaTextPayload(cleaned, payload, skaidrojumsVal, funkcijasVal) {
+    const out = Object.assign({}, cleaned || {});
+    const skaidrojumsCol = pickJomaCol(["skaidrojums", "Skaidrojums"], "skaidrojums");
+    const funkcijasCol = pickJomaCol(
+      ["iestades_funkciju_piesaiste", "Iestades_funkciju_piesaiste", "funkciju_piesaiste", "funkcijas", "Funkcijas"],
+      "iestades_funkciju_piesaiste"
+    );
+    const infoCol = pickJomaCol(["informacija", "Informacija", "notes", "Notes"], "informacija");
+    const hasSkaidrojums = skaidrojumsCol && out[skaidrojumsCol] != null;
+    const hasInfo = infoCol && out[infoCol] != null;
+    const hasFunkcijas = funkcijasCol && out[funkcijasCol] != null;
+    if (skaidrojumsVal && !hasSkaidrojums && !hasInfo) {
+      if (infoCol && (!jomaCols.size || jomaCols.has(infoCol))) out[infoCol] = skaidrojumsVal;
+      else if (skaidrojumsCol) out[skaidrojumsCol] = skaidrojumsVal;
+    }
+    if (funkcijasVal && !hasFunkcijas && funkcijasCol) out[funkcijasCol] = funkcijasVal;
+    if (!Object.keys(out).length && payload) return payload;
+    return out;
+  }
+
   function mapJomaDbRowToUi(r) {
     const d = r || {};
     const displayName = gv(d, ["joma_nosaukums", "Joma_nosaukums", "nosaukums", "display_name"]);
     const key = gv(d, ["joma_key", "Joma_key", "key"]) || jomaNormKey(displayName);
     const notes = gv(d, ["informacija", "Informacija", "notes", "Notes"]);
+    const skaidrojums = gv(d, ["skaidrojums", "Skaidrojums"]);
+    const funkcijas = gv(d, [
+      "iestades_funkciju_piesaiste",
+      "Iestades_funkciju_piesaiste",
+      "funkciju_piesaiste",
+      "funkcijas",
+      "Funkcijas",
+    ]);
     const updatedAt = gv(d, ["updated_at", "updatedAt"]);
     return {
       id: gid(d),
       key: String(key || "").trim(),
       displayName: String(displayName || "").trim(),
       notes: String(notes || ""),
+      skaidrojums: String(skaidrojums || notes || ""),
+      funkcijas: String(funkcijas || ""),
       updatedAt: String(updatedAt || ""),
       raw: d,
     };
@@ -1811,14 +1844,32 @@
     const keyCol = pickJomaCol(["joma_key", "Joma_key", "key"], "joma_key");
     const nameCol = pickJomaCol(["joma_nosaukums", "Joma_nosaukums", "nosaukums", "display_name"], "joma_nosaukums");
     const infoCol = pickJomaCol(["informacija", "Informacija", "notes", "Notes"], "informacija");
+    const skaidrojumsCol = pickJomaCol(["skaidrojums", "Skaidrojums"], "skaidrojums");
+    const funkcijasCol = pickJomaCol(
+      ["iestades_funkciju_piesaiste", "Iestades_funkciju_piesaiste", "funkciju_piesaiste", "funkcijas", "Funkcijas"],
+      "iestades_funkciju_piesaiste"
+    );
     const updatedCol = pickJomaCol(["updated_at", "updatedAt"], "updated_at");
+    const skaidrojumsVal = String(
+      (data && data.skaidrojums) != null ? data.skaidrojums : (data && data.notes) != null ? data.notes : ""
+    );
+    const funkcijasVal = String((data && data.funkcijas) != null ? data.funkcijas : "");
     const payload = {
       [keyCol]: key,
       [nameCol]: displayName,
-      [infoCol]: String((data && data.notes) != null ? data.notes : ""),
+      [skaidrojumsCol]: skaidrojumsVal,
+      [funkcijasCol]: funkcijasVal,
     };
+    if (infoCol && jomaCols && jomaCols.has(infoCol)) {
+      payload[infoCol] = skaidrojumsVal;
+    }
     if (updatedCol) payload[updatedCol] = new Date().toISOString();
-    const cleaned = filterJomaPayload(payload);
+    const cleaned = ensureJomaTextPayload(
+      filterJomaPayload(payload),
+      payload,
+      skaidrojumsVal,
+      funkcijasVal
+    );
     const { error } = await supabaseClient.from(JOMA_TABLE).upsert(cleaned, { onConflict: keyCol });
     if (error) throw error;
     emitSync("joma", "html");

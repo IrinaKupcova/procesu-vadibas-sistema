@@ -19,6 +19,27 @@
     return String(v || "").trim().toLowerCase();
   }
 
+  function normalizeFilterValue(v) {
+    if (v == null || v === "") return [];
+    if (Array.isArray(v)) return v.map((x) => String(x || "").trim()).filter(Boolean);
+    const s = String(v).trim();
+    return s ? [s] : [];
+  }
+
+  function isFilterActive(v) {
+    return normalizeFilterValue(v).length > 0;
+  }
+
+  function cellMatchesAnyTerm(cellText, terms, exactValues) {
+    const list = normalizeFilterValue(terms);
+    if (!list.length) return true;
+    if (exactValues && exactValues.length) {
+      return list.some((t) => exactValues.some((v) => norm(v) === norm(t)));
+    }
+    const text = String(cellText || "");
+    return list.some((t) => contains(text, t) || norm(text) === norm(t));
+  }
+
   function contains(text, term) {
     if (!term) return true;
     return norm(text).includes(norm(term));
@@ -67,7 +88,8 @@
     return td ? String(td.textContent || "") : "";
   }
 
-  function applyProcessGpLineFilter(tr, typeNoTerm) {
+  function applyProcessGpLineFilter(tr, typeNoTerms) {
+    const terms = normalizeFilterValue(typeNoTerms);
     const tds = Array.from(tr.children || []);
     const tdTypeNo = tds[3];
     const tdType = tds[4];
@@ -81,7 +103,7 @@
     let anyVisible = false;
     noLines.forEach((line, idx) => {
       const values = processTypeNoCellLineValues(line);
-      const pass = !typeNoTerm || values.some((v) => norm(v) === norm(typeNoTerm));
+      const pass = !terms.length || values.some((v) => terms.some((t) => norm(v) === norm(t)));
       line.style.display = pass ? "" : "none";
       if (gpLines[idx]) gpLines[idx].style.display = pass ? "" : "none";
       if (jomaLines[idx]) jomaLines[idx].style.display = pass ? "" : "none";
@@ -91,23 +113,129 @@
     return anyVisible;
   }
 
+  const TABLE_IDS_FOR_COL_SIZING = [
+    "processTable",
+    "catalogTable",
+    "tasksSummaryTable",
+    "executorsTable",
+    "processGroupsTable",
+    "processJomasTable",
+  ];
+
+  function getColumnHeaderLabel(th) {
+    if (!th) return "";
+    const fromData = (th.getAttribute("data-filter-label") || "").trim();
+    if (fromData) return fromData;
+    const span = th.querySelector(".th-filter-wrap > span");
+    if (span) return (span.textContent || "").trim();
+    return (th.textContent || "").replace(/\s+/g, " ").trim();
+  }
+
+  function isNumericishCellText(text) {
+    const t = String(text || "").trim();
+    if (!t || t.length > 24) return false;
+    if (/^\d+([.,]\d+)?$/.test(t)) return true;
+    if (/^\d+([.,]\d+)?\s*%$/.test(t)) return true;
+    return /^[\d.,\s%+\-]+$/.test(t);
+  }
+
+  function sampleColumnCellTexts(table, colIndex, limit) {
+    const max = limit || 24;
+    const samples = [];
+    const tbody = table.querySelector("tbody");
+    if (!tbody) return samples;
+    for (const tr of tbody.querySelectorAll("tr")) {
+      if (samples.length >= max) break;
+      const td = tr.children[colIndex];
+      if (!td) continue;
+      if (td.querySelector("button, input[type='button'], input[type='submit']") && !td.querySelector("span, a")) continue;
+      const txt = (td.textContent || "").trim();
+      if (txt) samples.push(txt);
+    }
+    return samples;
+  }
+
+  function classifyTableColumn(th, colIndex, colCount, table) {
+    const label = getColumnHeaderLabel(th);
+    const l = label.toLowerCase();
+    if (/kartiņa/.test(l)) return "col-action";
+    if (!l && colIndex === colCount - 1) return "col-action";
+    if (/\bnr\.?\b/.test(l) || /\bprocesu\s+skaits\b/.test(l) || /\bkārta\b/.test(l) || /^akt\.?$/.test(l) || /\bskaits\b/.test(l)) {
+      return "col-narrow";
+    }
+    const samples = sampleColumnCellTexts(table, colIndex);
+    if (samples.length >= 2) {
+      const numeric = samples.filter(isNumericishCellText).length;
+      if (numeric / samples.length >= 0.8) return "col-narrow";
+    }
+    return "col-wide";
+  }
+
+  function applyTableColumnSizing(tableOrId) {
+    const table = typeof tableOrId === "string" ? document.getElementById(tableOrId) : tableOrId;
+    if (!table) return;
+    const headRow = table.querySelector("thead tr");
+    if (!headRow || !headRow.children.length) return;
+
+    table.classList.add("data-col-sized");
+    const colCount = headRow.children.length;
+    const types = [];
+
+    Array.from(headRow.children).forEach((th, idx) => {
+      const type = classifyTableColumn(th, idx, colCount, table);
+      types[idx] = type;
+      th.classList.remove("col-narrow", "col-wide", "col-action");
+      th.classList.add(type);
+    });
+
+    table.querySelectorAll("tbody tr").forEach((tr) => {
+      Array.from(tr.children).forEach((td, idx) => {
+        if (idx >= colCount) return;
+        td.classList.remove("col-narrow", "col-wide", "col-action");
+        if (types[idx]) td.classList.add(types[idx]);
+      });
+    });
+
+    const legacyColgroup = table.querySelector("colgroup");
+    if (legacyColgroup) legacyColgroup.remove();
+  }
+
+  function applyAllTableColumnSizing() {
+    TABLE_IDS_FOR_COL_SIZING.forEach((id) => applyTableColumnSizing(id));
+    document.querySelectorAll("table.help-admin-table").forEach((table) => applyTableColumnSizing(table));
+  }
+
   function injectFilterStyles() {
-    if (document.getElementById("filtersCss")) return;
-    const s = document.createElement("style");
-    s.id = "filtersCss";
+    let s = document.getElementById("filtersCss");
+    if (!s) {
+      s = document.createElement("style");
+      s.id = "filtersCss";
+      document.head.appendChild(s);
+    }
     s.textContent = `
       .main-filter-wrap{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
       .search-icon-badge{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border:1px solid #94a3b8;border-radius:999px;background:#fff;color:#334155;font-size:13px;cursor:pointer;flex-shrink:0}
       .main-filter-wrap select,.main-filter-wrap input{font-size:12px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:4px}
-      .th-filter-wrap{display:flex;align-items:center;gap:4px;justify-content:space-between}
-      .th-filter-zone{position:relative}
-      .th-filter-btn{font-size:10px;padding:2px 5px;border:1px solid #94a3b8;border-radius:999px;background:#fff;color:#334155;cursor:pointer;line-height:1}
-      .th-filter-btn.active{background:#dc2626;color:#fff;border-color:#dc2626;box-shadow:0 0 14px rgba(220,38,38,.45)}
-      .th-filter-box{display:none;margin-top:4px}
+      .th-filter-wrap{display:flex;flex-direction:column;align-items:flex-start;gap:3px;font-size:11px;font-weight:400;line-height:1.2;text-transform:none;letter-spacing:normal}
+      .th-filter-wrap > span{font-weight:400;font-size:11px;line-height:1.25;text-transform:none;letter-spacing:normal;display:block;max-width:100%;word-break:break-word}
+      .th-filter-zone{position:relative;text-transform:none;letter-spacing:normal;width:100%}
+      .th-filter-btn{font-size:9px;padding:1px 5px;border:1px solid #94a3b8;border-radius:999px;background:#fff;color:#334155;cursor:pointer;line-height:1.15;font-weight:400;text-transform:none;letter-spacing:normal}
+      .th-filter-btn.active{background:#dc2626;color:#fff;border-color:#dc2626;box-shadow:0 0 10px rgba(220,38,38,.35)}
+      .th-filter-box{display:none;margin-top:2px;position:relative;z-index:20}
       .th-filter-box.open{display:block}
-      .th-filter-box select{width:100%;font-size:11px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px;background:#fff}
+      .th-filter-checklist{max-height:180px;overflow:auto;border:1px solid #cbd5e1;border-radius:4px;background:#fff;padding:2px 4px;font-size:10px;min-width:140px;max-width:min(280px,70vw);font-weight:400;text-transform:none;letter-spacing:normal}
+      .th-filter-checklist label{display:flex;align-items:flex-start;gap:4px;padding:2px 1px;cursor:pointer;line-height:1.2;color:#334155;font-weight:400;text-transform:none;letter-spacing:normal}
+      .th-filter-checklist label span{font-weight:400;text-transform:none;letter-spacing:normal}
+      .th-filter-checklist label:hover{background:#f1f5f9}
+      .th-filter-checklist input[type=checkbox]{margin-top:1px;flex-shrink:0;transform:scale(0.9)}
+      .th-filter-check-all{border-bottom:1px solid #e2e8f0;margin-bottom:2px;padding-bottom:2px;font-weight:400;font-size:10px;text-transform:none;letter-spacing:normal}
+      table.data-col-sized{table-layout:auto;width:100%}
+      table.data-col-sized th.col-narrow,table.data-col-sized td.col-narrow{width:1%;vertical-align:top}
+      table.data-col-sized th.col-narrow{min-width:96px;white-space:normal;word-break:break-word;overflow:visible}
+      table.data-col-sized td.col-narrow{white-space:nowrap}
+      table.data-col-sized th.col-action,table.data-col-sized td.col-action{width:1%;min-width:112px;white-space:nowrap;vertical-align:top;overflow:visible}
+      table.data-col-sized th.col-wide,table.data-col-sized td.col-wide{min-width:150px;width:auto;white-space:normal;word-break:break-word;vertical-align:top}
     `;
-    document.head.appendChild(s);
   }
 
   function closeAllHeaderFilterBoxes(exceptBox) {
@@ -123,9 +251,9 @@
     if (!openFilterRef || !openFilterRef.tableId) return;
     const table = document.getElementById(openFilterRef.tableId);
     if (!table) return;
-    const sel = table.querySelector(`.th-filter-box select[data-col-index="${openFilterRef.colIndex}"]`);
-    if (!sel) return;
-    const box = sel.closest(".th-filter-box");
+    const list = table.querySelector(`.th-filter-checklist[data-col-index="${openFilterRef.colIndex}"]`);
+    if (!list) return;
+    const box = list.closest(".th-filter-box");
     if (!box) return;
     closeAllHeaderFilterBoxes(box);
     box.classList.add("open");
@@ -175,6 +303,65 @@
     searchInput.placeholder = "Meklē visās sadaļās...";
   }
 
+  function populateFilterChecklist(list, values, selected) {
+    if (!list) return;
+    const selectedSet = new Set(normalizeFilterValue(selected).map(norm));
+    list.innerHTML = "";
+    const allLabel = document.createElement("label");
+    allLabel.className = "th-filter-check-all";
+    const allCb = document.createElement("input");
+    allCb.type = "checkbox";
+    allCb.checked = selectedSet.size === 0;
+    allLabel.appendChild(allCb);
+    allLabel.appendChild(document.createTextNode(" Visas vērtības"));
+    allCb.addEventListener("change", () => {
+      if (!allCb.checked) return;
+      list.querySelectorAll("input.th-filter-value-cb").forEach((cb) => {
+        cb.checked = false;
+      });
+      allCb.checked = true;
+      list.dispatchEvent(new Event("filter-checklist-change", { bubbles: true }));
+    });
+    list.appendChild(allLabel);
+    Array.from(values)
+      .sort((a, b) => String(a).localeCompare(String(b), "lv", { sensitivity: "base" }))
+      .slice(0, 600)
+      .forEach((v) => {
+        const label = document.createElement("label");
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.className = "th-filter-value-cb";
+        cb.value = v;
+        cb.checked = selectedSet.has(norm(v));
+        cb.addEventListener("change", () => {
+          if (cb.checked) allCb.checked = false;
+          else if (!list.querySelector("input.th-filter-value-cb:checked")) allCb.checked = true;
+          list.dispatchEvent(new Event("filter-checklist-change", { bubbles: true }));
+        });
+        label.appendChild(cb);
+        const txt = document.createElement("span");
+        txt.textContent = v;
+        label.appendChild(txt);
+        list.appendChild(label);
+      });
+  }
+
+  function readChecklistSelection(list) {
+    if (!list) return [];
+    return Array.from(list.querySelectorAll("input.th-filter-value-cb:checked"))
+      .map((cb) => String(cb.value || "").trim())
+      .filter(Boolean);
+  }
+
+  function clearChecklistSelection(list) {
+    if (!list) return;
+    list.querySelectorAll("input.th-filter-value-cb").forEach((cb) => {
+      cb.checked = false;
+    });
+    const allCb = list.querySelector(".th-filter-check-all input[type=checkbox]");
+    if (allCb) allCb.checked = true;
+  }
+
   function ensureHeaderFilters(tableId, key, skipLast) {
     if (tableId === "processJomasTable") return; // Jomu sadaļai filtrēšana ir izslēgta.
     const table = document.getElementById(tableId);
@@ -208,20 +395,18 @@
       const box = document.createElement("div");
       box.className = "th-filter-box";
 
-      const select = document.createElement("select");
-      select.dataset.colIndex = String(idx);
-      select.dataset.tableId = tableId;
-      const emptyOpt = document.createElement("option");
-      emptyOpt.value = "";
-      emptyOpt.textContent = "Visas vērtības";
-      select.appendChild(emptyOpt);
+      const list = document.createElement("div");
+      list.className = "th-filter-checklist";
+      list.dataset.colIndex = String(idx);
+      list.dataset.tableId = tableId;
+      list.dataset.stateKey = key;
 
-      const onFilterChange = (value) => {
-        const col = select.dataset.colIndex;
-        state[key][col] = value;
-        btn.classList.toggle("active", norm(value) !== "");
-        box.classList.remove("open");
-        openFilterRef = null;
+      const onFilterChange = () => {
+        const col = list.dataset.colIndex;
+        const vals = readChecklistSelection(list);
+        if (vals.length) state[key][col] = vals;
+        else delete state[key][col];
+        btn.classList.toggle("active", vals.length > 0);
         if (tableId === "executorsTable") {
           applyExecutorsFilters();
           refreshClearFilterButtonActive();
@@ -230,21 +415,19 @@
         selectBestLevel();
         applyAllFilters();
       };
-      select.addEventListener("change", (e) => onFilterChange(e.target.value));
+      list.addEventListener("filter-checklist-change", onFilterChange);
 
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        // Klikšķis uz "degošas" ikonas = notīrīt šīs kolonnas filtru.
         if (btn.classList.contains("active")) {
-          select.value = "";
-          onFilterChange("");
+          clearChecklistSelection(list);
+          onFilterChange();
           closeAllHeaderFilterBoxes();
           openFilterRef = null;
           suspendRestoreUntil = Date.now() + 1200;
           return;
         }
         const isOpen = box.classList.contains("open");
-        // Uz klikšķa pa jau atvērtu ikonu — vienmēr aizveram.
         if (isOpen) {
           closeAllHeaderFilterBoxes();
           openFilterRef = null;
@@ -256,13 +439,12 @@
         box.classList.toggle("open", willOpen);
         if (box.classList.contains("open")) {
           openFilterRef = { tableId, colIndex: String(idx) };
-          select.focus();
         } else {
           openFilterRef = null;
         }
       });
       box.addEventListener("click", (e) => e.stopPropagation());
-      box.appendChild(select);
+      box.appendChild(list);
       wrap.appendChild(label);
       wrap.appendChild(btn);
       zone.appendChild(wrap);
@@ -271,13 +453,14 @@
     });
 
     headRow.dataset.filtersReady = "1";
+    applyTableColumnSizing(table);
   }
 
   function selectBestLevel() {
     const level = document.getElementById("levelSelect");
     if (!level) return;
 
-    const hasOutput = norm(state.quick.output) !== "" || Object.keys(state.processHeader).some((k) => Number(k) >= 8 && norm(state.processHeader[k]) !== "");
+    const hasOutput = norm(state.quick.output) !== "" || Object.keys(state.processHeader).some((k) => Number(k) >= 8 && isFilterActive(state.processHeader[k]));
     const hasMain = norm(state.quick.process) !== "" || norm(state.quick.task) !== "";
 
     let target = null;
@@ -311,21 +494,20 @@
 
       if (show) {
         for (const col in state.processHeader) {
-          const term = state.processHeader[col];
+          const terms = normalizeFilterValue(state.processHeader[col]);
+          if (!terms.length) continue;
           const colNum = Number(col);
           const typeNoTd = tr.children && tr.children[colNum] != null ? tr.children[colNum] : null;
-          // "Procesa galaprodukta Nr." kolonnā šūnā var būt vairāki Nr.;
-          // filtrējam pēc atsevišķa numura, nevis pēc salīmēta teksta.
           const pass = colNum === 3
-            ? getProcessTypeNoValuesFromCell(typeNoTd).some((v) => norm(v) === norm(term))
-            : contains(processFilterCellText(tr, colNum, hdr), term);
+            ? cellMatchesAnyTerm("", terms, getProcessTypeNoValuesFromCell(typeNoTd))
+            : cellMatchesAnyTerm(processFilterCellText(tr, colNum, hdr), terms);
           if (!pass) {
             show = false;
             break;
           }
         }
       }
-      if (show && norm(typeNoFilter) !== "") {
+      if (show && isFilterActive(typeNoFilter)) {
         show = applyProcessGpLineFilter(tr, typeNoFilter);
       } else {
         applyProcessGpLineFilter(tr, "");
@@ -351,8 +533,8 @@
       const tds = Array.from(tr.children);
       let show = !globalTerm || contains(tds.map((td) => td.textContent || "").join(" "), globalTerm);
       for (const col in state.catalogHeader) {
-        const term = state.catalogHeader[col];
-        if (!contains(tds[Number(col)]?.textContent || "", term)) {
+        const terms = normalizeFilterValue(state.catalogHeader[col]);
+        if (!cellMatchesAnyTerm(tds[Number(col)]?.textContent || "", terms)) {
           show = false;
           break;
         }
@@ -370,8 +552,8 @@
       const tds = Array.from(tr.children);
       let show = !globalTerm || contains(tds.map((td) => td.textContent || "").join(" "), globalTerm);
       for (const col in state.tasksHeader) {
-        const term = state.tasksHeader[col];
-        if (!contains(tds[Number(col)]?.textContent || "", term)) {
+        const terms = normalizeFilterValue(state.tasksHeader[col]);
+        if (!cellMatchesAnyTerm(tds[Number(col)]?.textContent || "", terms)) {
           show = false;
           break;
         }
@@ -392,8 +574,8 @@
       const quickSearchText = tds.slice(0, 4).map((td) => td.textContent || "").join(" ");
       let show = !globalTerm || contains(quickSearchText, globalTerm);
       for (const col in state.executorsHeader) {
-        const term = state.executorsHeader[col];
-        if (!contains(tds[Number(col)]?.textContent || "", term)) {
+        const terms = normalizeFilterValue(state.executorsHeader[col]);
+        if (!cellMatchesAnyTerm(tds[Number(col)]?.textContent || "", terms)) {
           show = false;
           break;
         }
@@ -410,8 +592,8 @@
       const tds = Array.from(tr.children);
       let show = true;
       for (const col in state[key]) {
-        const term = state[key][col];
-        if (!contains(tds[Number(col)]?.textContent || "", term)) {
+        const terms = normalizeFilterValue(state[key][col]);
+        if (!cellMatchesAnyTerm(tds[Number(col)]?.textContent || "", terms)) {
           show = false;
           break;
         }
@@ -424,7 +606,7 @@
     if (!tbody) return;
     const rows = Array.from(tbody.querySelectorAll("tr"));
     const headers = rows.filter((tr) => tr.classList && tr.classList.contains("process-accordion-hdr"));
-    const hasTerms = Object.values(state[key] || {}).some((v) => norm(v) !== "");
+    const hasTerms = Object.values(state[key] || {}).some((v) => isFilterActive(v));
     // Bez aktīviem filtriem NEAIZTIEKAM tabulas redzamību:
     // atstājam tieši renderētās atvēršanas/aizvēršanas stāvokli.
     if (!hasTerms) return;
@@ -436,8 +618,9 @@
     };
     const rowMatches = (tr, hdr) => {
       for (const col in state[key]) {
-        const term = state[key][col];
-        if (!contains(cellText(tr, col, hdr), term)) return false;
+        const terms = normalizeFilterValue(state[key][col]);
+        if (!terms.length) continue;
+        if (!cellMatchesAnyTerm(cellText(tr, col, hdr), terms)) return false;
       }
       return true;
     };
@@ -464,11 +647,11 @@
   function hasActiveFilters() {
     const searchInput = document.getElementById("searchInput");
     if (searchInput && norm(searchInput.value) !== "") return true;
-    if (Object.values(state.processHeader || {}).some((v) => norm(v) !== "")) return true;
-    if (Object.values(state.catalogHeader || {}).some((v) => norm(v) !== "")) return true;
-    if (Object.values(state.tasksHeader || {}).some((v) => norm(v) !== "")) return true;
-    if (Object.values(state.executorsHeader || {}).some((v) => norm(v) !== "")) return true;
-    if (Object.values(state.processGroupsHeader || {}).some((v) => norm(v) !== "")) return true;
+    if (Object.values(state.processHeader || {}).some((v) => isFilterActive(v))) return true;
+    if (Object.values(state.catalogHeader || {}).some((v) => isFilterActive(v))) return true;
+    if (Object.values(state.tasksHeader || {}).some((v) => isFilterActive(v))) return true;
+    if (Object.values(state.executorsHeader || {}).some((v) => isFilterActive(v))) return true;
+    if (Object.values(state.processGroupsHeader || {}).some((v) => isFilterActive(v))) return true;
     if (typeof window.hasActiveStatsFilters === "function" && window.hasActiveStatsFilters()) return true;
     return false;
   }
@@ -495,8 +678,8 @@
   function autoOpenOnFilteredResult() {
     const processTable = document.getElementById("processTable");
     const catalogTable = document.getElementById("catalogTable");
-    const processHasFilter = Object.values(state.processHeader || {}).some((v) => norm(v) !== "");
-    const catalogHasFilter = Object.values(state.catalogHeader || {}).some((v) => norm(v) !== "");
+    const processHasFilter = Object.values(state.processHeader || {}).some((v) => isFilterActive(v));
+    const catalogHasFilter = Object.values(state.catalogHeader || {}).some((v) => isFilterActive(v));
 
     if (processTable && processHasFilter) {
       const hasVisible = Array.from(processTable.querySelectorAll("tbody tr")).some((tr) => tr.style.display !== "none");
@@ -516,7 +699,7 @@
     }
 
     const tasksTable = document.getElementById("tasksSummaryTable");
-    const tasksHasFilter = Object.values(state.tasksHeader || {}).some((v) => norm(v) !== "");
+    const tasksHasFilter = Object.values(state.tasksHeader || {}).some((v) => isFilterActive(v));
     if (tasksTable && tasksHasFilter) {
       const taskCard = document.getElementById("tasksViewCard");
       const hasVisible = Array.from(tasksTable.querySelectorAll("tbody tr")).some((tr) => tr.style.display !== "none");
@@ -537,9 +720,9 @@
     if (!table) return;
     const tbody = table.querySelector("tbody");
     if (!tbody) return;
-    const selects = Array.from(table.querySelectorAll(".th-filter-box select[data-col-index]"));
-    selects.forEach((select) => {
-      const col = Number(select.dataset.colIndex);
+    const lists = Array.from(table.querySelectorAll(".th-filter-checklist[data-col-index]"));
+    lists.forEach((list) => {
+      const col = Number(list.dataset.colIndex);
       const selected = state[key][String(col)] || "";
       const uniqVals = new Set();
       if (
@@ -581,20 +764,9 @@
       });
       }
       }
-      select.innerHTML = "";
-      const empty = document.createElement("option");
-      empty.value = "";
-      empty.textContent = "Visas vērtības";
-      select.appendChild(empty);
-      Array.from(uniqVals).sort().slice(0, 600).forEach((v) => {
-        const o = document.createElement("option");
-        o.value = v;
-        o.textContent = v;
-        select.appendChild(o);
-      });
-      select.value = selected;
-      const btn = select.closest("th")?.querySelector(".th-filter-btn");
-      if (btn) btn.classList.toggle("active", norm(selected) !== "");
+      populateFilterChecklist(list, uniqVals, selected);
+      const btn = list.closest("th")?.querySelector(".th-filter-btn");
+      if (btn) btn.classList.toggle("active", isFilterActive(selected));
     });
     restoreOpenFilterBox();
   }
@@ -616,8 +788,8 @@
     const searchInput = document.getElementById("searchInput");
     if (searchInput) searchInput.value = "";
 
-    document.querySelectorAll(".th-filter-box select[data-col-index]").forEach((s) => {
-      s.value = "";
+    document.querySelectorAll(".th-filter-checklist[data-col-index]").forEach((list) => {
+      clearChecklistSelection(list);
     });
     document.querySelectorAll(".th-filter-btn.active").forEach((b) => b.classList.remove("active"));
     if (typeof window.clearStatsFilters === "function") window.clearStatsFilters();
@@ -640,6 +812,7 @@
       refreshHeaderFilterOptions("executorsTable", "executorsHeader");
       refreshHeaderFilterOptions("processGroupsTable", "processGroupsHeader");
       applyAllFilters();
+      applyAllTableColumnSizing();
     };
   }
 
@@ -651,12 +824,13 @@
     refreshHeaderFilterOptions("tasksSummaryTable", "tasksHeader");
     const execTable = document.getElementById("executorsTable");
     const execHead = execTable ? execTable.querySelector("thead tr") : null;
-    const execHasFilters = !!(execHead && execHead.querySelector(".th-filter-box select[data-col-index]"));
+    const execHasFilters = !!(execHead && execHead.querySelector(".th-filter-checklist[data-col-index]"));
     if (execHead && !execHasFilters) execHead.dataset.filtersReady = "";
     ensureHeaderFilters("executorsTable", "executorsHeader", true);
     refreshHeaderFilterOptions("executorsTable", "executorsHeader");
     applyTasksFilters();
     applyExecutorsFilters();
+    applyAllTableColumnSizing();
     refreshClearFilterButtonActive();
     } finally {
       extraRefreshRunning = false;
@@ -677,9 +851,12 @@
     refreshHeaderFilterOptions("processGroupsTable", "processGroupsHeader");
     setupRenderHook();
     applyAllFilters();
+    applyAllTableColumnSizing();
     window.removeAllFilters = clearAllFilters;
     window.refreshClearFilterButtonActive = refreshClearFilterButtonActive;
     window.refreshExtraTableFilters = refreshExtraTableFilters;
+    window.applyTableColumnSizing = applyTableColumnSizing;
+    window.applyAllTableColumnSizing = applyAllTableColumnSizing;
     const clearBtn = document.getElementById("clearFiltersBtn");
     if (clearBtn) clearBtn.addEventListener("click", clearAllFilters);
     const searchInput = document.getElementById("searchInput");
@@ -692,8 +869,8 @@
       const table = document.getElementById("executorsTable");
       if (!table) return;
       if (table.dataset.filtersReady === "1") {
-        const hasSelects = table.querySelector("thead tr .th-filter-box select[data-col-index]");
-        if (hasSelects) {
+        const hasLists = table.querySelector("thead tr .th-filter-checklist[data-col-index]");
+        if (hasLists) {
           clearInterval(execTimer);
           return;
         }

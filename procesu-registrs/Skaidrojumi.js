@@ -317,6 +317,7 @@
       })
       .join("");
     wrap.innerHTML = `<table class="help-admin-table"><thead><tr><th>Nosaukums</th><th>Selektors</th><th>Vietā</th><th>Akt.</th><th>Teksts</th><th></th></tr></thead><tbody>${rows}</tbody></table>`;
+    if (typeof window.applyTableColumnSizing === "function") window.applyTableColumnSizing(wrap.querySelector("table"));
     wrap.querySelectorAll("tr[data-id]").forEach((tr) => {
       const id = tr.getAttribute("data-id");
       tr.querySelector(".hi-save").addEventListener("click", () => {
@@ -355,6 +356,7 @@
           `<tr data-fid="${escapeAttr(f.id)}"><td><input type="number" class="fq-sort" value="${f.sort || 0}" style="width:64px"/></td><td><input type="text" class="fq-q" value="${escapeAttr(f.question)}" /></td><td><textarea class="fq-a" rows="2">${escapeHtml(f.answer)}</textarea></td><td><button type="button" class="secondary fq-save">Saglabāt</button><br/><button type="button" class="danger fq-del" style="margin-top:4px">Dzēst</button></td></tr>`
       )
       .join("")}</tbody></table>`;
+    if (typeof window.applyTableColumnSizing === "function") window.applyTableColumnSizing(wrap.querySelector("table"));
     wrap.querySelectorAll("tr[data-fid]").forEach((tr) => {
       const id = tr.getAttribute("data-fid");
       tr.querySelector(".fq-save").addEventListener("click", () => {

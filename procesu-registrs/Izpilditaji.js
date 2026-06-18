@@ -58,13 +58,7 @@
       table.style.width = "100%";
       table.style.minWidth = "980px";
       table.style.borderCollapse = "collapse";
-      table.style.tableLayout = "fixed";
       table.innerHTML = `
-        <colgroup>
-          <col style="width:38%">
-          <col style="width:34%">
-          <col style="width:28%">
-        </colgroup>
         <thead>
           <tr>
             <th>Procesa izpildītājs, pārvalde</th>

@@ -20,6 +20,11 @@
       .toLowerCase();
   }
 
+  function isEditorOpen() {
+    const card = $("jomaEditorCard");
+    return !!(card && !card.classList.contains("hidden"));
+  }
+
   function loadLocalAll() {
     try {
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
@@ -39,15 +44,50 @@
     saveLocalAll(cache);
   }
 
-  function recordFromParts(key, displayName, notes, updatedAt) {
+  function recordFromParts(displayName, data, updatedAt) {
+    const d = data && typeof data === "object" ? data : {};
+    const skaidrojums = String(d.skaidrojums != null ? d.skaidrojums : d.notes || "");
+    const funkcijas = String(d.funkcijas != null ? d.funkcijas : "");
     return {
-      notes: String(notes || ""),
-      skaidrojums: "",
-      funkcijas: "",
-      papildu: "",
+      notes: skaidrojums,
+      skaidrojums,
+      funkcijas,
+      papildu: String(d.papildu || ""),
       displayName: String(displayName || "").trim(),
       updatedAt: String(updatedAt || ""),
     };
+  }
+
+  function recordHasText(rec) {
+    if (!rec) return false;
+    return !!(
+      String(rec.skaidrojums || "").trim() ||
+      String(rec.funkcijas || "").trim() ||
+      String(rec.notes || "").trim()
+    );
+  }
+
+  function mergeRecords(dbRec, localRec) {
+    if (!dbRec && !localRec) return null;
+    if (!dbRec) return localRec;
+    if (!localRec) return dbRec;
+    const dbTime = Date.parse(dbRec.updatedAt || "") || 0;
+    const localTime = Date.parse(localRec.updatedAt || "") || 0;
+    const pickField = (dbVal, localVal) => {
+      const ds = String(dbVal || "").trim();
+      const ls = String(localVal || "").trim();
+      if (ls && !ds) return localVal;
+      if (ds && !ls) return dbVal;
+      if (ls && ds && localTime > dbTime) return localVal;
+      return ds || ls;
+    };
+    const skaidrojums = pickField(dbRec.skaidrojums || dbRec.notes, localRec.skaidrojums || localRec.notes);
+    const funkcijas = pickField(dbRec.funkcijas, localRec.funkcijas);
+    return recordFromParts(
+      dbRec.displayName || localRec.displayName,
+      { skaidrojums, funkcijas, papildu: pickField(dbRec.papildu, localRec.papildu) },
+      dbTime >= localTime ? dbRec.updatedAt : localRec.updatedAt
+    );
   }
 
   function applyDbRows(rows) {
@@ -55,12 +95,16 @@
       const displayName = String((row && row.displayName) || "").trim();
       const key = normKey((row && row.key) || displayName);
       if (!key) return;
-      cache[key] = recordFromParts(
-        key,
+      const dbRec = recordFromParts(
         displayName,
-        row && row.notes,
+        {
+          skaidrojums: row && row.skaidrojums,
+          funkcijas: row && row.funkcijas,
+          notes: row && row.notes,
+        },
         row && row.updatedAt
       );
+      cache[key] = mergeRecords(dbRec, cache[key]);
     });
   }
 
@@ -72,12 +116,17 @@
       const displayName = String(rec.displayName || "").trim();
       const k = normKey(key || displayName);
       if (!k) return;
-      if (!cache[k]) {
-        const notes =
-          String(rec.notes || "") ||
-          [rec.skaidrojums, rec.funkcijas, rec.papildu].filter(Boolean).join("\n\n");
-        cache[k] = recordFromParts(k, displayName || key, notes, rec.updatedAt);
-      }
+      const localRec = recordFromParts(
+        displayName || key,
+        {
+          skaidrojums: rec.skaidrojums,
+          funkcijas: rec.funkcijas,
+          notes: rec.notes,
+          papildu: rec.papildu,
+        },
+        rec.updatedAt
+      );
+      cache[k] = mergeRecords(cache[k], localRec);
     });
   }
 
@@ -90,13 +139,12 @@
     if (!key) return emptyCard();
     const rec = cache[key] || loadLocalAll()[key];
     if (!rec || typeof rec !== "object") return emptyCard();
-    const notes =
-      String(rec.notes || "") ||
-      [rec.skaidrojums, rec.funkcijas, rec.papildu].filter(Boolean).join("\n\n");
+    const skaidrojums = String(rec.skaidrojums || "") || String(rec.notes || "");
+    const funkcijas = String(rec.funkcijas || "");
     return {
-      notes,
-      skaidrojums: String(rec.skaidrojums || ""),
-      funkcijas: String(rec.funkcijas || ""),
+      notes: skaidrojums,
+      skaidrojums,
+      funkcijas,
       papildu: String(rec.papildu || ""),
     };
   }
@@ -106,8 +154,8 @@
     const displayName = String(jomaLabel || "").trim();
     if (!key || !displayName) return false;
 
-    const rec = recordFromParts(key, displayName, data && data.notes, new Date().toISOString());
-    cache[key] = rec;
+    const savedAt = new Date().toISOString();
+    cache[key] = recordFromParts(displayName, data, savedAt);
     cacheToLocal();
 
     const api = window.DB;
@@ -118,6 +166,9 @@
   }
 
   function isAdminEdit() {
+    try {
+      if (typeof window.canEdit === "function" && window.canEdit()) return true;
+    } catch (_) {}
     const rs = $("roleSelect");
     return rs && rs.value === "admin_edit";
   }
@@ -127,6 +178,16 @@
     if (!form) return;
     form.querySelectorAll("input,select,textarea,button[type='submit']").forEach((el) => {
       if (el.id === "jomaCloseBtn") return;
+      if (!disabled && (el.id === "jSkaidrojums" || el.id === "jFunkcijas")) {
+        el.readOnly = false;
+        el.disabled = false;
+        return;
+      }
+      if (disabled && (el.id === "jSkaidrojums" || el.id === "jFunkcijas")) {
+        el.disabled = false;
+        el.readOnly = true;
+        return;
+      }
       el.disabled = !!disabled;
     });
   }
@@ -137,7 +198,8 @@
     editingJomaKey = normKey(name);
     if ($("jOriginalJomaKey")) $("jOriginalJomaKey").value = editingJomaKey;
     if ($("jJomaName")) $("jJomaName").value = name;
-    if ($("jNotes")) $("jNotes").value = rec.notes;
+    if ($("jSkaidrojums")) $("jSkaidrojums").value = rec.skaidrojums;
+    if ($("jFunkcijas")) $("jFunkcijas").value = rec.funkcijas;
     if ($("jomaEditorTitle")) {
       $("jomaEditorTitle").innerHTML = name
         ? `<span style="color:#1d4ed8;font-weight:700">${name}</span> — Jomas kartiņa`
@@ -148,7 +210,8 @@
 
   function formVals() {
     return {
-      notes: String(($("jNotes") && $("jNotes").value) || ""),
+      skaidrojums: String(($("jSkaidrojums") && $("jSkaidrojums").value) || ""),
+      funkcijas: String(($("jFunkcijas") && $("jFunkcijas").value) || ""),
     };
   }
 
@@ -208,8 +271,7 @@
     }
     if (isAdminEdit() && window.DB && typeof window.DB.upsertJomaCard === "function") {
       try {
-        await window.DB.upsertJomaCard(label, { notes: "" });
-        await reloadFromDb();
+        await window.DB.upsertJomaCard(label, { skaidrojums: "", funkcijas: "" });
       } catch (err) {
         console.warn("Joma DB create warning:", err);
       }
@@ -218,11 +280,11 @@
   }
 
   async function reloadFromDb() {
+    if (isEditorOpen()) return cache;
     if (reloadPromise) return reloadPromise;
     reloadPromise = (async () => {
       const api = window.DB;
-      const openName = String(($("jJomaName") && $("jJomaName").value) || "").trim();
-      const editorOpen = !!($("jomaEditorCard") && !$("jomaEditorCard").classList.contains("hidden"));
+      const prevCache = Object.assign({}, cache);
 
       if (api && typeof api.loadJomaCards === "function") {
         try {
@@ -230,6 +292,11 @@
           cache = {};
           applyDbRows(rows);
           mergeLocalIntoCache();
+          Object.keys(prevCache).forEach((key) => {
+            if (!recordHasText(cache[key]) && recordHasText(prevCache[key])) {
+              cache[key] = mergeRecords(cache[key], prevCache[key]);
+            }
+          });
           cacheToLocal();
         } catch (err) {
           console.warn("Joma DB load warning:", err);
@@ -239,7 +306,6 @@
         cache = loadLocalAll();
       }
 
-      if (editorOpen && openName) fillForm(openName);
       refreshJomasView();
       return cache;
     })().finally(() => {
@@ -287,6 +353,13 @@
         openNewJoma();
       });
     }
+    const rs = $("roleSelect");
+    if (rs && !rs.__jomaKartinaRoleWired) {
+      rs.__jomaKartinaRoleWired = true;
+      rs.addEventListener("change", () => {
+        if (isEditorOpen()) setFormDisabled(!isAdminEdit());
+      });
+    }
   }
 
   function wireSyncListener() {
@@ -295,7 +368,7 @@
     window.addEventListener("app:db-sync", (ev) => {
       const kind = ev && ev.detail ? ev.detail.kind : "all";
       const source = ev && ev.detail ? ev.detail.source : "";
-      if (source === "html") return;
+      if (source === "html" || isEditorOpen()) return;
       if (kind === "all" || kind === "joma") reloadFromDb();
     });
   }

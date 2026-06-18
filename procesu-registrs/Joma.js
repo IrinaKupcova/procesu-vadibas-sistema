@@ -1,11 +1,11 @@
 /**
- * Joma — Procesa un GP kartiņās jomas izvēle no pilna jomu saraksta.
- * Pārveido #eDarbibasJoma un #cDarbibasJoma par <select> ar visām zināmām jomām.
+ * Joma — GP kartiņā jomas izvēle no pilna jomu saraksta.
+ * Pārveido #cDarbibasJoma par <select> ar visām zināmām jomām.
  */
 (function () {
   "use strict";
 
-  const FIELD_IDS = ["eDarbibasJoma", "cDarbibasJoma"];
+  const FIELD_IDS = ["cDarbibasJoma"];
   const EMPTY_LABEL = "— Izvēlēties jomu —";
   const ADD_NEW_VALUE = "__joma_add_new__";
   const ADD_NEW_LABEL = "➕ Pievienot jaunu jomu…";
@@ -285,7 +285,6 @@
   function boot() {
     FIELD_IDS.forEach((id) => upgradeInputToSelect(id));
     refreshAll();
-    observeCard("editorCard");
     observeCard("catalogEditorCard");
     observeCatalogFormDisable();
     hookRenderTable();

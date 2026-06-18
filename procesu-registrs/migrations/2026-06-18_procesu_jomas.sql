@@ -6,6 +6,8 @@ CREATE TABLE IF NOT EXISTS public.procesu_jomas (
   joma_key text NOT NULL,
   joma_nosaukums text NOT NULL,
   informacija text,
+  skaidrojums text,
+  iestades_funkciju_piesaiste text,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 

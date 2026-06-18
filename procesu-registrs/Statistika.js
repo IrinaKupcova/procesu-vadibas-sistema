@@ -5,6 +5,7 @@
   let orgOpen = false;
   let processOpen = false;
   let jomaOpen = false;
+  let activeStatsSection = null;
   const filterState = { org: {}, proc: {}, joma: {} };
   const orgDetailOpenState = {
     process: new Set(),
@@ -31,22 +32,57 @@
     return String(v || "").trim().toLowerCase();
   }
 
+  function normalizeFilterValue(v) {
+    if (v == null || v === "") return [];
+    if (Array.isArray(v)) return v.map((x) => String(x || "").trim()).filter(Boolean);
+    const s = String(v).trim();
+    return s ? [s] : [];
+  }
+
+  function isFilterActive(v) {
+    return normalizeFilterValue(v).length > 0;
+  }
+
+  function cellMatchesAnyTerm(text, terms) {
+    const list = normalizeFilterValue(terms);
+    if (!list.length) return true;
+    const cell = String(text || "");
+    return list.some((t) => contains(cell, t) || norm(cell) === norm(t));
+  }
+
   function contains(text, term) {
     if (!term) return true;
     return norm(text).includes(norm(term));
   }
 
   function ensureFilterStyles() {
-    if (document.getElementById("statsFilterCss")) return;
-    const s = document.createElement("style");
-    s.id = "statsFilterCss";
+    let s = document.getElementById("statsFilterCss");
+    if (!s) {
+      s = document.createElement("style");
+      s.id = "statsFilterCss";
+      document.head.appendChild(s);
+    }
     s.textContent = `
-      .th-filter-wrap{display:flex;align-items:center;gap:4px;justify-content:space-between}
-      .th-filter-btn{font-size:10px;padding:2px 5px;border:1px solid #94a3b8;border-radius:999px;background:#fff;color:#334155;cursor:pointer;line-height:1}
+      .th-filter-wrap{display:flex;flex-direction:column;align-items:flex-start;gap:3px;font-size:11px;font-weight:400;line-height:1.2;text-transform:none;letter-spacing:normal}
+      .th-filter-wrap > span{font-weight:400;font-size:11px;line-height:1.25;text-transform:none;letter-spacing:normal;display:block;max-width:100%;word-break:break-word}
+      .th-filter-btn{font-size:9px;padding:1px 5px;border:1px solid #94a3b8;border-radius:999px;background:#fff;color:#334155;cursor:pointer;line-height:1.15;font-weight:400;text-transform:none;letter-spacing:normal}
       .th-filter-btn.active{background:#2563eb;color:#fff;border-color:#2563eb}
-      .th-filter-box{display:none;margin-top:4px}
+      .th-filter-box{display:none;margin-top:2px;position:relative;z-index:20}
       .th-filter-box.open{display:block}
-      .th-filter-box select{width:100%;font-size:11px;padding:4px 6px;border:1px solid #cbd5e1;border-radius:4px;background:#fff}
+      .th-filter-checklist{max-height:180px;overflow:auto;border:1px solid #cbd5e1;border-radius:4px;background:#fff;padding:2px 4px;font-size:10px;min-width:140px;max-width:min(280px,70vw);font-weight:400;text-transform:none;letter-spacing:normal}
+      .th-filter-checklist label{display:flex;align-items:flex-start;gap:4px;padding:2px 1px;cursor:pointer;line-height:1.2;color:#334155;font-weight:400;text-transform:none;letter-spacing:normal}
+      .th-filter-checklist label span{font-weight:400;text-transform:none;letter-spacing:normal}
+      .th-filter-checklist label:hover{background:#f1f5f9}
+      .th-filter-checklist input[type=checkbox]{margin-top:1px;flex-shrink:0;transform:scale(0.9)}
+      .th-filter-check-all{border-bottom:1px solid #e2e8f0;margin-bottom:2px;padding-bottom:2px;font-weight:400;font-size:10px;text-transform:none;letter-spacing:normal}
+      .stats-section-nav{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 12px;padding:6px 8px;background:#f1f5f9;border:1px solid #cbd5e1;border-radius:8px;position:sticky;top:0;z-index:5}
+      body:not(.theme-light) .stats-section-nav{background:#1e293b;border-color:#475569}
+      .stats-section-nav button{font-size:12px;font-weight:400;padding:4px 10px;border:1px solid #94a3b8;border-radius:6px;background:#fff;color:#334155;cursor:pointer;line-height:1.25}
+      body:not(.theme-light) .stats-section-nav button{background:#334155;color:#e2e8f0;border-color:#64748b}
+      .stats-section-nav button:hover:not(.active){background:#e2e8f0}
+      body:not(.theme-light) .stats-section-nav button:hover:not(.active){background:#475569}
+      .stats-section-nav button.active{background:#2563eb;color:#fff;border-color:#2563eb}
+      .stats-section-card.stats-section-hidden{display:none!important}
       .stats-org-bar-wrap{display:flex;flex-wrap:wrap;gap:16px;margin:10px 0 14px;align-items:stretch}
       .stats-org-bar-panel{flex:1 1 min(440px,100%);border:1px solid #cbd5e1;border-radius:10px;padding:12px;background:#ffffff}
       body:not(.theme-light) .stats-org-bar-panel{background:#f8fafc}
@@ -98,7 +134,65 @@
       .stats-org-proc li{margin:2px 0}
       #orgStatsTable .stats-org-proc-cell{vertical-align:top;min-width:180px}
     `;
-    document.head.appendChild(s);
+  }
+
+  function populateFilterChecklist(list, values, selected) {
+    if (!list) return;
+    const selectedSet = new Set(normalizeFilterValue(selected).map(norm));
+    list.innerHTML = "";
+    const allLabel = document.createElement("label");
+    allLabel.className = "th-filter-check-all";
+    const allCb = document.createElement("input");
+    allCb.type = "checkbox";
+    allCb.checked = selectedSet.size === 0;
+    allLabel.appendChild(allCb);
+    allLabel.appendChild(document.createTextNode(" Visas vērtības"));
+    allCb.addEventListener("change", () => {
+      if (!allCb.checked) return;
+      list.querySelectorAll("input.th-filter-value-cb").forEach((cb) => {
+        cb.checked = false;
+      });
+      allCb.checked = true;
+      list.dispatchEvent(new Event("filter-checklist-change", { bubbles: true }));
+    });
+    list.appendChild(allLabel);
+    Array.from(values)
+      .sort((a, b) => String(a).localeCompare(String(b), "lv", { sensitivity: "base" }))
+      .slice(0, 600)
+      .forEach((v) => {
+        const label = document.createElement("label");
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.className = "th-filter-value-cb";
+        cb.value = v;
+        cb.checked = selectedSet.has(norm(v));
+        cb.addEventListener("change", () => {
+          if (cb.checked) allCb.checked = false;
+          else if (!list.querySelector("input.th-filter-value-cb:checked")) allCb.checked = true;
+          list.dispatchEvent(new Event("filter-checklist-change", { bubbles: true }));
+        });
+        label.appendChild(cb);
+        const txt = document.createElement("span");
+        txt.textContent = v;
+        label.appendChild(txt);
+        list.appendChild(label);
+      });
+  }
+
+  function readChecklistSelection(list) {
+    if (!list) return [];
+    return Array.from(list.querySelectorAll("input.th-filter-value-cb:checked"))
+      .map((cb) => String(cb.value || "").trim())
+      .filter(Boolean);
+  }
+
+  function clearChecklistSelection(list) {
+    if (!list) return;
+    list.querySelectorAll("input.th-filter-value-cb").forEach((cb) => {
+      cb.checked = false;
+    });
+    const allCb = list.querySelector(".th-filter-check-all input[type=checkbox]");
+    if (allCb) allCb.checked = true;
   }
 
   function ensureHeaderFilters(tableId, stateKey) {
@@ -119,20 +213,28 @@
       btn.textContent = "Filtrs";
       const box = document.createElement("div");
       box.className = "th-filter-box";
-      const sel = document.createElement("select");
-      sel.dataset.colIndex = String(idx);
-      const e = document.createElement("option");
-      e.value = "";
-      e.textContent = "Visas vērtības";
-      sel.appendChild(e);
-      sel.addEventListener("change", () => {
-        filterState[stateKey][String(idx)] = sel.value;
-        btn.classList.toggle("active", norm(sel.value) !== "");
+      const list = document.createElement("div");
+      list.className = "th-filter-checklist";
+      list.dataset.colIndex = String(idx);
+      list.addEventListener("filter-checklist-change", () => {
+        const vals = readChecklistSelection(list);
+        if (vals.length) filterState[stateKey][String(idx)] = vals;
+        else delete filterState[stateKey][String(idx)];
+        btn.classList.toggle("active", vals.length > 0);
         applyFilters(tableId, stateKey);
         if (typeof window.refreshClearFilterButtonActive === "function") window.refreshClearFilterButtonActive();
       });
-      btn.addEventListener("click", () => box.classList.toggle("open"));
-      box.appendChild(sel);
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (btn.classList.contains("active")) {
+          clearChecklistSelection(list);
+          list.dispatchEvent(new Event("filter-checklist-change", { bubbles: true }));
+          box.classList.remove("open");
+          return;
+        }
+        box.classList.toggle("open");
+      });
+      box.appendChild(list);
       wrap.appendChild(label);
       wrap.appendChild(btn);
       th.appendChild(wrap);
@@ -146,28 +248,17 @@
     if (!table) return;
     const tbody = table.querySelector("tbody");
     if (!tbody) return;
-    table.querySelectorAll(".th-filter-box select[data-col-index]").forEach((sel) => {
-      const col = Number(sel.dataset.colIndex);
+    table.querySelectorAll(".th-filter-checklist[data-col-index]").forEach((list) => {
+      const col = Number(list.dataset.colIndex);
       const selected = filterState[stateKey][String(col)] || "";
       const vals = new Set();
       Array.from(tbody.querySelectorAll("tr")).forEach((tr) => {
         const v = String(tr.children[col]?.textContent || "").trim();
         if (v) vals.add(v);
       });
-      sel.innerHTML = "";
-      const e = document.createElement("option");
-      e.value = "";
-      e.textContent = "Visas vērtības";
-      sel.appendChild(e);
-      Array.from(vals).sort((a, b) => a.localeCompare(b, "lv")).forEach((v) => {
-        const o = document.createElement("option");
-        o.value = v;
-        o.textContent = v;
-        sel.appendChild(o);
-      });
-      sel.value = selected;
-      const btn = sel.closest("th")?.querySelector(".th-filter-btn");
-      if (btn) btn.classList.toggle("active", norm(selected) !== "");
+      populateFilterChecklist(list, vals, selected);
+      const btn = list.closest("th")?.querySelector(".th-filter-btn");
+      if (btn) btn.classList.toggle("active", isFilterActive(selected));
     });
   }
 
@@ -180,8 +271,8 @@
       const tds = Array.from(tr.children);
       let show = true;
       for (const col in filterState[stateKey]) {
-        const term = filterState[stateKey][col];
-        if (!contains(tds[Number(col)]?.textContent || "", term)) {
+        const terms = normalizeFilterValue(filterState[stateKey][col]);
+        if (!cellMatchesAnyTerm(tds[Number(col)]?.textContent || "", terms)) {
           show = false;
           break;
         }
@@ -197,10 +288,97 @@
     h3.textContent = `${open ? "▼" : "►"} ${h3.dataset.baseTitle || h3.textContent.replace(/^[▼►]\s*/, "")}`;
   }
 
+  function updateStatsSectionNav() {
+    const nav = $("statsSectionNav");
+    if (!nav) return;
+    nav.querySelectorAll("button[data-stats-section]").forEach((btn) => {
+      const id = btn.getAttribute("data-stats-section");
+      btn.classList.toggle("active", id === activeStatsSection);
+    });
+    nav.classList.toggle("hidden", !activeStatsSection);
+  }
+
+  function openStatsSection(sectionId) {
+    const id = String(sectionId || "").trim();
+    if (!id) return;
+    activeStatsSection = id;
+    orgOpen = id === "org";
+    processOpen = id === "process";
+    jomaOpen = id === "joma";
+
+    const orgBody = $("orgStatsBody");
+    const processBody = $("processOutputStatsBody");
+    const jomaBody = $("jomaStatsBody");
+    const orgTitle = $("orgStatsCard")?.querySelector("h3");
+    const processTitle = $("processOutputStatsTitle");
+    const jomaTitle = $("jomaStatsTitle");
+
+    if (orgBody) orgBody.classList.toggle("hidden", !orgOpen);
+    if (processBody) processBody.classList.toggle("hidden", !processOpen);
+    if (jomaBody) jomaBody.classList.toggle("hidden", !jomaOpen);
+    makeToggleTitle(orgTitle, orgOpen);
+    makeToggleTitle(processTitle, processOpen);
+    makeToggleTitle(jomaTitle, jomaOpen);
+
+    const orgCard = $("orgStatsCard");
+    const processCard = $("processOutputStatsCard");
+    const jomaCard = $("jomaStatsCard");
+    if (orgCard) {
+      orgCard.classList.toggle("stats-section-hidden", id !== "org");
+      orgCard.classList.add("stats-section-card");
+    }
+    if (processCard) {
+      processCard.classList.toggle("stats-section-hidden", id !== "process");
+      processCard.classList.add("stats-section-card");
+    }
+    if (jomaCard) {
+      jomaCard.classList.toggle("stats-section-hidden", id !== "joma");
+      jomaCard.classList.add("stats-section-card");
+    }
+
+    updateStatsSectionNav();
+
+    const targetCard = id === "org" ? orgCard : id === "process" ? processCard : jomaCard;
+    if (targetCard && targetCard.scrollIntoView) {
+      requestAnimationFrame(() => {
+        targetCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    }
+  }
+
+  function ensureStatsSectionNav() {
+    const wrap = $("reportsBodyWrap");
+    if (!wrap || $("statsSectionNav")) return;
+    const nav = document.createElement("div");
+    nav.id = "statsSectionNav";
+    nav.className = "stats-section-nav hidden";
+    const sections = [
+      { id: "org", label: "Izpildītāju statistika" },
+      { id: "process", label: "Galaproduktu statistika" },
+      { id: "joma", label: "Jomu statistika" },
+    ];
+    sections.forEach((s) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.dataset.statsSection = s.id;
+      btn.textContent = s.label;
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        openStatsSection(s.id);
+      });
+      nav.appendChild(btn);
+    });
+    const grid = $("reportsGrid");
+    if (grid && grid.parentNode === wrap) wrap.insertBefore(nav, grid.nextSibling);
+    else wrap.insertBefore(nav, wrap.firstChild);
+  }
+
   function ensurePanelStructure() {
     const reportsWrap = $("reportsBodyWrap");
     const orgCard = $("orgStatsCard");
     if (!reportsWrap || !orgCard) return null;
+
+    ensureStatsSectionNav();
 
     const orgTitle = orgCard.querySelector("h3");
     if (orgTitle) orgTitle.dataset.baseTitle = "Izpildītāju statistika";
@@ -217,14 +395,14 @@
 
     if (orgTitle && !orgTitle.dataset.toggleBound) {
       orgTitle.addEventListener("click", () => {
-        orgOpen = !orgOpen;
-        orgBody.classList.toggle("hidden", !orgOpen);
-        makeToggleTitle(orgTitle, orgOpen);
+        openStatsSection("org");
       });
       orgTitle.dataset.toggleBound = "1";
     }
     makeToggleTitle(orgTitle, orgOpen);
     orgBody.classList.toggle("hidden", !orgOpen);
+    orgCard.classList.add("stats-section-card");
+    orgCard.classList.toggle("stats-section-hidden", activeStatsSection !== "org" && activeStatsSection !== null);
 
     let processCard = $("processOutputStatsCard");
     if (!processCard) {
@@ -241,14 +419,14 @@
     if (processTitle) processTitle.dataset.baseTitle = "Galaproduktu statistika";
     if (processTitle && !processTitle.dataset.toggleBound) {
       processTitle.addEventListener("click", () => {
-        processOpen = !processOpen;
-        processBody.classList.toggle("hidden", !processOpen);
-        makeToggleTitle(processTitle, processOpen);
+        openStatsSection("process");
       });
       processTitle.dataset.toggleBound = "1";
     }
     makeToggleTitle(processTitle, processOpen);
     processBody.classList.toggle("hidden", !processOpen);
+    processCard.classList.add("stats-section-card");
+    processCard.classList.toggle("stats-section-hidden", activeStatsSection !== "process" && activeStatsSection !== null);
 
     let jomaCard = $("jomaStatsCard");
     if (!jomaCard) {
@@ -265,14 +443,15 @@
     if (jomaTitle) jomaTitle.dataset.baseTitle = "Jomu statistika";
     if (jomaTitle && !jomaTitle.dataset.toggleBound) {
       jomaTitle.addEventListener("click", () => {
-        jomaOpen = !jomaOpen;
-        jomaBody.classList.toggle("hidden", !jomaOpen);
-        makeToggleTitle(jomaTitle, jomaOpen);
+        openStatsSection("joma");
       });
       jomaTitle.dataset.toggleBound = "1";
     }
     makeToggleTitle(jomaTitle, jomaOpen);
     jomaBody.classList.toggle("hidden", !jomaOpen);
+    jomaCard.classList.add("stats-section-card");
+    jomaCard.classList.toggle("stats-section-hidden", activeStatsSection !== "joma" && activeStatsSection !== null);
+    updateStatsSectionNav();
 
     return { orgBody, processBody, jomaBody };
   }
@@ -953,9 +1132,9 @@
   }
 
   function hasActiveStatsFilters() {
-    return Object.values(filterState.org || {}).some((v) => norm(v) !== "") ||
-      Object.values(filterState.proc || {}).some((v) => norm(v) !== "") ||
-      Object.values(filterState.joma || {}).some((v) => norm(v) !== "");
+    return Object.values(filterState.org || {}).some((v) => isFilterActive(v)) ||
+      Object.values(filterState.proc || {}).some((v) => isFilterActive(v)) ||
+      Object.values(filterState.joma || {}).some((v) => isFilterActive(v));
   }
 
   function clearStatsFilters() {
@@ -963,9 +1142,9 @@
     filterState.proc = {};
     filterState.joma = {};
     document.querySelectorAll(
-      "#orgStatsTable .th-filter-box select[data-col-index], #processOutputStatsTable .th-filter-box select[data-col-index], #jomaStatsTable .th-filter-box select[data-col-index]"
-    ).forEach((s) => {
-      s.value = "";
+      "#orgStatsTable .th-filter-checklist[data-col-index], #processOutputStatsTable .th-filter-checklist[data-col-index], #jomaStatsTable .th-filter-checklist[data-col-index]"
+    ).forEach((list) => {
+      clearChecklistSelection(list);
     });
     document.querySelectorAll(
       "#orgStatsTable .th-filter-btn.active, #processOutputStatsTable .th-filter-btn.active, #jomaStatsTable .th-filter-btn.active"
