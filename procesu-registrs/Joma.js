@@ -7,7 +7,39 @@
 
   const FIELD_IDS = ["eDarbibasJoma", "cDarbibasJoma"];
   const EMPTY_LABEL = "— Izvēlēties jomu —";
+  const ADD_NEW_VALUE = "__joma_add_new__";
+  const ADD_NEW_LABEL = "➕ Pievienot jaunu jomu…";
+  const CUSTOM_JOMA_STORAGE = "pv_custom_jomas_v1";
   const valueDesc = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value");
+
+  function loadCustomJomas() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(CUSTOM_JOMA_STORAGE) || "[]");
+      return Array.isArray(raw) ? raw.map((x) => String(x || "").trim()).filter(Boolean) : [];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function saveCustomJoma(label) {
+    const val = String(label || "").trim();
+    if (!val) return false;
+    const key = normKey(val);
+    const list = loadCustomJomas();
+    if (!list.some((j) => normKey(j) === key)) {
+      list.push(val);
+      list.sort((a, b) => a.localeCompare(b, "lv", { sensitivity: "base" }));
+      try {
+        localStorage.setItem(CUSTOM_JOMA_STORAGE, JSON.stringify(list));
+      } catch (_) {}
+    }
+    return true;
+  }
+
+  function promptNewJomaName() {
+    const name = window.prompt("Ievadiet jaunas jomas nosaukumu:");
+    return String(name || "").trim();
+  }
 
   function normKey(v) {
     return String(v || "")
@@ -71,6 +103,12 @@
       }
     });
 
+    loadCustomJomas().forEach(add);
+
+    if (window.JomaKartina && typeof window.JomaKartina.listJomaLabels === "function") {
+      window.JomaKartina.listJomaLabels().forEach(add);
+    }
+
     return Array.from(seen.values()).sort((a, b) => a.localeCompare(b, "lv", { sensitivity: "base" }));
   }
 
@@ -103,7 +141,40 @@
       opt.textContent = j;
       select.appendChild(opt);
     });
+    const addOpt = document.createElement("option");
+    addOpt.value = ADD_NEW_VALUE;
+    addOpt.textContent = ADD_NEW_LABEL;
+    select.appendChild(addOpt);
     valueDesc.set.call(select, cur);
+  }
+
+  function wireAddNewHandler(select) {
+    if (!select || select.__jomaAddWired) return;
+    select.__jomaAddWired = true;
+    select.addEventListener("change", function () {
+      if (this.value !== ADD_NEW_VALUE) {
+        if (this.value && this.value !== ADD_NEW_VALUE) this.dataset.jomaPrevValue = this.value;
+        return;
+      }
+      if (this.disabled) {
+        valueDesc.set.call(this, this.dataset.jomaPrevValue || "");
+        return;
+      }
+      const prev = this.dataset.jomaPrevValue || "";
+      const label = promptNewJomaName();
+      if (!label) {
+        valueDesc.set.call(this, prev);
+        return;
+      }
+      if (!saveCustomJoma(label)) {
+        valueDesc.set.call(this, prev);
+        return;
+      }
+      rebuildOptions(this, label);
+      this.dataset.jomaPrevValue = label;
+      this.dispatchEvent(new Event("input", { bubbles: true }));
+      this.dispatchEvent(new Event("change", { bubbles: true }));
+    });
   }
 
   function wrapSelectValue(select) {
@@ -128,6 +199,7 @@
     if (!el) return null;
     if (el.tagName === "SELECT") {
       wrapSelectValue(el);
+      wireAddNewHandler(el);
       return el;
     }
     const sel = document.createElement("select");
@@ -139,6 +211,7 @@
     sel.style.cssText = el.style.cssText;
     el.parentNode.replaceChild(sel, el);
     wrapSelectValue(sel);
+    wireAddNewHandler(sel);
     return sel;
   }
 
@@ -158,6 +231,7 @@
       if (!node || node.tagName !== "SELECT") return;
       const cur = vals[id] != null ? vals[id] : node.value;
       rebuildOptions(node, cur);
+      wireAddNewHandler(node);
     });
     syncCatalogSelectDisabled();
   }
@@ -228,6 +302,8 @@
   window.Joma = {
     collectAllJomas,
     refreshOptions: refreshAll,
+    addCustomJoma: saveCustomJoma,
+    getCustomJomas: loadCustomJomas,
   };
 
   if (document.readyState === "loading") {

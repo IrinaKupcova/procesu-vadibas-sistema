@@ -10,6 +10,7 @@
 
   const TABLE = "procesu_registrs";
   const CATALOG_TABLE = "Procesu_galaproduktu_veidu_katalogs";
+  const JOMA_TABLE = "procesu_jomas";
   const SINGLE_TABLE_MODE = (() => {
     try {
       if (typeof window !== "undefined" && window.PV_SINGLE_TABLE_MODE != null) return !!window.PV_SINGLE_TABLE_MODE;
@@ -28,6 +29,7 @@
 
   let dbCols = new Set();
   let catalogCols = new Set();
+  let jomaCols = new Set();
 
   const fk = (o, a) => a.find((k) => Object.prototype.hasOwnProperty.call(o, k));
   const gv = (o, a) => {
@@ -50,6 +52,19 @@
   };
   const qeq = (query, key, value) => query.eq(pgCol(key), value);
   const nkey = (v) => String(v || "").normalize("NFKC").replace(/\s+/g, " ").trim().toLowerCase();
+  const jomaNormKey = (v) =>
+    nkey(String(v || "").replace(/\s*[,;.\-–—]+\s*$/g, "").trim());
+  function isMissingDbObjectError(err) {
+    const msg = String((err && err.message) || err || "").toLowerCase();
+    const code = err && err.code ? String(err.code) : "";
+    return (
+      code === "42P01" ||
+      code === "PGRST205" ||
+      msg.includes("does not exist") ||
+      msg.includes("could not find the table") ||
+      msg.includes("schema cache")
+    );
+  }
   function splitCatalogProducts(v) {
     if (v instanceof Set) {
       return Array.from(v).map((x) => String(x || "").trim()).filter(Boolean);
@@ -199,13 +214,22 @@
       null
     );
     payload = filterPayloadToDbCols(payload);
+    fillProcessInsertDbDefaults(payload, {
+      process: processName,
+      processNo: procNo,
+      group: row.group != null ? row.group : "",
+    });
     const typeNoCol = getProcessTypeNoColFromRaw({});
     const typeNoVal = sanitizeCatalogTypeNoToken(String((row && row.typeNo) || "").trim());
     if (typeNoVal) payload[typeNoCol] = typeNoVal;
     const metaColIns = GP_KARTINA_META_JSON_KEYS.find((c) => dbCols && dbCols.has(c));
     if (metaColIns) payload[metaColIns] = mergeGpKartinaMeta({}, gp, row);
     sanitizePayloadGalaproduktaNrFields(payload);
-    const result = await runWriteWithMissingColumnRetry(payload, (p) => supabaseClient.from(TABLE).insert(p));
+    const result = await runWriteWithMissingColumnRetry(
+      payload,
+      (p) => supabaseClient.from(TABLE).insert(p),
+      { process: processName, processNo: procNo, group: row.group != null ? row.group : "" }
+    );
     emitSync("process", "html");
     emitSync("catalog", "html");
     return result.payload;
@@ -245,7 +269,17 @@
     m = msg.match(/column "([^"]+)" can only be updated to DEFAULT/i);
     return m ? String(m[1] || "").trim() : "";
   }
-  async function runWriteWithMissingColumnRetry(initialPayload, runner) {
+  function extractNotNullColumnName(err) {
+    const msg = String((err && err.message) || "");
+    const details = String((err && err.details) || "");
+    const combined = `${msg} ${details}`;
+    let m = combined.match(/null value in column "([^"]+)"/i);
+    if (m) return String(m[1] || "").trim();
+    m = combined.match(/null value in column '([^']+)'/i);
+    return m ? String(m[1] || "").trim() : "";
+  }
+
+  async function runWriteWithMissingColumnRetry(initialPayload, runner, insertContext) {
     let payload = Object.assign({}, initialPayload || {});
     let lastErr = null;
     for (let i = 0; i < 40; i += 1) {
@@ -256,6 +290,11 @@
       if (missing) {
         if (!Object.prototype.hasOwnProperty.call(payload, missing)) throw error;
         delete payload[missing];
+        continue;
+      }
+      const notNullCol = extractNotNullColumnName(error);
+      if (notNullCol && insertContext) {
+        fillNotNullColumnDefault(payload, notNullCol, insertContext);
         continue;
       }
       const generatedAlwaysCol = extractGeneratedAlwaysColumnName(error);
@@ -557,10 +596,13 @@
     await ensureDbCols();
     let payload = toPayload(formVals, null);
     payload = filterPayloadToDbCols(payload);
+    fillProcessInsertDbDefaults(payload, formVals);
     sanitizePayloadGalaproduktaNrFields(payload);
-    const result = await runWriteWithMissingColumnRetry(payload, (p) => {
-      return supabaseClient.from(TABLE).insert(p);
-    });
+    const result = await runWriteWithMissingColumnRetry(
+      payload,
+      (p) => supabaseClient.from(TABLE).insert(p),
+      formVals
+    );
     emitSync("process", "html");
     return result.payload;
   }
@@ -573,6 +615,60 @@
       if (dbCols.has(k)) cleaned[k] = payload[k];
     });
     return cleaned;
+  }
+
+  /** DB shēmā Uzdevums/Uzdevuma_Nr. var būt NOT NULL, bet procesa kartiņā uzdevums netiek lietots. */
+  const PROCESS_INSERT_DB_PLACEHOLDER = "—";
+
+  function pickDbColName(candidates, fallback) {
+    if (dbCols && dbCols.size) {
+      const hit = (candidates || []).find((c) => dbCols.has(c));
+      if (hit) return hit;
+    }
+    return fallback || (candidates && candidates[0]) || null;
+  }
+
+  function isBlankDbValue(v) {
+    return v == null || String(v).trim() === "";
+  }
+
+  function fillNotNullColumnDefault(payload, colName, formVals) {
+    if (!payload || !colName) return;
+    const col = String(colName).trim();
+    const processLabel = String((formVals && formVals.process) || "").trim();
+    const taskNameCols = new Set(["Uzdevums", "uzdevums", "task"]);
+    const taskNoCols = new Set(["Uzdevuma_Nr.", "uzdevuma_nr", "Uzdevuma Nr.", "taskNo"]);
+    const processCols = new Set(["Process", "process", "Procesi, kas nodrošina uzdevuma dzīves ciklu"]);
+    if (taskNameCols.has(col)) {
+      payload[col] = processLabel || PROCESS_INSERT_DB_PLACEHOLDER;
+      return;
+    }
+    if (taskNoCols.has(col)) {
+      payload[col] = PROCESS_INSERT_DB_PLACEHOLDER;
+      return;
+    }
+    if (processCols.has(col) && isBlankDbValue(payload[col])) {
+      payload[col] = processLabel || PROCESS_INSERT_DB_PLACEHOLDER;
+      return;
+    }
+    if (isBlankDbValue(payload[col])) payload[col] = PROCESS_INSERT_DB_PLACEHOLDER;
+  }
+
+  function fillProcessInsertDbDefaults(payload, formVals) {
+    if (!payload || typeof payload !== "object") return payload;
+    const processLabel = String((formVals && formVals.process) || "").trim();
+    const taskNameCol = pickDbColName(["Uzdevums", "uzdevums", "task"], "Uzdevums");
+    const taskNoCol = pickDbColName(
+      ["Uzdevuma_Nr.", "uzdevuma_nr", "Uzdevuma Nr.", "taskNo"],
+      "Uzdevuma_Nr."
+    );
+    if (taskNameCol && isBlankDbValue(payload[taskNameCol])) {
+      payload[taskNameCol] = processLabel || PROCESS_INSERT_DB_PLACEHOLDER;
+    }
+    if (taskNoCol && isBlankDbValue(payload[taskNoCol])) {
+      payload[taskNoCol] = PROCESS_INSERT_DB_PLACEHOLDER;
+    }
+    return payload;
   }
 
   async function update(row, formVals) {
@@ -1545,6 +1641,11 @@
         { event: "*", schema: "public", table: CATALOG_TABLE },
         () => emitSync("catalog", "db")
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: JOMA_TABLE },
+        () => emitSync("joma", "db")
+      )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") emitSync("all", "db");
       });
@@ -1553,6 +1654,11 @@
       syncChannel = supabaseClient.channel("app-db-sync");
       syncChannel
         .on("postgres_changes", { event: "*", schema: "public", table: TABLE }, () => emitSync("all", "db"))
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: JOMA_TABLE },
+          () => emitSync("joma", "db")
+        )
         .subscribe((status) => {
           if (status === "SUBSCRIBED") emitSync("all", "db");
         });
@@ -1645,6 +1751,80 @@
     emitSync("process", "html");
     return true;
   }
+
+  function pickJomaCol(candidates, fallback) {
+    if (jomaCols && jomaCols.size) {
+      const hit = (candidates || []).find((c) => jomaCols.has(c));
+      if (hit) return hit;
+    }
+    return fallback || (candidates && candidates[0]) || null;
+  }
+
+  function filterJomaPayload(payload) {
+    if (!payload || typeof payload !== "object") return {};
+    if (!jomaCols || !jomaCols.size) return payload;
+    const cleaned = {};
+    Object.keys(payload).forEach((k) => {
+      if (jomaCols.has(k)) cleaned[k] = payload[k];
+    });
+    return cleaned;
+  }
+
+  function mapJomaDbRowToUi(r) {
+    const d = r || {};
+    const displayName = gv(d, ["joma_nosaukums", "Joma_nosaukums", "nosaukums", "display_name"]);
+    const key = gv(d, ["joma_key", "Joma_key", "key"]) || jomaNormKey(displayName);
+    const notes = gv(d, ["informacija", "Informacija", "notes", "Notes"]);
+    const updatedAt = gv(d, ["updated_at", "updatedAt"]);
+    return {
+      id: gid(d),
+      key: String(key || "").trim(),
+      displayName: String(displayName || "").trim(),
+      notes: String(notes || ""),
+      updatedAt: String(updatedAt || ""),
+      raw: d,
+    };
+  }
+
+  async function loadJomaCards() {
+    const { data, error } = await supabaseClient.from(JOMA_TABLE).select("*");
+    if (error) {
+      if (isMissingDbObjectError(error)) return [];
+      throw error;
+    }
+    jomaCols = new Set();
+    (data || []).forEach((r) => {
+      Object.keys(r || {}).forEach((k) => jomaCols.add(k));
+    });
+    return (data || []).map(mapJomaDbRowToUi);
+  }
+
+  async function upsertJomaCard(jomaLabel, data) {
+    const displayName = String(jomaLabel || "").trim();
+    const key = jomaNormKey(displayName);
+    if (!key || !displayName) throw new Error("Jomas nosaukums nav norādīts.");
+    if (!jomaCols || !jomaCols.size) {
+      try {
+        await loadJomaCards();
+      } catch (_) {}
+    }
+    const keyCol = pickJomaCol(["joma_key", "Joma_key", "key"], "joma_key");
+    const nameCol = pickJomaCol(["joma_nosaukums", "Joma_nosaukums", "nosaukums", "display_name"], "joma_nosaukums");
+    const infoCol = pickJomaCol(["informacija", "Informacija", "notes", "Notes"], "informacija");
+    const updatedCol = pickJomaCol(["updated_at", "updatedAt"], "updated_at");
+    const payload = {
+      [keyCol]: key,
+      [nameCol]: displayName,
+      [infoCol]: String((data && data.notes) != null ? data.notes : ""),
+    };
+    if (updatedCol) payload[updatedCol] = new Date().toISOString();
+    const cleaned = filterJomaPayload(payload);
+    const { error } = await supabaseClient.from(JOMA_TABLE).upsert(cleaned, { onConflict: keyCol });
+    if (error) throw error;
+    emitSync("joma", "html");
+    return cleaned;
+  }
+
   async function updateProcessNoBulk(oldProcessNo, processName, newProcessNo) {
     if (!dbCols || !dbCols.size) {
       try { await load(); } catch (_) {}
@@ -1697,6 +1877,8 @@
     removeTaskByNo,
     updateProcessJomaByProcessNo,
     updateProcessNoBulk,
+    loadJomaCards,
+    upsertJomaCard,
     startSync,
     stopSync,
     mapDbError,
