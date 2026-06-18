@@ -185,6 +185,7 @@
     if (!processName && !procNo) {
       throw new Error("Norādiet procesa nosaukumu vai Procesa Nr., lai piesaistītu galaproduktu.");
     }
+    await ensureDbCols();
     let payload = toPayload(
       {
         group: row.group != null ? row.group : "",
@@ -197,13 +198,7 @@
       },
       null
     );
-    if (dbCols && dbCols.size > 0) {
-      const cleaned = {};
-      Object.keys(payload).forEach((k) => {
-        if (dbCols.has(k)) cleaned[k] = payload[k];
-      });
-      payload = cleaned;
-    }
+    payload = filterPayloadToDbCols(payload);
     const typeNoCol = getProcessTypeNoColFromRaw({});
     const typeNoVal = sanitizeCatalogTypeNoToken(String((row && row.typeNo) || "").trim());
     if (typeNoVal) payload[typeNoCol] = typeNoVal;
@@ -253,7 +248,7 @@
   async function runWriteWithMissingColumnRetry(initialPayload, runner) {
     let payload = Object.assign({}, initialPayload || {});
     let lastErr = null;
-    for (let i = 0; i < 12; i += 1) {
+    for (let i = 0; i < 40; i += 1) {
       const { data, error } = await runner(payload);
       if (!error) return { data, payload };
       lastErr = error;
@@ -285,7 +280,12 @@
     if (dbCols && dbCols.size > 0) {
       return choices.find((c) => dbCols.has(c)) || null;
     }
-    return choices[0] || null;
+    return null;
+  }
+
+  async function ensureDbCols() {
+    if (dbCols && dbCols.size > 0) return;
+    await load();
   }
 
   function pickCatalogCol(candidates, fallback) {
@@ -324,7 +324,7 @@
     input: ["procesa_iniciators", "input", "Procesa iniciātors (input)"],
     relatedProcesses: ["saistitie_procesi", "relatedProcesses", "galaproduktu_skaits", "outputCount"],
     services: ["pakalpojumi", "services", "videjais_izpildes_laiks", "outputAvgTime"],
-    flowcharts: ["plusmas_shemas", "plūsmas_shēmas", "flowcharts", "kpi"],
+    flowcharts: ["Plusma_shema", "plusmas_shemas", "plūsmas_shēmas", "flowcharts", "kpi"],
     itResources: ["it_resursi", "itResources", "riski", "riskInfo"],
     optimization: ["optimizacija", "optimization"],
     executorPatstaviga: [
@@ -554,15 +554,9 @@
   }
 
   async function insert(formVals) {
+    await ensureDbCols();
     let payload = toPayload(formVals, null);
-    // Dubulta drošība: neinsertējam laukus, ko shēmā nav (pēc pirmā load dbCols)
-    if (dbCols && dbCols.size > 0) {
-      const cleaned = {};
-      Object.keys(payload).forEach((k) => {
-        if (dbCols.has(k)) cleaned[k] = payload[k];
-      });
-      payload = cleaned;
-    }
+    payload = filterPayloadToDbCols(payload);
     sanitizePayloadGalaproduktaNrFields(payload);
     const result = await runWriteWithMissingColumnRetry(payload, (p) => {
       return supabaseClient.from(TABLE).insert(p);
@@ -571,9 +565,20 @@
     return result.payload;
   }
 
+  function filterPayloadToDbCols(payload) {
+    if (!payload || typeof payload !== "object") return {};
+    if (!dbCols || !dbCols.size) return payload;
+    const cleaned = {};
+    Object.keys(payload).forEach((k) => {
+      if (dbCols.has(k)) cleaned[k] = payload[k];
+    });
+    return cleaned;
+  }
+
   async function update(row, formVals) {
     if (!row) throw new Error("Nav derīga ieraksta atjaunināšanai.");
-    const payload = toPayload(formVals, row.raw || null);
+    await ensureDbCols();
+    const payload = filterPayloadToDbCols(toPayload(formVals, row.raw || null));
     sanitizePayloadGalaproduktaNrFields(payload);
     const keys = Array.isArray(row.matchKeys) ? row.matchKeys.filter((k) => k && k.key && k.value !== undefined && k.value !== null && String(k.value) !== "") : [];
     if (!keys.length && !(row.idKey && row.id !== undefined && row.id !== null)) {

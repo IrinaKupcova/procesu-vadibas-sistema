@@ -2523,8 +2523,9 @@
 
       function fillForm(r){
         const isNew = !r;
-        $("eId").value=r?String(r.id||""):""; $("eGroup").value=r?normalizeGroupLabel(r.group):"Pamatdarbība";
-        $("eProcNo").value=r?r.processNo:""; $("eProcess").value=r?r.process:"";
+        const fv = (key)=> r ? String(r[key] != null ? r[key] : "") : "";
+        $("eId").value=fv("id"); $("eGroup").value=r?normalizeGroupLabel(r.group):"Pamatdarbība";
+        $("eProcNo").value=fv("processNo"); $("eProcess").value=fv("process");
         // Viena joma kartiņā = DB «Darbibas_joma» (nevis GP saraksta apkopošana ar komatu), lai <select> un saglabāšana sakrist.
         (function(){
           if (!r) {
@@ -2543,8 +2544,8 @@
         }
         const gpAllowedKeys = !isNew && r ? processRowGpAllowKeySet(r) : null;
         $("eLaws").value=isNew ? "" : buildEditorGpText(r ? r.processNo : "", r ? (r.productsText || r.products) : "", gpAllowedKeys);
-        $("eDocs").value=isNew ? "" : (r ? r.productTypes : "");
-        $("eInput").value=r?r.input:""; $("eExecutorPatstaviga").value=r?r.executorPatstaviga:""; $("eExecutorDala").value=r?r.executorDala:""; $("eOutCount").value=r?r.relatedProcesses:""; $("eAvg").value=r?r.services:""; $("eKpi").value=r?r.flowcharts:""; $("eRisk").value=r?r.itResources:""; $("eOpt").value=r?r.optimization:"";         $("eOther").value=r?r.otherMetrics:"";
+        $("eDocs").value=isNew ? "" : fv("productTypes");
+        $("eInput").value=fv("input"); $("eExecutorPatstaviga").value=fv("executorPatstaviga"); $("eExecutorDala").value=fv("executorDala"); $("eOutCount").value=fv("relatedProcesses"); $("eAvg").value=fv("services"); $("eKpi").value=fv("flowcharts"); $("eRisk").value=fv("itResources"); $("eOpt").value=fv("optimization"); $("eOther").value=fv("otherMetrics");
         if($("eAdditionalInfo")) $("eAdditionalInfo").value = r ? String(r.additionalInfo != null ? r.additionalInfo : "") : "";
         if(window.ProcesaKartina && typeof ProcesaKartina.setAttachments==="function"){
           ProcesaKartina.setAttachments("process", r && Array.isArray(r.cardAttachments) ? r.cardAttachments : []);
@@ -2980,8 +2981,9 @@
         $("editorTitle").innerHTML = procName
           ? `<span style="color:#1d4ed8;font-weight:700">${procName}</span> — Procesa kartiņa`
           : `<span style="color:#1d4ed8;font-weight:700">Jauns process</span> — kartiņa`;
-        // Avota DB rindai ir prioritāte (īpaši jomai), merge-skats tikai kā fallback.
-        fillForm(Object.assign({}, r || {}, src || {}));
+        // Jauns process: null (ne {}), citādi laukos parādās teksts "undefined".
+        if (!src) fillForm(null);
+        else fillForm(Object.assign({}, r || {}, src || {}));
         const e=canEdit(); $("deleteBtn").classList.toggle("hidden", !(src&&e));
         $("editorForm").querySelectorAll("input,select,textarea,button").forEach(el=>{ if(el.id==="closeBtn") return; el.disabled=!e;});
         $("modeHint").textContent=e?"Labošanas režīms ieslēgts.":"Skatīšanās režīms.";
