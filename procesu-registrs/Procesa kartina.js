@@ -101,14 +101,104 @@
     render(scope);
   }
 
+  function elVal(id) {
+    const el = document.getElementById(id);
+    return el ? String(el.value || "").trim() : "";
+  }
+
+  /** Caur procesa kartiņu pievieno jaunu GP: atver GP (kataloga) redaktoru,
+   *  priekšaizpildot pašreizējā procesa kontekstu; GP nosaukums/Nr. paliek tukši. */
+  function addNewGpFromProcessCard() {
+    const procNo = elVal("eProcNo");
+    const procName = elVal("eProcess");
+    const group = elVal("eGroup");
+    const unit = elVal("eExecutorPatstaviga");
+    const dept = elVal("eExecutorDala");
+
+    const ec = document.getElementById("editorCard");
+    if (ec) ec.classList.add("hidden");
+
+    if (typeof window.openCatalogEditor === "function") {
+      window.openCatalogEditor(null);
+    } else {
+      const card = document.getElementById("catalogEditorCard");
+      if (card) card.classList.remove("hidden");
+    }
+
+    // Priekšaizpildām nākamajā tikā (openCatalogEditor vispirms notīra formu).
+    setTimeout(() => {
+      const cProcNo = document.getElementById("cProcNo");
+      const cProcess = document.getElementById("cProcess");
+      const cType = document.getElementById("cType");
+      const cTypeNo = document.getElementById("cTypeNo");
+      const cTypeNoOrig = document.getElementById("cTypeNoOrig");
+
+      let matched = false;
+      if (typeof window.refreshCatalogProcessPicker === "function") {
+        window.refreshCatalogProcessPicker(procNo, procName);
+        const pick = document.getElementById("cProcessPick");
+        if (pick && pick.value) {
+          matched = true;
+          pick.dispatchEvent(new Event("change", { bubbles: true }));
+        }
+      }
+
+      if (cProcNo) cProcNo.value = procNo;
+      if (cProcess) cProcess.value = procName;
+      if (!matched) {
+        const cGroup = document.getElementById("cGroup");
+        const cUnit = document.getElementById("cUnit");
+        const cDept = document.getElementById("cDepartment");
+        if (cGroup && group) cGroup.value = group;
+        if (cUnit && unit) cUnit.value = unit;
+        if (cDept && dept) cDept.value = dept;
+      }
+
+      // Jauns GP — nosaukums un Nr. tukši, lai lietotājs ievada.
+      if (cType) cType.value = "";
+      if (cTypeNo) cTypeNo.value = "";
+      if (cTypeNoOrig) cTypeNoOrig.value = "";
+      if (window.ProcesaKartina && typeof ProcesaKartina.setAttachments === "function") {
+        ProcesaKartina.setAttachments("catalog", []);
+      }
+
+      const title = document.getElementById("catalogEditorTitle");
+      if (title) {
+        title.innerHTML = procName
+          ? `Jauns galaprodukts procesam: <span style="color:#1d4ed8;font-weight:700">${procName}</span>`
+          : "Galaprodukta kartiņa (jauns)";
+      }
+      if (cType && typeof cType.focus === "function") cType.focus();
+    }, 0);
+  }
+
+  function wireProcessAddGp() {
+    const wrap = document.getElementById("eGpEditorWrap");
+    if (!wrap) return;
+    if (document.getElementById("eAddGpBtn")) return;
+    const panel = wrap.querySelector(".editor-gp-panel") || wrap;
+    const actions = document.getElementById("eGpActions");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "eAddGpBtn";
+    btn.className = "secondary";
+    btn.textContent = "Pievienot jaunu galaproduktu";
+    btn.style.marginTop = "8px";
+    btn.addEventListener("click", addNewGpFromProcessCard);
+    if (actions && actions.parentNode) actions.parentNode.insertBefore(btn, actions.nextSibling);
+    else panel.appendChild(btn);
+  }
+
   window.ProcesaKartina = {
     setAttachments,
     getAttachments,
     wire,
+    addNewGpFromProcessCard,
   };
 
   document.addEventListener("DOMContentLoaded", () => {
     wire("process");
     wire("catalog");
+    wireProcessAddGp();
   });
 })();

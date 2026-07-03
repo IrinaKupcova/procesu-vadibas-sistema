@@ -70,8 +70,8 @@
       .editor-frame{border:2px solid #cbd5e1;border-radius:14px;padding:16px 18px}
       .editor-frame h2{margin:0 0 14px;font-size:1.25rem}
       .editor-frame label{font-size:12px;font-weight:600;text-transform:none;letter-spacing:0;color:#334155}
-      .editor-frame .editor-section{border:1px solid #e2e8f0;border-radius:10px;padding:12px 14px;margin:0 0 14px;background:#f8fafc}
-      .editor-frame .editor-section-title{margin:0 0 10px;font-size:13px;font-weight:700;color:#1e40af;padding-bottom:6px;border-bottom:1px solid #e2e8f0}
+      .editor-frame .editor-section{border:1px solid #c7d2fe;border-left:5px solid #6366f1;border-radius:10px;padding:14px 16px;margin:0 0 18px;background:linear-gradient(180deg,#eef2ff 0%, #e0e7ff 100%);box-shadow:0 1px 3px rgba(79,70,229,0.08)}
+      .editor-frame .editor-section-title{margin:0 0 12px;font-size:16px;font-weight:800;color:#312e81;letter-spacing:.3px;padding-bottom:8px;border-bottom:2px solid #a5b4fc}
       .editor-frame .editor-section .form-row{margin-bottom:0}
       .editor-frame .editor-section .form-row + .form-row{margin-top:10px}
       .editor-frame .form-group--narrow{flex:0 1 150px;min-width:130px;max-width:200px}
@@ -234,8 +234,8 @@
       #processJomasCard #processJomasTable tbody tr.process-accordion-hdr td { font-weight: 800; background:#dbeafe; color:#1e3a8a; }
       #processJomasCard .pj-process-open { color:#374151; cursor:pointer; text-decoration:none; font-weight:600; }
       #processJomasCard .pj-process-open:hover { color:#111827; }
-      #processJomasCard .pj-joma-open { color:#1d4ed8; cursor:pointer; font-weight:800; }
-      #processJomasCard .pj-joma-open:hover { color:#1e3a8a; text-decoration:underline; }
+      #processJomasCard .pj-joma-open { color:#312e81; cursor:pointer; font-weight:600; }
+      #processJomasCard .pj-joma-open:hover { color:#1e1b4b; text-decoration:underline; }
       #orgStatsCard { margin-top: 12px; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 12px; padding: 14px; }
       #orgStatsCard h3 { margin: 0 0 8px; font-size: 16px; color: #0f172a; }
       .nav-page-hidden { display: none !important; }
@@ -1948,7 +1948,8 @@
           hdr.setAttribute("data-accordion-block", `pgg-${groupName}`);
           hdr.setAttribute("aria-expanded", groupOpen ? "true" : "false");
           hdr.setAttribute("data-process-group", groupName);
-          hdr.innerHTML = `<td><strong>${groupName}</strong></td><td><strong>Kopā: ${groupRows.length} procesi</strong></td><td></td>`;
+          const groupColor = groupName === "Pamatdarbība" ? "#3b82f6" : (groupName === "Atbalsts" ? "#22c55e" : (groupName === "Pārvaldība" ? "#f59e0b" : "#312e81"));
+          hdr.innerHTML = `<td><strong style="color:${groupColor}">${groupName}</strong></td><td><strong>Kopā: ${groupRows.length} procesi</strong></td><td></td>`;
           tbody.appendChild(hdr);
           groupRows.forEach((r)=>{
             const tr = document.createElement("tr");

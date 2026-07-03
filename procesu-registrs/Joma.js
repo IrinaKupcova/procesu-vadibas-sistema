@@ -844,7 +844,7 @@
       "#processGroupsTable tbody tr.process-accordion-part{display:none;}" +
       "#processGroupsTable tbody tr.process-accordion-part.is-visible{display:table-row;}" +
       "#processGroupsTable tbody tr.process-accordion-hdr{cursor:pointer;}" +
-      ".joma-gp-caret{display:inline-block;width:1em;margin-right:6px;color:#1d4ed8;font-weight:800;cursor:pointer;transition:transform .12s ease;}" +
+      ".joma-gp-caret{display:inline-block;width:1em;margin-right:6px;color:#312e81;font-weight:600;cursor:pointer;transition:transform .12s ease;}" +
       ".list-title-under-diagram{margin:6px 0 10px;}";
     (document.head || document.documentElement).appendChild(style);
   }
