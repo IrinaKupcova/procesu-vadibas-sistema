@@ -234,6 +234,7 @@
       wireAddNewHandler(node);
     });
     syncCatalogSelectDisabled();
+    try { updateGpCountTiles(); } catch (_) {}
   }
 
   function observeCard(cardId) {
@@ -282,6 +283,491 @@
     });
   }
 
+  // ---------------------------------------------------------------------------
+  // Jomu skats: katrai jomai primāri pielasa GALAPRODUKTUS (nevis procesus),
+  // akordeona veidā — joma → atverams GP saraksts.
+  // Statistiku/pīrāgu atstājam oriģinālo (izsaucam sākotnējo renderi), un pēc tam
+  // pārbūvējam tikai tabulas <tbody> ar GP saturu.
+  // ---------------------------------------------------------------------------
+  const JOMA_TABLE_ID = "processJomasTable";
+  const JOMA_CARD_ID = "processJomasCard";
+  const gpExpanded = new Set();
+  let jomaGpBusy = false;
+  let originalJomasRender = null;
+
+  function getCatalogRowsSafe() {
+    try {
+      if (typeof window.getCatalogRows === "function") return window.getCatalogRows() || [];
+    } catch (_) {}
+    return [];
+  }
+
+  function collectExtraJomaLabels() {
+    const out = [];
+    try {
+      if (window.Joma && typeof window.Joma.getCustomJomas === "function") {
+        out.push.apply(out, window.Joma.getCustomJomas() || []);
+      }
+    } catch (_) {}
+    try {
+      if (window.JomaKartina && typeof window.JomaKartina.listJomaLabels === "function") {
+        out.push.apply(out, window.JomaKartina.listJomaLabels() || []);
+      }
+    } catch (_) {}
+    return out;
+  }
+
+  function getMergedRowsSafe() {
+    try {
+      if (typeof window.getMergedProcessRegisterRows === "function") {
+        return window.getMergedProcessRegisterRows() || [];
+      }
+    } catch (_) {}
+    return [];
+  }
+
+  function buildCatalogLookup() {
+    const map = new Map(); // normKey(GP nosaukums) -> kataloga rinda (kartiņas atvēršanai)
+    getCatalogRowsSafe().forEach((c) => {
+      if (!c || typeof c !== "object") return;
+      const k = normKey(String(c.type || ""));
+      if (k && !map.has(k)) map.set(k, c);
+    });
+    return map;
+  }
+
+  // Būvējam jomu → GP piesaisti no tā paša avota, ko lieto oriģinālais skats (gpItems),
+  // jo kataloga darbibasJoma vairumā gadījumu nesakrīt ar jomu nosaukumiem.
+  function buildJomaGpData() {
+    const byJoma = new Map(); // jomaKey -> { display, gps: Map(gpKey -> { name, row }) }
+    const allGp = new Set();
+    const catLookup = buildCatalogLookup();
+
+    function ensureBucket(display) {
+      const disp = String(display || "").trim() || "—";
+      const key = normKey(disp) || "—";
+      if (!byJoma.has(key)) byJoma.set(key, { display: disp, gps: new Map() });
+      const b = byJoma.get(key);
+      if (String(disp).length > String(b.display).length) b.display = disp;
+      return b;
+    }
+
+    function addGp(jomaLabels, gpName, row) {
+      const name = String(gpName || "").trim();
+      if (!name) return;
+      const gpKey = normKey(name);
+      allGp.add(gpKey);
+      const list = jomaLabels && jomaLabels.length ? jomaLabels : ["—"];
+      list.forEach((jl) => {
+        const bucket = ensureBucket(jl);
+        if (!bucket.gps.has(gpKey)) bucket.gps.set(gpKey, { name, row });
+      });
+    }
+
+    const merged = getMergedRowsSafe();
+    let usedMerged = false;
+    merged.forEach((r) => {
+      const gpItems = Array.isArray(r && r.gpItems) ? r.gpItems : [];
+      gpItems.forEach((gp) => {
+        const gpName = String((gp && gp.name) || "").trim();
+        if (!gpName) return;
+        usedMerged = true;
+        let jomas = splitJomaValues(gp && gp.jomaText);
+        if (!jomas.length) jomas = splitJomaValues(r && r.darbibasJoma);
+        const catRow = catLookup.get(normKey(gpName)) || {
+          type: gpName,
+          procNo: String((gp && gp.procNo) || (r && r.processNo) || ""),
+        };
+        addGp(jomas, gpName, catRow);
+      });
+    });
+
+    // Rezerves variants — ja apvienotās rindas nedeva GP, grupējam kataloga rindas pēc darbibasJoma.
+    if (!usedMerged) {
+      getCatalogRowsSafe().forEach((r) => {
+        const gpName = String((r && r.type) || "").trim();
+        if (!gpName) return;
+        addGp(splitJomaValues(r && r.darbibasJoma), gpName, r);
+      });
+    }
+
+    // Papildu jomas (pievienotās/kartiņu) rādām arī tad, ja tām vēl nav GP.
+    collectExtraJomaLabels().forEach((label) => {
+      const disp = String(label || "").trim();
+      if (disp) ensureBucket(disp);
+    });
+
+    return { byJoma, gpTotal: allGp.size };
+  }
+
+  // Visi stats bloki ar diagrammu, kur jārāda "Galaproduktu skaits" flīze.
+  const GP_TILE_TARGETS = [
+    { card: "processListCard", id: "statProcessGpCount" },
+    { card: "processGroupsCard", id: "pgStatProcessGpCount" },
+    { card: "processJomasCard", id: "pjStatGpCount" },
+  ];
+
+  function computeGpTotal() {
+    const set = new Set();
+    let used = false;
+    getMergedRowsSafe().forEach((r) => {
+      (Array.isArray(r && r.gpItems) ? r.gpItems : []).forEach((gp) => {
+        const n = normKey(String((gp && gp.name) || ""));
+        if (n) {
+          set.add(n);
+          used = true;
+        }
+      });
+    });
+    if (!used) {
+      getCatalogRowsSafe().forEach((r) => {
+        const n = normKey(String((r && r.type) || ""));
+        if (n) set.add(n);
+      });
+    }
+    return set.size;
+  }
+
+  function injectGpCountTiles() {
+    GP_TILE_TARGETS.forEach((t) => {
+      const right = document.querySelector("#" + t.card + " .process-stats-right");
+      if (!right || document.getElementById(t.id)) return;
+      const box = document.createElement("div");
+      box.className = "stat-box";
+      box.innerHTML =
+        '<div class="stat-k">Galaproduktu skaits</div><div class="stat-v" id="' + t.id + '">0</div>';
+      right.appendChild(box);
+    });
+  }
+
+  function updateGpCountTiles() {
+    injectGpCountTiles();
+    const total = computeGpTotal();
+    GP_TILE_TARGETS.forEach((t) => {
+      const el = document.getElementById(t.id);
+      if (el) el.textContent = String(total);
+    });
+  }
+
+  // Diagrammas virsraksts visur ir viens un tas pats — pīrāgs vienmēr rāda procesu GRUPU sadalījumu.
+  function normalizeDiagramTitles() {
+    document.querySelectorAll(".process-pie-wrap > .stat-k").forEach((el) => {
+      if (el.textContent !== "Procesu grupas (skaits un īpatsvars)") {
+        el.textContent = "Procesu grupas (skaits un īpatsvars)";
+      }
+    });
+  }
+
+  // Katrā sadaļā ar diagrammu ievietojam saraksta nosaukumu zem diagrammas (tieši virs saraksta).
+  function injectListTitlesUnderDiagram() {
+    document.querySelectorAll(".process-pie-wrap").forEach((wrap) => {
+      if (wrap.__listTitleInjected) return;
+      const next = wrap.nextElementSibling;
+      if (next && next.classList && next.classList.contains("list-title-under-diagram")) {
+        wrap.__listTitleInjected = true;
+        return;
+      }
+      const card = wrap.closest(".card");
+      const titleEl = card && card.querySelector(".toolbar .section-title");
+      const text = titleEl ? String(titleEl.textContent || "").trim() : "";
+      if (!text) return;
+      const h = document.createElement("div");
+      h.className = "section-title list-title-under-diagram";
+      h.textContent = text;
+      wrap.parentNode.insertBefore(h, wrap.nextSibling);
+      // Nedublējam — paslēpjam augšējo (rīkjoslas) virsrakstu, atstājot tikai to zem diagrammas.
+      titleEl.style.display = "none";
+      wrap.__listTitleInjected = true;
+    });
+  }
+
+  function updateJomaTableHead() {
+    const table = document.getElementById(JOMA_TABLE_ID);
+    if (!table) return;
+    const ths = table.querySelectorAll("thead th");
+    if (ths.length >= 3) {
+      if (ths[1].textContent !== "Galaprodukts") {
+        ths[1].textContent = "Galaprodukts";
+        ths[1].setAttribute("data-filter-label", "Galaprodukts");
+      }
+      if (ths[2].textContent !== "Galaprodukta kartiņa") {
+        ths[2].textContent = "Galaprodukta kartiņa";
+        ths[2].setAttribute("data-filter-label", "Galaprodukta kartiņa");
+      }
+    }
+  }
+
+  function tbodyIsMine(tbody) {
+    return !!(tbody && tbody.querySelector(".joma-gp-hdr"));
+  }
+
+  function rebuildJomaGpBody() {
+    const card = document.getElementById(JOMA_CARD_ID);
+    const table = document.getElementById(JOMA_TABLE_ID);
+    if (!card || !table) return;
+    if (card.classList.contains("hidden")) return;
+    const tbody = table.querySelector("tbody");
+    if (!tbody) return;
+
+    updateJomaTableHead();
+    updateGpCountTiles();
+
+    const data = buildJomaGpData();
+    const byJoma = data.byJoma;
+    const sorted = Array.from(byJoma.values()).sort((a, b) =>
+      String(a.display || "").localeCompare(String(b.display || ""), "lv", { sensitivity: "base" })
+    );
+
+    tbody.innerHTML = "";
+    sorted.forEach((bucket) => {
+      const jomaName = String(bucket.display || "—");
+      const gps = Array.from(bucket.gps.values()).sort((a, b) =>
+        String(a.name || "").localeCompare(String(b.name || ""), "lv", { sensitivity: "base" })
+      );
+      const open = gpExpanded.has(jomaName);
+
+      const hdr = document.createElement("tr");
+      hdr.className = "process-accordion-hdr joma-gp-hdr";
+      hdr.style.cursor = "pointer";
+      hdr.setAttribute("data-joma-gp-name", jomaName);
+      hdr.setAttribute("aria-expanded", open ? "true" : "false");
+
+      const tdJoma = document.createElement("td");
+      if (jomaName !== "—") {
+        const jomaOpen = document.createElement("span");
+        jomaOpen.className = "pj-joma-open";
+        jomaOpen.textContent = jomaName;
+        jomaOpen.title = "Atvērt informāciju par jomu";
+        jomaOpen.onclick = (ev) => {
+          ev.stopPropagation();
+          if (typeof window.openJomaEditor === "function") window.openJomaEditor(jomaName);
+        };
+        tdJoma.appendChild(jomaOpen);
+      } else {
+        const strong = document.createElement("strong");
+        strong.textContent = jomaName;
+        tdJoma.appendChild(strong);
+      }
+
+      const tdCount = document.createElement("td");
+      const gpWord = gps.length === 1 ? "galaprodukts" : "galaprodukti";
+      const caret = document.createElement("span");
+      caret.className = "joma-gp-caret" + (open ? " open" : "");
+      caret.textContent = open ? "▾" : "▸";
+      caret.title = open ? "Aizvērt galaproduktu sarakstu" : "Atvērt galaproduktu sarakstu";
+      const cntStrong = document.createElement("strong");
+      cntStrong.textContent = `Kopā: ${gps.length} ${gpWord}`;
+      tdCount.appendChild(caret);
+      tdCount.appendChild(document.createTextNode(" "));
+      tdCount.appendChild(cntStrong);
+      const tdEmpty = document.createElement("td");
+
+      hdr.appendChild(tdJoma);
+      hdr.appendChild(tdCount);
+      hdr.appendChild(tdEmpty);
+      hdr.onclick = (ev) => {
+        if (ev.target.closest("button") || ev.target.closest(".pj-joma-open")) return;
+        if (gpExpanded.has(jomaName)) gpExpanded.delete(jomaName);
+        else gpExpanded.add(jomaName);
+        jomaGpBusy = true;
+        try {
+          rebuildJomaGpBody();
+        } finally {
+          jomaGpBusy = false;
+        }
+      };
+      tbody.appendChild(hdr);
+
+      gps.forEach((gp) => {
+        const tr = document.createElement("tr");
+        tr.className = "process-accordion-part joma-gp-part";
+        tr.classList.toggle("is-visible", !!open);
+        const td1 = document.createElement("td");
+        td1.textContent = "";
+        const td2 = document.createElement("td");
+        const gpOpen = document.createElement("span");
+        gpOpen.className = "pj-process-open";
+        gpOpen.textContent = String(gp.name || "");
+        gpOpen.title = "Atvērt galaprodukta kartiņu";
+        gpOpen.onclick = () => {
+          if (typeof window.openCatalogEditor === "function") window.openCatalogEditor(gp.row);
+        };
+        td2.appendChild(gpOpen);
+        const td3 = document.createElement("td");
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "secondary";
+        btn.textContent = "Galaprodukta kartiņa";
+        btn.onclick = () => {
+          if (typeof window.openCatalogEditor === "function") window.openCatalogEditor(gp.row);
+        };
+        td3.appendChild(btn);
+        tr.appendChild(td1);
+        tr.appendChild(td2);
+        tr.appendChild(td3);
+        tbody.appendChild(tr);
+      });
+    });
+
+    if (typeof window.applyTableColumnSizing === "function") {
+      try { window.applyTableColumnSizing(JOMA_TABLE_ID); } catch (_) {}
+    }
+  }
+
+  function wrapJomasRender() {
+    const current = window.renderProcessJomasView;
+    if (typeof current !== "function" || current.__jomaGpWrapped) return;
+    originalJomasRender = current;
+    const wrapped = function () {
+      jomaGpBusy = true;
+      let out;
+      try {
+        out = originalJomasRender.apply(this, arguments);
+      } catch (e) {
+        console.warn("renderProcessJomasView (oriģinālais) kļūda:", e);
+      }
+      try {
+        rebuildJomaGpBody();
+      } finally {
+        jomaGpBusy = false;
+      }
+      return out;
+    };
+    wrapped.__jomaGpWrapped = true;
+    window.renderProcessJomasView = wrapped;
+  }
+
+  // --- Procesu grupas: bulta galvenē (akordeons ciet pēc noklusējuma; sakļaušana caur CSS) ---
+  let originalGroupsRender = null;
+
+  function addGroupCarets() {
+    const table = document.getElementById("processGroupsTable");
+    if (!table) return;
+    table.querySelectorAll("tr.process-accordion-hdr[data-process-group]").forEach((hdr) => {
+      if (hdr.querySelector(".joma-gp-caret")) return;
+      const open = hdr.getAttribute("aria-expanded") === "true";
+      const cell = hdr.children[1] || hdr.children[0];
+      if (!cell) return;
+      const caret = document.createElement("span");
+      caret.className = "joma-gp-caret" + (open ? " open" : "");
+      caret.textContent = open ? "▾" : "▸";
+      caret.title = open ? "Aizvērt procesu sarakstu" : "Atvērt procesu sarakstu";
+      cell.insertBefore(caret, cell.firstChild);
+    });
+  }
+
+  function wrapGroupsRender() {
+    const current = window.renderProcessGroupsView;
+    if (typeof current !== "function" || current.__jomaGpGroupsWrapped) return;
+    originalGroupsRender = current;
+    const wrapped = function () {
+      let out;
+      try {
+        out = originalGroupsRender.apply(this, arguments);
+      } catch (e) {
+        console.warn("renderProcessGroupsView (oriģinālais) kļūda:", e);
+      }
+      try {
+        addGroupCarets();
+      } catch (_) {}
+      return out;
+    };
+    wrapped.__jomaGpGroupsWrapped = true;
+    window.renderProcessGroupsView = wrapped;
+  }
+
+  function observeJomaTableBody() {
+    const table = document.getElementById(JOMA_TABLE_ID);
+    const tbody = table && table.querySelector("tbody");
+    if (!tbody || tbody.__jomaGpObserved) return;
+    tbody.__jomaGpObserved = true;
+    const obs = new MutationObserver(() => {
+      if (jomaGpBusy) return;
+      const card = document.getElementById(JOMA_CARD_ID);
+      if (!card || card.classList.contains("hidden")) return;
+      if (tbodyIsMine(tbody)) return;
+      jomaGpBusy = true;
+      try {
+        rebuildJomaGpBody();
+      } finally {
+        jomaGpBusy = false;
+      }
+    });
+    obs.observe(tbody, { childList: true });
+  }
+
+  function observeJomaCardVisible() {
+    const card = document.getElementById(JOMA_CARD_ID);
+    if (!card || card.__jomaGpCardObserved) return;
+    card.__jomaGpCardObserved = true;
+    const obs = new MutationObserver(() => {
+      if (card.classList.contains("hidden")) return;
+      setTimeout(() => {
+        if (jomaGpBusy) return;
+        const table = document.getElementById(JOMA_TABLE_ID);
+        const tbody = table && table.querySelector("tbody");
+        if (tbody && tbodyIsMine(tbody)) return;
+        jomaGpBusy = true;
+        try {
+          rebuildJomaGpBody();
+        } finally {
+          jomaGpBusy = false;
+        }
+      }, 0);
+    });
+    obs.observe(card, { attributes: true, attributeFilter: ["class"] });
+  }
+
+  function injectJomaGpStyle() {
+    if (document.getElementById("jomaGpAccordionStyle")) return;
+    const style = document.createElement("style");
+    style.id = "jomaGpAccordionStyle";
+    style.textContent =
+      // Jomu tabula — fiksēts izkārtojums, lai, atverot akordeonu, kolonnas nelec.
+      "#processJomasTable{table-layout:fixed;width:100%;}" +
+      "#processJomasTable th:nth-child(1),#processJomasTable td:nth-child(1){width:34%;min-width:0;}" +
+      "#processJomasTable th:nth-child(2),#processJomasTable td:nth-child(2){width:51%;min-width:0;}" +
+      "#processJomasTable th:nth-child(3),#processJomasTable td:nth-child(3){width:15%;}" +
+      "#processJomasTable td{overflow-wrap:anywhere;}" +
+      "#processJomasTable tbody tr.joma-gp-part{display:none;}" +
+      "#processJomasTable tbody tr.joma-gp-part.is-visible{display:table-row;}" +
+      "#processJomasTable tbody tr.joma-gp-hdr{cursor:pointer;}" +
+      // Procesu grupu tabula — tāds pats akordeons (ciet pēc noklusējuma) un fiksēts izkārtojums.
+      "#processGroupsTable{table-layout:fixed;width:100%;}" +
+      "#processGroupsTable th:nth-child(1),#processGroupsTable td:nth-child(1){width:34%;min-width:0;}" +
+      "#processGroupsTable th:nth-child(2),#processGroupsTable td:nth-child(2){width:51%;min-width:0;}" +
+      "#processGroupsTable th:nth-child(3),#processGroupsTable td:nth-child(3){width:15%;}" +
+      "#processGroupsTable td{overflow-wrap:anywhere;}" +
+      "#processGroupsTable tbody tr.process-accordion-part{display:none;}" +
+      "#processGroupsTable tbody tr.process-accordion-part.is-visible{display:table-row;}" +
+      "#processGroupsTable tbody tr.process-accordion-hdr{cursor:pointer;}" +
+      ".joma-gp-caret{display:inline-block;width:1em;margin-right:6px;color:#1d4ed8;font-weight:800;cursor:pointer;transition:transform .12s ease;}" +
+      ".list-title-under-diagram{margin:6px 0 10px;}";
+    (document.head || document.documentElement).appendChild(style);
+  }
+
+  function setupJomaGpView() {
+    injectJomaGpStyle();
+    normalizeDiagramTitles();
+    injectListTitlesUnderDiagram();
+    updateGpCountTiles();
+    wrapJomasRender();
+    wrapGroupsRender();
+    observeJomaTableBody();
+    observeJomaCardVisible();
+    const card = document.getElementById(JOMA_CARD_ID);
+    if (card && !card.classList.contains("hidden")) {
+      jomaGpBusy = true;
+      try {
+        rebuildJomaGpBody();
+      } finally {
+        jomaGpBusy = false;
+      }
+    }
+    const groupsCard = document.getElementById("processGroupsCard");
+    if (groupsCard && !groupsCard.classList.contains("hidden")) addGroupCarets();
+  }
+
   function boot() {
     FIELD_IDS.forEach((id) => upgradeInputToSelect(id));
     refreshAll();
@@ -289,11 +775,13 @@
     observeCatalogFormDisable();
     hookRenderTable();
     hookLoadCatalog();
+    setupJomaGpView();
     [300, 1000, 2500].forEach((ms) => {
       setTimeout(() => {
         hookRenderTable();
         hookLoadCatalog();
         refreshAll();
+        setupJomaGpView();
       }, ms);
     });
   }
