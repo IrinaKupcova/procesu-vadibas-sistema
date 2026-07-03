@@ -339,20 +339,21 @@
   // Būvējam jomu → GP piesaisti no tā paša avota, ko lieto oriģinālais skats (gpItems),
   // jo kataloga darbibasJoma vairumā gadījumu nesakrīt ar jomu nosaukumiem.
   function buildJomaGpData() {
-    const byJoma = new Map(); // jomaKey -> { display, gps: Map(gpKey -> { name, row }) }
+    const byJoma = new Map(); // jomaKey -> { display, gps: Map(gpKey -> { name, row }), procs: Set }
     const allGp = new Set();
+    const allProc = new Set();
     const catLookup = buildCatalogLookup();
 
     function ensureBucket(display) {
       const disp = String(display || "").trim() || "—";
       const key = normKey(disp) || "—";
-      if (!byJoma.has(key)) byJoma.set(key, { display: disp, gps: new Map() });
+      if (!byJoma.has(key)) byJoma.set(key, { display: disp, gps: new Map(), procs: new Set() });
       const b = byJoma.get(key);
       if (String(disp).length > String(b.display).length) b.display = disp;
       return b;
     }
 
-    function addGp(jomaLabels, gpName, row) {
+    function addGp(jomaLabels, gpName, row, procKey) {
       const name = String(gpName || "").trim();
       if (!name) return;
       const gpKey = normKey(name);
@@ -361,24 +362,28 @@
       list.forEach((jl) => {
         const bucket = ensureBucket(jl);
         if (!bucket.gps.has(gpKey)) bucket.gps.set(gpKey, { name, row });
+        if (procKey) bucket.procs.add(procKey);
       });
     }
 
     const merged = getMergedRowsSafe();
     let usedMerged = false;
     merged.forEach((r) => {
+      const procKey = normKey(String((r && r.processNo) || (r && r.process) || ""));
+      if (procKey) allProc.add(procKey);
       const gpItems = Array.isArray(r && r.gpItems) ? r.gpItems : [];
       gpItems.forEach((gp) => {
         const gpName = String((gp && gp.name) || "").trim();
         if (!gpName) return;
         usedMerged = true;
-        let jomas = splitJomaValues(gp && gp.jomaText);
-        if (!jomas.length) jomas = splitJomaValues(r && r.darbibasJoma);
         const catRow = catLookup.get(normKey(gpName)) || {
           type: gpName,
           procNo: String((gp && gp.procNo) || (r && r.processNo) || ""),
         };
-        addGp(jomas, gpName, catRow);
+        let jomas = splitJomaValues(gp && gp.jomaText);
+        if (!jomas.length) jomas = splitJomaValues(catRow && catRow.darbibasJoma);
+        if (!jomas.length) jomas = splitJomaValues(r && r.darbibasJoma);
+        addGp(jomas, gpName, catRow, procKey);
       });
     });
 
@@ -387,7 +392,9 @@
       getCatalogRowsSafe().forEach((r) => {
         const gpName = String((r && r.type) || "").trim();
         if (!gpName) return;
-        addGp(splitJomaValues(r && r.darbibasJoma), gpName, r);
+        const procKey = normKey(String((r && r.procNo) || ""));
+        if (procKey) allProc.add(procKey);
+        addGp(splitJomaValues(r && r.darbibasJoma), gpName, r, procKey);
       });
     }
 
@@ -397,7 +404,12 @@
       if (disp) ensureBucket(disp);
     });
 
-    return { byJoma, gpTotal: allGp.size };
+    let jomaCount = 0;
+    byJoma.forEach((b) => {
+      if (String(b.display || "") !== "—") jomaCount += 1;
+    });
+
+    return { byJoma, gpTotal: allGp.size, procTotal: allProc.size, jomaCount };
   }
 
   // Visi stats bloki ar diagrammu, kur jārāda "Galaproduktu skaits" flīze.
@@ -449,12 +461,103 @@
     });
   }
 
-  // Diagrammas virsraksts visur ir viens un tas pats — pīrāgs vienmēr rāda procesu GRUPU sadalījumu.
+  // Visu diagrammu virsraksts vienāds (pīrāgs rāda procesu grupu sadalījumu) — arī jomu skatā.
   function normalizeDiagramTitles() {
     document.querySelectorAll(".process-pie-wrap > .stat-k").forEach((el) => {
       if (el.textContent !== "Procesu grupas (skaits un īpatsvars)") {
         el.textContent = "Procesu grupas (skaits un īpatsvars)";
       }
+    });
+  }
+
+  // GP-orientēta jomu statistika (izmanto Statistika sadaļa): joma → GP skaits, GP nosaukumi, procesu skaits.
+  function getJomaStats() {
+    const d = buildJomaGpData();
+    const jomas = Array.from(d.byJoma.values())
+      .filter((b) => String(b.display || "") !== "—")
+      .map((b) => ({
+        name: b.display,
+        gpCount: b.gps.size,
+        gpNames: Array.from(b.gps.values())
+          .map((g) => g.name)
+          .sort((a, b2) => String(a).localeCompare(String(b2), "lv", { sensitivity: "base" })),
+        procCount: b.procs.size,
+      }))
+      .sort((a, b) => b.gpCount - a.gpCount || String(a.name).localeCompare(String(b.name), "lv", { sensitivity: "base" }));
+    return { jomas, jomaCount: d.jomaCount, gpTotal: d.gpTotal, procTotal: d.procTotal };
+  }
+
+  // Katram procesam — kā tā galaprodukti procentuāli sadalās pa jomām (un kādas jomas).
+  function getProcessJomaBreakdown() {
+    const merged = getMergedRowsSafe();
+    const catLookup = buildCatalogLookup();
+    const out = [];
+    merged.forEach((r) => {
+      const procName = String((r && r.process) || "").trim();
+      const procNo = String((r && r.processNo) || "").trim();
+      if (!procName && !procNo) return;
+      const gpItems = Array.isArray(r && r.gpItems) ? r.gpItems : [];
+      const jomaCounts = new Map(); // key -> { name, count }
+      let total = 0;
+      gpItems.forEach((gp) => {
+        const gpName = String((gp && gp.name) || "").trim();
+        if (!gpName) return;
+        const catRow = catLookup.get(normKey(gpName));
+        let jomas = splitJomaValues(gp && gp.jomaText);
+        if (!jomas.length) jomas = splitJomaValues(catRow && catRow.darbibasJoma);
+        if (!jomas.length) jomas = splitJomaValues(r && r.darbibasJoma);
+        if (!jomas.length) jomas = ["(nav norādīta joma)"];
+        jomas.forEach((jl) => {
+          const disp = String(jl || "").trim() || "(nav norādīta joma)";
+          const key = normKey(disp) || "—";
+          if (!jomaCounts.has(key)) jomaCounts.set(key, { name: disp, count: 0 });
+          jomaCounts.get(key).count += 1;
+          total += 1;
+        });
+      });
+      if (total === 0) return;
+      const jomas = Array.from(jomaCounts.values())
+        .map((x) => ({ name: x.name, count: x.count, pct: Math.round((x.count / total) * 100) }))
+        .sort((a, b) => b.count - a.count || String(a.name).localeCompare(String(b.name), "lv", { sensitivity: "base" }));
+      out.push({ process: procName || procNo, processNo: procNo, gpTotal: total, jomas });
+    });
+    out.sort((a, b) => String(a.process).localeCompare(String(b.process), "lv", { sensitivity: "base" }));
+    return out;
+  }
+
+  // Pogas uz attiecīgo statistiku katrā sadaļā.
+  const STATS_BTN_TARGETS = [
+    { card: "processListCard", section: "process", label: "Procesu statistika", id: "btnGotoStatsProcess" },
+    { card: "catalogListCard", section: "process", label: "Galaproduktu statistika", id: "btnGotoStatsGp" },
+    { card: "processJomasCard", section: "joma", label: "Jomu statistika", id: "btnGotoStatsJoma" },
+    { card: "executorsCard", section: "org", label: "Izpildītāju statistika", id: "btnGotoStatsOrg" },
+  ];
+
+  function gotoStats(sectionId) {
+    const navBtn = document.querySelector('.side-nav-jump[data-scroll-target="reportsCard"]');
+    if (navBtn) navBtn.click();
+    const open = () => {
+      if (typeof window.openStatsSection === "function") window.openStatsSection(sectionId);
+    };
+    setTimeout(open, 80);
+    setTimeout(open, 300);
+    setTimeout(open, 700);
+  }
+
+  function injectStatsButtons() {
+    STATS_BTN_TARGETS.forEach((t) => {
+      const card = document.getElementById(t.card);
+      if (!card || document.getElementById(t.id)) return;
+      const host = card.querySelector(".toolbar .right") || card.querySelector(".toolbar");
+      if (!host) return;
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.id = t.id;
+      btn.className = "secondary";
+      btn.textContent = t.label;
+      btn.title = "Atvērt: " + t.label;
+      btn.addEventListener("click", () => gotoStats(t.section));
+      host.appendChild(btn);
     });
   }
 
@@ -750,6 +853,7 @@
     injectJomaGpStyle();
     normalizeDiagramTitles();
     injectListTitlesUnderDiagram();
+    injectStatsButtons();
     updateGpCountTiles();
     wrapJomasRender();
     wrapGroupsRender();
@@ -791,6 +895,8 @@
     refreshOptions: refreshAll,
     addCustomJoma: saveCustomJoma,
     getCustomJomas: loadCustomJomas,
+    getJomaStats,
+    getProcessJomaBreakdown,
   };
 
   if (document.readyState === "loading") {

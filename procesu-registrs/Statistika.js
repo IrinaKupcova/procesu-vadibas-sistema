@@ -1006,10 +1006,201 @@
       .toLowerCase();
   }
 
+  /** Jomu statistika (GP griezumā): joma → galaproduktu skaits + procesu skaits. Izmanto uzticamo Joma.js datu avotu. */
+  function renderJomaGpStats(jomaBody, stats) {
+    removeStatsTableTotals(jomaBody);
+    const old = $("jomaStatsTable");
+    if (old && old.parentElement) old.parentElement.removeChild(old);
+
+    const wrap = document.createElement("div");
+    wrap.id = "jomaStatsTable";
+    wrap.className = "stats-simple-bars";
+    appendMetricHint(wrap, "Stabiņi rāda galaproduktu (GP) skaitu katrā jomā.");
+
+    const detail = document.createElement("div");
+    detail.className = "stats-simple-detail hidden";
+    const detailTitle = document.createElement("div");
+    detailTitle.className = "stats-simple-detail-title";
+    const detailLabel = document.createElement("span");
+    const detailClose = document.createElement("button");
+    detailClose.type = "button";
+    detailClose.className = "stats-simple-detail-close";
+    detailClose.textContent = "Aizvērt";
+    detailClose.onclick = () => {
+      if (detail.dataset.jomaKey) orgDetailOpenState.jomaProcesses.delete(detail.dataset.jomaKey);
+      detail.classList.add("hidden");
+    };
+    detailTitle.appendChild(detailLabel);
+    detailTitle.appendChild(detailClose);
+    const detailList = document.createElement("ul");
+    detailList.className = "stats-simple-detail-list";
+    detail.appendChild(detailTitle);
+    detail.appendChild(detailList);
+    wrap.appendChild(detail);
+
+    const entries = (stats.jomas || []).map((j) => ({
+      key: normalizeJomaKey(j.name),
+      label: j.name,
+      count: j.gpCount || 0,
+      procCount: j.procCount || 0,
+      gpNames: Array.isArray(j.gpNames) ? j.gpNames : [],
+    }));
+    const byKey = new Map(entries.map((e) => [e.key, e]));
+    const max = entries.reduce((m, x) => Math.max(m, x.count), 0) || 1;
+
+    const fillDetail = (entry) => {
+      detail.dataset.jomaKey = entry.key;
+      detailLabel.textContent = `Galaprodukti jomā: ${entry.label} (procesi: ${entry.procCount})`;
+      detailList.innerHTML = "";
+      if (!entry.gpNames.length) {
+        const li = document.createElement("li");
+        li.textContent = "— nav galaproduktu —";
+        detailList.appendChild(li);
+      } else {
+        entry.gpNames.forEach((gp) => {
+          const li = document.createElement("li");
+          li.textContent = gp;
+          detailList.appendChild(li);
+        });
+      }
+      detail.classList.remove("hidden");
+    };
+
+    entries.forEach((entry) => {
+      const row = document.createElement("div");
+      row.className = "stats-simple-row stats-simple-row-clickable";
+      const label = document.createElement("span");
+      label.className = "stats-simple-label";
+      label.title = entry.label;
+      label.textContent = entry.label;
+      const track = document.createElement("div");
+      track.className = "stats-simple-track";
+      const fill = document.createElement("div");
+      fill.className = "stats-simple-fill stats-simple-fill--joma";
+      fill.style.width = `${max > 0 ? (entry.count / max) * 100 : 0}%`;
+      fill.textContent = String(entry.count);
+      track.appendChild(fill);
+      row.appendChild(label);
+      row.appendChild(track);
+      row.onclick = () => {
+        orgDetailOpenState.jomaProcesses.clear();
+        orgDetailOpenState.jomaProcesses.add(entry.key);
+        fillDetail(entry);
+      };
+      wrap.appendChild(row);
+    });
+
+    const openKey = Array.from(orgDetailOpenState.jomaProcesses)[0];
+    if (openKey && byKey.has(openKey)) fillDetail(byKey.get(openKey));
+
+    jomaBody.appendChild(wrap);
+
+    const tot = document.createElement("p");
+    tot.className = "stats-table-total";
+    tot.style.cssText = "margin:8px 0 0;font-size:13px;font-weight:600;color:#0f172a;";
+    tot.textContent =
+      `Kopskaits — jomas: ${stats.jomaCount != null ? stats.jomaCount : entries.length}; ` +
+      `galaprodukti: ${stats.gpTotal != null ? stats.gpTotal : 0}; unikālie procesi: ${stats.procTotal != null ? stats.procTotal : 0}.`;
+    jomaBody.appendChild(tot);
+  }
+
+  /** Procesi jomu griezumā: katram procesam, cik procentuāli tā galaprodukti sadalās pa jomām un kādas. */
+  function renderProcessJomaBreakdown(jomaBody) {
+    const old = $("procJomaBreakdown");
+    if (old && old.parentElement) old.parentElement.removeChild(old);
+    if (!(window.Joma && typeof window.Joma.getProcessJomaBreakdown === "function")) return;
+    let data;
+    try {
+      data = window.Joma.getProcessJomaBreakdown() || [];
+    } catch (e) {
+      console.warn("getProcessJomaBreakdown kļūda:", e);
+      return;
+    }
+
+    const palette = ["#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16", "#f97316", "#14b8a6"];
+    const wrap = document.createElement("div");
+    wrap.id = "procJomaBreakdown";
+    wrap.style.cssText = "margin-top:18px;padding-top:12px;border-top:1px solid #e2e8f0;";
+
+    const h = document.createElement("div");
+    h.textContent = "Procesi jomu griezumā";
+    h.style.cssText = "font-weight:700;color:#0f172a;margin:0 0 4px;font-size:14px;";
+    wrap.appendChild(h);
+
+    const hint = document.createElement("div");
+    hint.textContent = "Katram procesam parādīts, cik procentuāli tā galaprodukti sadalās pa jomām un kādas jomas tās ir.";
+    hint.style.cssText = "font-size:12px;color:#64748b;margin:0 0 10px;";
+    wrap.appendChild(hint);
+
+    if (!data.length) {
+      const empty = document.createElement("div");
+      empty.textContent = "Nav datu par procesu jomām.";
+      empty.style.cssText = "font-size:12px;color:#64748b;";
+      wrap.appendChild(empty);
+      jomaBody.appendChild(wrap);
+      return;
+    }
+
+    data.forEach((proc) => {
+      const jomaColor = new Map();
+      proc.jomas.forEach((j, idx) => jomaColor.set(j.name, palette[idx % palette.length]));
+
+      const row = document.createElement("div");
+      row.style.cssText = "margin:0 0 12px;";
+
+      const name = document.createElement("div");
+      name.textContent = (proc.processNo ? proc.processNo + ": " : "") + proc.process;
+      name.style.cssText = "font-size:12px;font-weight:600;color:#1f2937;margin-bottom:4px;";
+      row.appendChild(name);
+
+      const bar = document.createElement("div");
+      bar.style.cssText = "display:flex;height:16px;border-radius:8px;overflow:hidden;background:#e5e7eb;";
+      proc.jomas.forEach((j) => {
+        const seg = document.createElement("div");
+        seg.style.cssText = "width:" + j.pct + "%;background:" + jomaColor.get(j.name) + ";min-width:2px;";
+        seg.title = j.name + ": " + j.pct + "%";
+        bar.appendChild(seg);
+      });
+      row.appendChild(bar);
+
+      const legend = document.createElement("div");
+      legend.style.cssText = "font-size:11px;color:#475569;margin-top:4px;display:flex;flex-wrap:wrap;gap:10px;";
+      proc.jomas.forEach((j) => {
+        const item = document.createElement("span");
+        item.style.cssText = "display:inline-flex;align-items:center;gap:4px;";
+        const sw = document.createElement("span");
+        sw.style.cssText = "display:inline-block;width:9px;height:9px;border-radius:2px;background:" + jomaColor.get(j.name) + ";";
+        const txt = document.createElement("span");
+        txt.textContent = j.name + " — " + j.pct + "%";
+        item.appendChild(sw);
+        item.appendChild(txt);
+        legend.appendChild(item);
+      });
+      row.appendChild(legend);
+
+      wrap.appendChild(row);
+    });
+
+    jomaBody.appendChild(wrap);
+  }
+
   /** Jomu statistika: joma un tajā ietverto unikālo procesu skaits. */
   function renderJomaStatsTable(jomaBody) {
     if (!jomaBody) return;
     removeStatsTableTotals(jomaBody);
+    // GP griezums no uzticamā Joma.js avota (tāpat kā jomu akordeonā).
+    if (window.Joma && typeof window.Joma.getJomaStats === "function") {
+      try {
+        const stats = window.Joma.getJomaStats();
+        if (stats && Array.isArray(stats.jomas) && stats.jomas.length) {
+          renderJomaGpStats(jomaBody, stats);
+          renderProcessJomaBreakdown(jomaBody);
+          return;
+        }
+      } catch (e) {
+        console.warn("getJomaStats kļūda:", e);
+      }
+    }
     const merged = getStatsProcessRows();
     const byJoma = new Map();
     merged.forEach((r) => {
@@ -1160,6 +1351,7 @@
   window.renderOrgStats = renderOrgStats;
   window.hasActiveStatsFilters = hasActiveStatsFilters;
   window.clearStatsFilters = clearStatsFilters;
+  window.openStatsSection = openStatsSection;
 
   function boot() {
     ensureFilterStyles();

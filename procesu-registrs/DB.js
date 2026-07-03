@@ -94,16 +94,13 @@
       .split(/[;,\n]+/)
       .map((x) => String(x || "").trim());
   }
-  /** Viena GP Nr. šūna pēc trim; ja sākas ar cipariem — ņem pirmo veselo daļu (DB integer kolonnām). */
+  /** Viena GP Nr. šūna pēc trim. Atļauj jebkuru formātu (piem., "P1-1"); tikai notīra liekās atdalītāja zīmes. */
   function sanitizeCatalogTypeNoToken(v) {
-    const s = String(v || "")
+    return String(v || "")
       .trim()
       .replace(/^[,;\s]+/, "")
       .replace(/[,;\s]+$/, "")
       .trim();
-    if (!s) return "";
-    const m = s.match(/^-?\d+/);
-    return m ? m[0] : s;
   }
   function joinCatalogTypeNos(arr) {
     const parts = (arr || []).map((x) => sanitizeCatalogTypeNoToken(x));
