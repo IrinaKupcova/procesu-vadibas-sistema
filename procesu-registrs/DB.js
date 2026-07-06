@@ -479,40 +479,38 @@
     return s;
   }
 
-  /** Procesa pārvalžu saraksts no per-GP meta (unikāls, ar ", "). */
+  /** Procesa pārvalžu saraksts no per-GP meta (unikāls, ar ", "). Tukšiem GP slotiem neizmantojam procesa pārvaldi. */
   function joinProcessUnitsFromMeta(map, gpNames, fallbackUnit) {
     const seen = new Set();
     const out = [];
-    const fbSingle = gpSlotFallbackFromProcess(fallbackUnit);
     (gpNames || []).forEach((name) => {
       const slot = (map && map[nkey(name)]) || {};
-      let u = String(slot.unit != null ? slot.unit : "").trim();
-      if (!u && fbSingle) u = fbSingle;
+      const u = String(slot.unit != null ? slot.unit : "").trim();
       if (!u) return;
       const k = u.toLowerCase();
       if (seen.has(k)) return;
       seen.add(k);
       out.push(u);
     });
-    return out.join(", ");
+    if (out.length) return out.join(", ");
+    return gpSlotFallbackFromProcess(fallbackUnit);
   }
 
-  /** Procesa jomu saraksts no per-GP meta (unikāls, ar ", "). */
+  /** Procesa jomu saraksts no per-GP meta (unikāls, ar ", "). Tukšiem GP slotiem neizmantojam procesa jomu. */
   function joinProcessJomasFromMeta(map, gpNames, fallbackJoma) {
     const seen = new Set();
     const out = [];
-    const fbSingle = gpSlotFallbackFromProcess(fallbackJoma);
     (gpNames || []).forEach((name) => {
       const slot = (map && map[nkey(name)]) || {};
-      let j = String(slot.darbibasJoma != null ? slot.darbibasJoma : "").trim();
-      if (!j && fbSingle) j = fbSingle;
+      const j = String(slot.darbibasJoma != null ? slot.darbibasJoma : "").trim();
       if (!j) return;
       const k = j.toLowerCase();
       if (seen.has(k)) return;
       seen.add(k);
       out.push(j);
     });
-    return out.join(", ");
+    if (out.length) return out.join(", ");
+    return gpSlotFallbackFromProcess(fallbackJoma);
   }
 
   function pickGpMetaColumn() {
@@ -791,6 +789,7 @@
     if (!row) throw new Error("Nav derīga ieraksta atjaunināšanai.");
     await ensureDbCols();
     const payload = filterPayloadToDbCols(toPayload(formVals, row.raw || null));
+    mergeGpMetaKeysFromFormVals(payload, formVals);
     sanitizePayloadGalaproduktaNrFields(payload);
     const keys = Array.isArray(row.matchKeys) ? row.matchKeys.filter((k) => k && k.key && k.value !== undefined && k.value !== null && String(k.value) !== "") : [];
     if (!keys.length && !(row.idKey && row.id !== undefined && row.id !== null)) {
@@ -1135,31 +1134,23 @@
         const typeNoCol = getProcessTypeNoColFromRaw(raw);
         const nos = splitCatalogTypeNos(raw ? raw[typeNoCol] : "");
         const metaMap = readGpKartinaMetaMapFromRaw(raw);
-        const metaHasAnyData = Object.keys(metaMap).some((k) => {
-          const s = metaMap[k];
-          return s && (String(s.unit || "").trim() || String(s.department || "").trim() || String(s.darbibasJoma || "").trim());
-        });
-        const useLegacyProcessFallback = !metaHasAnyData;
         gps.forEach((gp) => {
           const type = String(gp || "").trim();
           if (!type) return;
           const slot = metaMap[nkey(type)] || {};
-          const unitFromSlot = String(slot.unit != null ? slot.unit : "").trim();
-          const deptFromSlot = String(slot.department != null ? slot.department : "").trim();
-          const jomaFromSlot = String(slot.darbibasJoma != null ? slot.darbibasJoma : "").trim();
           out.push({
             key: p.idKey,
             id: p.id,
             matchKeys: Array.isArray(p.matchKeys) ? p.matchKeys.slice() : [],
             typeNo: String(nos.shift() || "").trim(),
             type,
-            unit: unitFromSlot || (useLegacyProcessFallback ? gpSlotFallbackFromProcess((p && p.executorPatstaviga) || "") : ""),
-            department: deptFromSlot || (useLegacyProcessFallback ? gpSlotFallbackFromProcess((p && p.executorDala) || "") : ""),
+            unit: String(slot.unit != null ? slot.unit : "").trim(),
+            department: String(slot.department != null ? slot.department : "").trim(),
             taskNo: String((p && p.taskNo) || "").trim(),
             procNo,
             process: String((p && p.process) || "").trim(),
             group: String((p && p.group) || "").trim(),
-            darbibasJoma: jomaFromSlot || (useLegacyProcessFallback ? gpSlotFallbackFromProcess((p && p.darbibasJoma) || "") : ""),
+            darbibasJoma: String(slot.darbibasJoma != null ? slot.darbibasJoma : "").trim(),
             additionalInfo: slot.additionalInfo != null ? String(slot.additionalInfo) : "",
             cardAttachments: Array.isArray(slot.cardAttachments) ? slot.cardAttachments : [],
             raw: p.raw || null,
@@ -1213,15 +1204,12 @@
       const metaMapIns = buildCatalogMetaMap(
         raw, gp, existing, row, target.executorPatstaviga, target.executorDala, target.darbibasJoma
       );
-      const joinedUnitsIns = joinProcessUnitsFromMeta(metaMapIns, existing, target.executorPatstaviga);
-      const joinedJomasIns = joinProcessJomasFromMeta(metaMapIns, existing, target.darbibasJoma);
       const payload = {
         group: row.group != null ? row.group : target.group,
         taskNo: row.taskNo != null ? row.taskNo : target.taskNo,
         task: target.task,
         processNo: procNo || target.processNo,
         process: row.process != null ? row.process : target.process,
-        darbibasJoma: joinedJomasIns,
         owner: target.owner,
         products: joinCatalogProducts(existing),
         [typeNoCol]: joinCatalogTypeNos(existingNos.slice(0, existing.length)),
@@ -1232,8 +1220,6 @@
         flowcharts: target.flowcharts,
         itResources: target.itResources,
         optimization: target.optimization,
-        executorPatstaviga: joinedUnitsIns,
-        executorDala: "",
         otherMetrics: target.otherMetrics,
       };
       attachGpMetaToPayload(payload, metaMapIns);
@@ -1368,15 +1354,12 @@
       const metaMapUp = buildCatalogMetaMap(
         raw, nextType, list, row, targetResolved.executorPatstaviga, targetResolved.executorDala, targetResolved.darbibasJoma
       );
-      const joinedUnitsUp = joinProcessUnitsFromMeta(metaMapUp, list, targetResolved.executorPatstaviga);
-      const joinedJomasUp = joinProcessJomasFromMeta(metaMapUp, list, targetResolved.darbibasJoma);
-    const payload = {
-      group: row.group != null ? row.group : targetResolved.group,
+      const payload = {
+        group: row.group != null ? row.group : targetResolved.group,
         taskNo: row.taskNo != null ? row.taskNo : targetResolved.taskNo,
         task: targetResolved.task,
         processNo: procNo || targetResolved.processNo,
         process: row.process != null ? row.process : targetResolved.process,
-        darbibasJoma: joinedJomasUp,
         owner: targetResolved.owner,
         products: joinCatalogProducts(list),
         [typeNoCol]: joinCatalogTypeNos(nos),
@@ -1387,8 +1370,6 @@
         flowcharts: targetResolved.flowcharts,
         itResources: targetResolved.itResources,
         optimization: targetResolved.optimization,
-        executorPatstaviga: joinedUnitsUp,
-        executorDala: "",
         otherMetrics: targetResolved.otherMetrics,
       };
       attachGpMetaToPayload(payload, metaMapUp);
@@ -2093,7 +2074,6 @@
       "procesa_izpilditajs_patstaviga_strukturvieniba",
     ];
     const deptKeys = ["Strukturvieniba_dala", "strukturvieniba_dala", "Dala_nodala", "Daļa_nodaļa"];
-    const jomaKeys = ["Darbibas_joma", "darbibas_joma", "Darbības joma", "darbibasJoma"];
 
     let updated = 0;
     for (const row of data || []) {
@@ -2109,8 +2089,7 @@
 
       const seedUnit = gpSlotFallbackFromProcess(gv(row, unitKeys));
       const seedDept = gpSlotFallbackFromProcess(gv(row, deptKeys));
-      const seedJoma = gpSlotFallbackFromProcess(gv(row, jomaKeys));
-      if (!seedUnit && !seedDept && !seedJoma) continue;
+      if (!seedUnit && !seedDept) continue;
 
       const newMeta = Object.assign({}, meta);
       gps.forEach((gp) => {
@@ -2122,7 +2101,7 @@
           cardAttachments: Array.isArray(prev.cardAttachments) ? prev.cardAttachments : [],
           unit: String(prev.unit || seedUnit || "").trim(),
           department: String(prev.department || seedDept || "").trim(),
-          darbibasJoma: String(prev.darbibasJoma || seedJoma || "").trim(),
+          darbibasJoma: String(prev.darbibasJoma != null ? prev.darbibasJoma : "").trim(),
         };
       });
 
@@ -2170,6 +2149,50 @@
     return { fixed };
   }
 
+  /** Noņem kļūdaini visiem GP kopēto jomu (no agrākās migrācijas), ja visiem slotiem identiska. */
+  async function repairHomogenizedGpMetaJomas() {
+    if (!SINGLE_TABLE_MODE) return { fixed: 0 };
+    await ensureDbCols();
+    const metaCol = GP_KARTINA_META_JSON_KEYS.find((c) => dbCols && dbCols.has(c));
+    if (!metaCol) return { fixed: 0 };
+
+    const productKeys = ["Procesa_galaprodukti", "galaprodukti", "products", "outputProducts"];
+    const { data, error } = await supabaseClient.from(TABLE).select("*");
+    if (error) throw error;
+
+    let fixed = 0;
+    for (const row of data || []) {
+      const meta = readGpKartinaMetaMapFromRaw(row);
+      const gps = splitCatalogProducts(gv(row, productKeys));
+      if (gps.length < 2) continue;
+
+      const jomas = gps
+        .map((gp) => String(((meta[nkey(gp)] || {}).darbibasJoma) || "").trim())
+        .filter(Boolean);
+      if (jomas.length < 2) continue;
+      const uniq = Array.from(new Set(jomas.map((j) => j.toLowerCase())));
+      if (uniq.length !== 1) continue;
+
+      const newMeta = Object.assign({}, meta);
+      gps.forEach((gp) => {
+        const k = nkey(gp);
+        if (!k || !newMeta[k] || typeof newMeta[k] !== "object") return;
+        newMeta[k] = Object.assign({}, newMeta[k], { darbibasJoma: "" });
+      });
+
+      const idKey = gid(row);
+      if (!idKey || row[idKey] == null) continue;
+      const { error: upErr } = await supabaseClient
+        .from(TABLE)
+        .update({ [metaCol]: newMeta })
+        .eq(idKey, row[idKey]);
+      if (upErr) throw upErr;
+      fixed += 1;
+    }
+    if (fixed) emitSync("all", "html");
+    return { fixed };
+  }
+
   window.DB = {
     TABLE,
     singleTableMode: SINGLE_TABLE_MODE,
@@ -2193,6 +2216,7 @@
     mapDbError,
     migrateLegacyGpMetaIfNeeded,
     repairCombinedJomaRegistryNames,
+    repairHomogenizedGpMetaJomas,
     uploadChangeRequestFiles,
     uploadCardAttachmentFiles,
     savePieteikumuVestureSnapshot,

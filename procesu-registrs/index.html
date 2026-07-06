@@ -860,9 +860,9 @@
   <script>
     window.PV_SUPABASE_STORAGE_BUCKET = "pieteikumu-vesture";
   </script>
-  <script src="DB.js?v=20260706g"></script>
+  <script src="DB.js?v=20260706h"></script>
   <script src="Procesa%20kartina.js?v=20260703a"></script>
-  <script src="GP%20kataogs.js?v=20260706g"></script>
+  <script src="GP%20kataogs.js?v=20260706h"></script>
 
     <script>
       let processRows = [], csvRows = [], catalogRowsView = [], user = "daina", roles = {};
@@ -2220,7 +2220,7 @@
       }
 
       async function runDbMaintenanceOnce(){
-        const KEY = "pv_db_maintenance_v2";
+        const KEY = "pv_db_maintenance_v3";
         if(localStorage.getItem(KEY)) return;
         const api = window.DB;
         if(!api) return;
@@ -2229,6 +2229,10 @@
           if(typeof api.repairCombinedJomaRegistryNames === "function"){
             const r = await api.repairCombinedJomaRegistryNames();
             if(r && r.fixed) parts.push("jomu reģistrs: "+r.fixed);
+          }
+          if(typeof api.repairHomogenizedGpMetaJomas === "function"){
+            const r = await api.repairHomogenizedGpMetaJomas();
+            if(r && r.fixed) parts.push("GP jomu tīrīšana: "+r.fixed);
           }
           if(typeof api.migrateLegacyGpMetaIfNeeded === "function"){
             const r = await api.migrateLegacyGpMetaIfNeeded();

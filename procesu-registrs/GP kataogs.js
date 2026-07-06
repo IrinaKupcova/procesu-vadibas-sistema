@@ -174,10 +174,9 @@
         if (!gp) return;
         const typeNo = String(typeNos[idx] || "").trim();
         const slot = metaMap[norm(gp)] || {};
-        const unit = String(slot.unit != null ? slot.unit : "").trim() || procUnitFallback;
+        const unit = String(slot.unit != null ? slot.unit : "").trim();
         const department = String(slot.department != null ? slot.department : "").trim();
-        const gpJoma = String(slot.darbibasJoma != null ? slot.darbibasJoma : "").trim()
-          || (String(joma || "").trim() && !/[;,\n]/.test(String(joma || "")) ? String(joma || "").trim() : "");
+        const gpJoma = String(slot.darbibasJoma != null ? slot.darbibasJoma : "").trim();
         const cardKey = `${procNo}|${norm(gp)}`;
         if (!cardByProcGp.has(cardKey)) {
           cardByProcGp.set(cardKey, {
@@ -188,7 +187,7 @@
             procNo,
             process,
             group,
-            darbibasJoma: gpJoma || joma,
+            darbibasJoma: gpJoma,
             additionalInfo: String(slot.additionalInfo != null ? slot.additionalInfo : ""),
             cardAttachments: Array.isArray(slot.cardAttachments) ? slot.cardAttachments : [],
             __unitSet: new Set(),
@@ -209,13 +208,13 @@
             procNo,
             process,
             group,
-            darbibasJoma: gpJoma || joma,
+            darbibasJoma: gpJoma,
             additionalInfo: String(slot.additionalInfo != null ? slot.additionalInfo : ""),
             __cardKey: cardKey,
           });
         }
         if (department) card.__departmentSet.add(department);
-        if (gpJoma || joma) card.__jomaSet.add(gpJoma || joma);
+        if (gpJoma) card.__jomaSet.add(gpJoma);
       });
     });
 
