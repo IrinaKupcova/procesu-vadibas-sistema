@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Galaproduktu veidu kataloga paplašinātais skats (līdzīgi kā procesu reģistra līmeņi):
  * — «Pamatskats» — standarta kolonnas;
  * — «Paplašinātais skats» — papildu kolonna «Sensitīvitātes pakāpe» (korupcijas risku sasaiste).
@@ -108,6 +108,27 @@
     );
   }
 
+  /** GP numurs kārtošanai (ņem no typeNo vai raw kolonnas). */
+  function typeNoOf(row) {
+    if (!row) return "";
+    let v = String(row.typeNo || "").trim();
+    if (!v) v = String(gpTypeNosFromRawRow(row)[0] || "").trim();
+    return v;
+  }
+
+  /** Kārto GP pēc numura augošā secībā (naturāli); tukši numuri — beigās. */
+  function sortByTypeNoAsc(list) {
+    if (!Array.isArray(list)) return list;
+    return list.slice().sort((a, b) => {
+      const ka = typeNoOf(a);
+      const kb = typeNoOf(b);
+      if (!ka && !kb) return 0;
+      if (!ka) return 1;
+      if (!kb) return -1;
+      return ka.localeCompare(kb, undefined, { numeric: true, sensitivity: "base" });
+    });
+  }
+
   function buildCatalogFromProcessRows(rows) {
     const detailed = [];
     const cardByProcGp = new Map();
@@ -203,9 +224,9 @@
         }
       }
       const derived = buildCatalogFromProcessRows(processRows);
-      if (derived.length) return derived;
+      if (derived.length) return sortByTypeNoAsc(derived);
       // Fallback only if process-based derivation is unavailable.
-      return originalLoadCatalogTypes();
+      return sortByTypeNoAsc(await originalLoadCatalogTypes());
     };
     window.__gpCatalogBridgeInstalled = true;
     return true;

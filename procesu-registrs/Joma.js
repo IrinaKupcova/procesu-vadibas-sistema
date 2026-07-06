@@ -36,6 +36,16 @@
     return true;
   }
 
+  function removeCustomJoma(label) {
+    const key = normKey(label);
+    if (!key) return false;
+    const list = loadCustomJomas().filter((j) => normKey(j) !== key);
+    try {
+      localStorage.setItem(CUSTOM_JOMA_STORAGE, JSON.stringify(list));
+    } catch (_) {}
+    return true;
+  }
+
   function promptNewJomaName() {
     const name = window.prompt("Ievadiet jaunas jomas nosaukumu:");
     return String(name || "").trim();
@@ -894,6 +904,7 @@
     collectAllJomas,
     refreshOptions: refreshAll,
     addCustomJoma: saveCustomJoma,
+    removeCustomJoma,
     getCustomJomas: loadCustomJomas,
     getJomaStats,
     getProcessJomaBreakdown,

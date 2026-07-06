@@ -206,6 +206,40 @@
         : "Jomas kartiņa";
     }
     setFormDisabled(!isAdminEdit());
+    const delBtn = $("jomaDeleteBtn");
+    if (delBtn) delBtn.classList.toggle("hidden", !(name && isAdminEdit()));
+  }
+
+  async function deleteCurrentJoma() {
+    if (!isAdminEdit()) {
+      alert("Dzēšana pieejama tikai admin (labot).");
+      return;
+    }
+    const name = String(($("jJomaName") && $("jJomaName").value) || "").trim();
+    if (!name) return;
+    if (!window.confirm(`Dzēst jomas kartiņu "${name}"? Šo darbību nevar atsaukt.`)) return;
+    const delBtn = $("jomaDeleteBtn");
+    if (delBtn) delBtn.disabled = true;
+    try {
+      const key = normKey(name);
+      if (key) delete cache[key];
+      cacheToLocal();
+      if (window.DB && typeof window.DB.deleteJomaCard === "function") {
+        await window.DB.deleteJomaCard(name);
+      }
+      if (window.Joma && typeof window.Joma.removeCustomJoma === "function") {
+        window.Joma.removeCustomJoma(name);
+      }
+      closeEditor();
+    } catch (err) {
+      const mapper =
+        window.DB && typeof window.DB.mapDbError === "function"
+          ? window.DB.mapDbError
+          : (x) => ((x && x.message) ? x.message : String(x));
+      alert("DB kļūda: " + mapper(err));
+    } finally {
+      if (delBtn) delBtn.disabled = false;
+    }
   }
 
   function formVals() {
@@ -346,6 +380,11 @@
     });
     const closeBtn = $("jomaCloseBtn");
     if (closeBtn) closeBtn.addEventListener("click", closeEditor);
+    const delBtn = $("jomaDeleteBtn");
+    if (delBtn && !delBtn.__jomaKartinaWired) {
+      delBtn.__jomaKartinaWired = true;
+      delBtn.addEventListener("click", deleteCurrentJoma);
+    }
     const addBtn = $("pjAddJomaBtn");
     if (addBtn && !addBtn.__jomaKartinaWired) {
       addBtn.__jomaKartinaWired = true;
@@ -382,6 +421,7 @@
     open: openEditor,
     openNew: openNewJoma,
     close: closeEditor,
+    deleteCard: deleteCurrentJoma,
     fillForm,
   };
   window.openJomaEditor = openEditor;

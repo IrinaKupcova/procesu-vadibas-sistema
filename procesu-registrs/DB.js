@@ -1873,6 +1873,36 @@
     return cleaned;
   }
 
+  async function deleteJomaCard(jomaLabel) {
+    const displayName = String(jomaLabel || "").trim();
+    const key = jomaNormKey(displayName);
+    if (!key && !displayName) throw new Error("Jomas nosaukums nav norādīts.");
+    if (!jomaCols || !jomaCols.size) {
+      try {
+        await loadJomaCards();
+      } catch (_) {}
+    }
+    const keyCol = pickJomaCol(["joma_key", "Joma_key", "key"], "joma_key");
+    const nameCol = pickJomaCol(["joma_nosaukums", "Joma_nosaukums", "nosaukums", "display_name"], "joma_nosaukums");
+    let deleted = 0;
+    if (key) {
+      let q = supabaseClient.from(JOMA_TABLE).delete({ count: "exact" });
+      q = qeq(q, keyCol, key);
+      const { error, count } = await q;
+      if (error && !isMissingDbObjectError(error)) throw error;
+      deleted += Number(count || 0);
+    }
+    if (!deleted && displayName && nameCol) {
+      let q = supabaseClient.from(JOMA_TABLE).delete({ count: "exact" });
+      q = qeq(q, nameCol, displayName);
+      const { error, count } = await q;
+      if (error && !isMissingDbObjectError(error)) throw error;
+      deleted += Number(count || 0);
+    }
+    emitSync("joma", "html");
+    return deleted;
+  }
+
   async function updateProcessNoBulk(oldProcessNo, processName, newProcessNo) {
     if (!dbCols || !dbCols.size) {
       try { await load(); } catch (_) {}
@@ -1927,6 +1957,7 @@
     updateProcessNoBulk,
     loadJomaCards,
     upsertJomaCard,
+    deleteJomaCard,
     startSync,
     stopSync,
     mapDbError,

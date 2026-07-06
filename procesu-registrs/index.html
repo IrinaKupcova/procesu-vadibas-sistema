@@ -763,6 +763,7 @@
         <div class="editor-actions">
           <button type="submit">Saglabāt</button>
           <button type="button" id="jomaCloseBtn" class="secondary">Aizvērt</button>
+          <button type="button" id="jomaDeleteBtn" class="danger hidden">Dzēst</button>
         </div>
       </form>
     </div>
@@ -859,9 +860,9 @@
   <script>
     window.PV_SUPABASE_STORAGE_BUCKET = "pieteikumu-vesture";
   </script>
-  <script src="DB.js?v=20260703a"></script>
+  <script src="DB.js?v=20260706b"></script>
   <script src="Procesa%20kartina.js?v=20260703a"></script>
-  <script src="GP%20kataogs.js"></script>
+  <script src="GP%20kataogs.js?v=20260706a"></script>
 
     <script>
       let processRows = [], csvRows = [], catalogRowsView = [], user = "daina", roles = {};
@@ -1032,11 +1033,11 @@
             __catalogSourceRow: first.__catalogSourceRow || first,
           };
         }).sort((a,b)=>{
+          const c = compareTypeNoAsc(a && (a.typeNo || ""), b && (b.typeNo || ""));
+          if (c !== 0) return c;
           const ta = String((a && a.type) || "");
           const tb = String((b && b.type) || "");
-          const c = ta.localeCompare(tb, "lv", { sensitivity: "base" });
-          if (c !== 0) return c;
-          return compareTypeNoAsc(a && (a.typeNo || ""), b && (b.typeNo || ""));
+          return ta.localeCompare(tb, "lv", { sensitivity: "base" });
         });
         const appendCatalogRow = (x, options)=>{
           const o = options || {};
@@ -1048,7 +1049,7 @@
             return td;
           };
           if(!catalogFullViewMode){
-            [x.typeNo, sanitizeGpName(x.type), x.department].forEach(v=>tr.appendChild(makeCell(v)));
+            [x.typeNo, sanitizeGpName(x.type)].forEach(v=>tr.appendChild(makeCell(v)));
           }else{
             [x.typeNo, sanitizeGpName(x.type), x.unit, x.department, x.procNo, x.process, x.group, x.darbibasJoma].forEach(v=>tr.appendChild(makeCell(v)));
           }
@@ -1067,6 +1068,8 @@
           detailRowsFlat
             .slice()
             .sort((a,b)=>{
+              const nc = compareTypeNoAsc(a && (a.typeNo || ""), b && (b.typeNo || ""));
+              if(nc !== 0) return nc;
               const ga = String((a && a.type) || "");
               const gb = String((b && b.type) || "");
               const gc = ga.localeCompare(gb, "lv", { sensitivity: "base" });
@@ -1251,7 +1254,6 @@
           thead.innerHTML = `<tr>
             <th data-filter-label="Procesa galaprodukta Nr.">Procesa galaprodukta Nr.</th>
             <th data-filter-label="Procesa galaprodukts">Procesa galaprodukts</th>
-            <th data-filter-label="Daļas nosaukums">Daļas nosaukums<br><strong class="th-db-col">Strukturvieniba_dala</strong></th>
             <th data-filter-label="GP kartiņa">GP kartiņa</th>
           </tr>`;
         }else{
@@ -1309,6 +1311,24 @@
           .replace(/\s+/g, " ")
           .trim()
           .toLowerCase();
+      }
+      // Vienots jomu skaits visām diagrammām: DB (csvRows) + custom jomas + jomu kartiņas.
+      function collectAllJomaKeys(){
+        const normJomaKey = (label)=>normTextKey(String(label || "").replace(/\s*[,;.\-–—]+\s*$/g,"").trim());
+        const keys = new Set();
+        (csvRows || []).forEach((c)=>{
+          const k = normJomaKey(String((c && c.darbibasJoma) || "").trim());
+          if(k) keys.add(k);
+        });
+        const extra = [];
+        if (window.Joma && typeof window.Joma.getCustomJomas === "function") {
+          extra.push.apply(extra, window.Joma.getCustomJomas() || []);
+        }
+        if (window.JomaKartina && typeof window.JomaKartina.listJomaLabels === "function") {
+          extra.push.apply(extra, window.JomaKartina.listJomaLabels() || []);
+        }
+        extra.forEach((label)=>{ const k = normJomaKey(String(label || "").trim()); if(k) keys.add(k); });
+        return keys;
       }
       function uniqExactStrings(values){
         const out = [];
@@ -1835,7 +1855,7 @@
           const g = normalizeGroupLabel(r.group || "");
           if(groups[g] != null) groups[g] += 1;
         });
-        if($("statProcessJomaCount")) $("statProcessJomaCount").textContent = String(jomaKeysDb.size);
+        if($("statProcessJomaCount")) $("statProcessJomaCount").textContent = String(collectAllJomaKeys().size);
         if($("statProcessUniqueCount")) $("statProcessUniqueCount").textContent = String(list.length);
         const total = list.length || 1;
         const slices = [
@@ -1901,7 +1921,7 @@
           const k = normJomaKey(raw);
           if(k) jomaKeysDb.add(k);
         });
-        if($("pgStatProcessJomaCount")) $("pgStatProcessJomaCount").textContent = String(jomaKeysDb.size);
+        if($("pgStatProcessJomaCount")) $("pgStatProcessJomaCount").textContent = String(collectAllJomaKeys().size);
         if($("pgStatProcessUniqueCount")) $("pgStatProcessUniqueCount").textContent = String(list.length);
         const total = list.length || 1;
         const slices = [
@@ -2076,7 +2096,7 @@
             if(String(displayJoma).length > String(bucket.display || "").length) bucket.display = displayJoma;
           }
         });
-        if($("pjStatJomaCount")) $("pjStatJomaCount").textContent = String(jomaKeysDb.size);
+        if($("pjStatJomaCount")) $("pjStatJomaCount").textContent = String(collectAllJomaKeys().size);
         if($("pjStatProcessCount")) $("pjStatProcessCount").textContent = String(allProcKeys.size);
         const groups = { "Pamatdarbība": 0, "Atbalsts": 0, "Pārvaldība": 0 };
         Array.from(uniqueProcMap.values()).forEach((r)=>{
@@ -4274,8 +4294,8 @@
     <script src="Skaidrojumi.js"></script>
     <script src="Abreviaturas.js"></script>
     <script src="Navigacija.js"></script>
-    <script src="Joma.js?v=20260703a"></script>
-    <script src="Joma%20kartina.js?v=20260703a"></script>
+    <script src="Joma.js?v=20260706b"></script>
+    <script src="Joma%20kartina.js?v=20260706b"></script>
   </body>
   </html>
 
