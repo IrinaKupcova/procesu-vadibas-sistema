@@ -129,6 +129,25 @@
     });
   }
 
+  function readGpMetaMapFromRaw(raw) {
+    const keys = ["GP_kartinas_papildu_JSON", "gp_kartinas_papildu_json", "GP_kartinas_metadata_JSON"];
+    for (const k of keys) {
+      if (!raw || raw[k] == null || raw[k] === "") continue;
+      const v = raw[k];
+      if (typeof v === "object" && !Array.isArray(v)) return v;
+      try {
+        const o = JSON.parse(String(v));
+        if (o && typeof o === "object" && !Array.isArray(o)) return o;
+      } catch (_) {}
+    }
+    return {};
+  }
+
+  function gpMetaSlot(raw, gpName) {
+    const map = readGpMetaMapFromRaw(raw || {});
+    return (map[norm(gpName)] && typeof map[norm(gpName)] === "object") ? map[norm(gpName)] : {};
+  }
+
   function buildCatalogFromProcessRows(rows) {
     const detailed = [];
     const cardByProcGp = new Map();
@@ -140,9 +159,13 @@
       const process = String((r && r.process) || "").trim();
       const group = String((r && r.group) || "").trim();
       const joma = String((r && r.darbibasJoma) || "").trim();
-      const department = String((r && r.executorDala) || "").trim();
-      const units = splitUnits((r && r.executorPatstaviga) || "");
-      const unitList = units.length ? units : [String((r && r.executorPatstaviga) || "").trim()];
+      const raw = (r && r.raw) || {};
+      const metaMap = readGpMetaMapFromRaw(raw);
+      const procUnitFallback =
+        String((r && r.executorPatstaviga) || "").trim() &&
+        !/[;,]/.test(String((r && r.executorPatstaviga) || ""))
+          ? String((r && r.executorPatstaviga) || "").trim()
+          : "";
       const gpNames = splitList((r && r.products) || "");
       const typeNos = gpTypeNosFromRawRow(r);
 
@@ -150,6 +173,11 @@
         const gp = String(gpName || "").trim();
         if (!gp) return;
         const typeNo = String(typeNos[idx] || "").trim();
+        const slot = metaMap[norm(gp)] || {};
+        const unit = String(slot.unit != null ? slot.unit : "").trim() || procUnitFallback;
+        const department = String(slot.department != null ? slot.department : "").trim();
+        const gpJoma = String(slot.darbibasJoma != null ? slot.darbibasJoma : "").trim()
+          || (String(joma || "").trim() && !/[;,\n]/.test(String(joma || "")) ? String(joma || "").trim() : "");
         const cardKey = `${procNo}|${norm(gp)}`;
         if (!cardByProcGp.has(cardKey)) {
           cardByProcGp.set(cardKey, {
@@ -160,34 +188,34 @@
             procNo,
             process,
             group,
-            darbibasJoma: joma,
-            additionalInfo: "",
+            darbibasJoma: gpJoma || joma,
+            additionalInfo: String(slot.additionalInfo != null ? slot.additionalInfo : ""),
+            cardAttachments: Array.isArray(slot.cardAttachments) ? slot.cardAttachments : [],
             __unitSet: new Set(),
             __departmentSet: new Set(),
             __jomaSet: new Set(),
           });
         }
         const card = cardByProcGp.get(cardKey);
-        unitList.forEach((u) => {
-          if (u) card.__unitSet.add(u);
-          const sig = `${procNo}|${norm(gp)}|${norm(u)}|${norm(department)}|${norm(joma)}|${typeNo}`;
-          if (rowSig.has(sig)) return;
+        if (unit) card.__unitSet.add(unit);
+        const sig = `${procNo}|${norm(gp)}|${norm(unit)}|${norm(department)}|${norm(gpJoma || joma)}|${typeNo}`;
+        if (!rowSig.has(sig)) {
           rowSig.add(sig);
           detailed.push({
             typeNo,
             type: gp,
-            unit: u,
+            unit,
             department,
             procNo,
             process,
             group,
-            darbibasJoma: joma,
-            additionalInfo: "",
+            darbibasJoma: gpJoma || joma,
+            additionalInfo: String(slot.additionalInfo != null ? slot.additionalInfo : ""),
             __cardKey: cardKey,
           });
-        });
+        }
         if (department) card.__departmentSet.add(department);
-        if (joma) card.__jomaSet.add(joma);
+        if (gpJoma || joma) card.__jomaSet.add(gpJoma || joma);
       });
     });
 
@@ -223,10 +251,11 @@
           }
         }
       }
+      const fromDb = await originalLoadCatalogTypes();
+      if (Array.isArray(fromDb) && fromDb.length) return sortByTypeNoAsc(fromDb);
       const derived = buildCatalogFromProcessRows(processRows);
       if (derived.length) return sortByTypeNoAsc(derived);
-      // Fallback only if process-based derivation is unavailable.
-      return sortByTypeNoAsc(await originalLoadCatalogTypes());
+      return sortByTypeNoAsc(fromDb || []);
     };
     window.__gpCatalogBridgeInstalled = true;
     return true;

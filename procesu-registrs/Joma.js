@@ -83,43 +83,34 @@
   function collectAllJomas() {
     const seen = new Map();
 
-    function add(label) {
-      splitJomaValues(label).forEach((display) => {
-        const key = normKey(display);
-        if (!key) return;
-        if (!seen.has(key) || String(display).length > String(seen.get(key)).length) {
-          seen.set(key, display);
-        }
-      });
-    }
-
-    const rows = [];
-    if (typeof window.getMergedProcessRegisterRows === "function") {
-      rows.push.apply(rows, window.getMergedProcessRegisterRows() || []);
-    }
-    if (typeof window.getProcessRows === "function") {
-      rows.push.apply(rows, window.getProcessRows() || []);
-    }
-    if (typeof window.getCatalogRows === "function") {
-      rows.push.apply(rows, window.getCatalogRows() || []);
-    }
-
-    rows.forEach((row) => {
-      if (!row || typeof row !== "object") return;
-      add(row.darbibasJoma);
-      if (row.jomaText) add(row.jomaText);
-      if (Array.isArray(row.gpItems)) {
-        row.gpItems.forEach((gp) => add(gp && gp.jomaText));
+    function addWhole(label) {
+      const display = String(label || "").trim();
+      const key = normKey(display);
+      if (!key) return;
+      if (!seen.has(key) || String(display).length > String(seen.get(key)).length) {
+        seen.set(key, display);
       }
-    });
+    }
 
-    loadCustomJomas().forEach(add);
+    // Tikai oficiālais jomu reģistrs + lietotāja pievienotās (localStorage).
+    // Vispār nesadalām pa komatiem — citādi "Normatīvais regulējums, metodika…"
+    // kļūst par atsevišķu "metodika un analitika" rindu.
+    loadCustomJomas().forEach(addWhole);
 
     if (window.JomaKartina && typeof window.JomaKartina.listJomaLabels === "function") {
-      window.JomaKartina.listJomaLabels().forEach(add);
+      window.JomaKartina.listJomaLabels().forEach(addWhole);
     }
 
     return Array.from(seen.values()).sort((a, b) => a.localeCompare(b, "lv", { sensitivity: "base" }));
+  }
+
+  function resolveCanonicalJomaLabel(raw) {
+    const picked = pickSingleJoma(raw);
+    if (!picked) return "";
+    const key = normKey(picked);
+    const jomas = collectAllJomas();
+    const hit = jomas.find((j) => normKey(j) === key);
+    return hit || picked;
   }
 
   function ensureOption(select, label) {
@@ -135,9 +126,9 @@
 
   function rebuildOptions(select, currentValue) {
     if (!select || select.tagName !== "SELECT") return;
-    const cur = pickSingleJoma(currentValue != null ? currentValue : select.value);
+    const cur = resolveCanonicalJomaLabel(currentValue != null ? currentValue : select.value);
     const jomas = collectAllJomas();
-    if (cur && !jomas.some((j) => j === cur)) jomas.unshift(cur);
+    if (cur && !jomas.some((j) => normKey(j) === normKey(cur))) jomas.unshift(cur);
     jomas.sort((a, b) => a.localeCompare(b, "lv", { sensitivity: "base" }));
 
     select.innerHTML = "";

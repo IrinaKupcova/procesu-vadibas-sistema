@@ -198,6 +198,7 @@
       throw new Error("Norādiet procesa nosaukumu vai Procesa Nr., lai piesaistītu galaproduktu.");
     }
     await ensureDbCols();
+    assertGpMetaColumnReady();
     let payload = toPayload(
       {
         group: row.group != null ? row.group : "",
@@ -206,7 +207,7 @@
         darbibasJoma: row.darbibasJoma != null ? row.darbibasJoma : "",
         products: gp,
         executorPatstaviga: row.unit != null ? row.unit : "",
-        executorDala: row.department != null ? row.department : "",
+        executorDala: "",
       },
       null
     );
@@ -221,6 +222,7 @@
     if (typeNoVal) payload[typeNoCol] = typeNoVal;
     const metaColIns = GP_KARTINA_META_JSON_KEYS.find((c) => dbCols && dbCols.has(c));
     if (metaColIns) payload[metaColIns] = mergeGpKartinaMeta({}, gp, row);
+    else attachGpMetaToPayload(payload, setGpMetaSlot({}, gp, row));
     sanitizePayloadGalaproduktaNrFields(payload);
     const result = await runWriteWithMissingColumnRetry(
       payload,
@@ -402,23 +404,135 @@
     "GP_kartinas_metadata_JSON",
   ];
 
-  function readGpKartinaMetaMapFromRaw(raw) {
-    const txt = gv(raw || {}, GP_KARTINA_META_JSON_KEYS);
+  function parseGpMetaJsonValue(v) {
+    if (v == null || v === "") return {};
+    if (typeof v === "object" && !Array.isArray(v)) return v;
     try {
-      const o = JSON.parse(String(txt || "{}"));
+      const o = JSON.parse(String(v));
       return o && typeof o === "object" && !Array.isArray(o) ? o : {};
     } catch (_) {
       return {};
     }
   }
 
+  function readGpKartinaMetaMapFromRaw(raw) {
+    return parseGpMetaJsonValue(gv(raw || {}, GP_KARTINA_META_JSON_KEYS));
+  }
+
+  function setGpMetaSlot(map, gpType, row) {
+    const key = nkey(gpType);
+    const prev = (map[key] && typeof map[key] === "object") ? map[key] : {};
+    map[key] = {
+      additionalInfo:
+        row && row.additionalInfo != null
+          ? String(row.additionalInfo)
+          : (prev.additionalInfo != null ? String(prev.additionalInfo) : ""),
+      cardAttachments:
+        row && Array.isArray(row.cardAttachments)
+          ? row.cardAttachments
+          : (Array.isArray(prev.cardAttachments) ? prev.cardAttachments : []),
+      unit:
+        row && row.unit != null
+          ? String(row.unit).trim()
+          : (prev.unit != null ? String(prev.unit) : ""),
+      department:
+        row && row.department != null
+          ? String(row.department).trim()
+          : (prev.department != null ? String(prev.department) : ""),
+      darbibasJoma:
+        row && row.darbibasJoma != null
+          ? String(row.darbibasJoma).trim()
+          : (prev.darbibasJoma != null ? String(prev.darbibasJoma) : ""),
+    };
+    return map;
+  }
+
   function mergeGpKartinaMeta(raw, gpType, row) {
     const map = readGpKartinaMetaMapFromRaw(raw);
-    map[nkey(gpType)] = {
-      additionalInfo: String((row && row.additionalInfo) != null ? row.additionalInfo : ""),
-      cardAttachments: Array.isArray(row && row.cardAttachments) ? row.cardAttachments : [],
-    };
-    return JSON.stringify(map);
+    setGpMetaSlot(map, gpType, row);
+    return map;
+  }
+
+  function mergeGpMetaKeysFromFormVals(payload, formVals) {
+    if (!payload || !formVals) return payload;
+    GP_KARTINA_META_JSON_KEYS.forEach((k) => {
+      if (Object.prototype.hasOwnProperty.call(formVals, k) && formVals[k] != null) {
+        payload[k] = formVals[k];
+      }
+    });
+    return payload;
+  }
+
+  /**
+   * Sagatavo per-GP meta karti procesa saglabāšanai — atjaunina tikai rediģētā GP slotu.
+   */
+  function buildCatalogMetaMap(raw, editedGp, gpNames, row, prevProcUnit, prevProcDept, prevProcJoma) {
+    const map = readGpKartinaMetaMapFromRaw(raw);
+    setGpMetaSlot(map, editedGp, row);
+    return map;
+  }
+
+  function gpSlotFallbackFromProcess(processVal) {
+    const s = String(processVal || "").trim();
+    if (!s) return "";
+    if (/[;,\n]/.test(s)) return "";
+    return s;
+  }
+
+  /** Procesa pārvalžu saraksts no per-GP meta (unikāls, ar ", "). */
+  function joinProcessUnitsFromMeta(map, gpNames, fallbackUnit) {
+    const seen = new Set();
+    const out = [];
+    const fbSingle = gpSlotFallbackFromProcess(fallbackUnit);
+    (gpNames || []).forEach((name) => {
+      const slot = (map && map[nkey(name)]) || {};
+      let u = String(slot.unit != null ? slot.unit : "").trim();
+      if (!u && fbSingle) u = fbSingle;
+      if (!u) return;
+      const k = u.toLowerCase();
+      if (seen.has(k)) return;
+      seen.add(k);
+      out.push(u);
+    });
+    return out.join(", ");
+  }
+
+  /** Procesa jomu saraksts no per-GP meta (unikāls, ar ", "). */
+  function joinProcessJomasFromMeta(map, gpNames, fallbackJoma) {
+    const seen = new Set();
+    const out = [];
+    const fbSingle = gpSlotFallbackFromProcess(fallbackJoma);
+    (gpNames || []).forEach((name) => {
+      const slot = (map && map[nkey(name)]) || {};
+      let j = String(slot.darbibasJoma != null ? slot.darbibasJoma : "").trim();
+      if (!j && fbSingle) j = fbSingle;
+      if (!j) return;
+      const k = j.toLowerCase();
+      if (seen.has(k)) return;
+      seen.add(k);
+      out.push(j);
+    });
+    return out.join(", ");
+  }
+
+  function pickGpMetaColumn() {
+    const hit = GP_KARTINA_META_JSON_KEYS.find((c) => dbCols && dbCols.has(c));
+    return hit || "GP_kartinas_papildu_JSON";
+  }
+
+  function attachGpMetaToPayload(payload, metaMap) {
+    if (!payload || typeof payload !== "object") return;
+    payload[pickGpMetaColumn()] = metaMap && typeof metaMap === "object" ? metaMap : {};
+  }
+
+  function assertGpMetaColumnReady() {
+    if (!SINGLE_TABLE_MODE) return;
+    const hasCol = GP_KARTINA_META_JSON_KEYS.some((c) => dbCols && dbCols.has(c));
+    if (!hasCol) {
+      throw new Error(
+        "Trūkst DB kolonnas GP_kartinas_papildu_JSON. Palaidiet migrāciju Supabase SQL Editor (migrations/2026-07-06_gp-kartinas-meta-json.sql)."
+      );
+    }
   }
 
   // Papildu aliasi, lai saskaņotu ar tavu tabulas shēmu:
@@ -470,6 +584,7 @@
       if (!hasInRaw && !hasInDb) return;
       p[k] = formVals[k] == null ? "" : formVals[k];
     });
+    mergeGpMetaKeysFromFormVals(p, formVals);
 
     // Obligātie lauki — tikai reālās kolonnas no dbCols (bez „minētas” kolonnas, kuras tabulā nav).
     if (formVals.taskNo) {
@@ -610,9 +725,10 @@
   function filterPayloadToDbCols(payload) {
     if (!payload || typeof payload !== "object") return {};
     if (!dbCols || !dbCols.size) return payload;
+    const metaAllow = new Set(GP_KARTINA_META_JSON_KEYS);
     const cleaned = {};
     Object.keys(payload).forEach((k) => {
-      if (dbCols.has(k)) cleaned[k] = payload[k];
+      if (dbCols.has(k) || metaAllow.has(k)) cleaned[k] = payload[k];
     });
     return cleaned;
   }
@@ -999,9 +1115,6 @@
         if (!String(out.procNo || "").trim()) out.procNo = String(pMeta.procNo || "").trim();
         if (!String(out.process || "").trim()) out.process = String(pMeta.process || "").trim();
         if (!String(out.group || "").trim()) out.group = String(pMeta.group || "").trim();
-        if (!String(out.darbibasJoma || "").trim()) out.darbibasJoma = String(pMeta.darbibasJoma || "").trim();
-        if (!String(out.unit || "").trim()) out.unit = String(pMeta.unit || "").trim();
-        if (!String(out.department || "").trim()) out.department = String(pMeta.department || "").trim();
       }
       return out;
     });
@@ -1021,25 +1134,32 @@
         const raw = (p && p.raw) || {};
         const typeNoCol = getProcessTypeNoColFromRaw(raw);
         const nos = splitCatalogTypeNos(raw ? raw[typeNoCol] : "");
+        const metaMap = readGpKartinaMetaMapFromRaw(raw);
+        const metaHasAnyData = Object.keys(metaMap).some((k) => {
+          const s = metaMap[k];
+          return s && (String(s.unit || "").trim() || String(s.department || "").trim() || String(s.darbibasJoma || "").trim());
+        });
+        const useLegacyProcessFallback = !metaHasAnyData;
         gps.forEach((gp) => {
           const type = String(gp || "").trim();
           if (!type) return;
-          const raw = (p && p.raw) || {};
-          const metaMap = readGpKartinaMetaMapFromRaw(raw);
           const slot = metaMap[nkey(type)] || {};
+          const unitFromSlot = String(slot.unit != null ? slot.unit : "").trim();
+          const deptFromSlot = String(slot.department != null ? slot.department : "").trim();
+          const jomaFromSlot = String(slot.darbibasJoma != null ? slot.darbibasJoma : "").trim();
           out.push({
             key: p.idKey,
             id: p.id,
             matchKeys: Array.isArray(p.matchKeys) ? p.matchKeys.slice() : [],
             typeNo: String(nos.shift() || "").trim(),
             type,
-            unit: String((p && p.executorPatstaviga) || "").trim(),
-            department: String((p && p.executorDala) || "").trim(),
+            unit: unitFromSlot || (useLegacyProcessFallback ? gpSlotFallbackFromProcess((p && p.executorPatstaviga) || "") : ""),
+            department: deptFromSlot || (useLegacyProcessFallback ? gpSlotFallbackFromProcess((p && p.executorDala) || "") : ""),
             taskNo: String((p && p.taskNo) || "").trim(),
             procNo,
             process: String((p && p.process) || "").trim(),
             group: String((p && p.group) || "").trim(),
-            darbibasJoma: String((p && p.darbibasJoma) || "").trim(),
+            darbibasJoma: jomaFromSlot || (useLegacyProcessFallback ? gpSlotFallbackFromProcess((p && p.darbibasJoma) || "") : ""),
             additionalInfo: slot.additionalInfo != null ? String(slot.additionalInfo) : "",
             cardAttachments: Array.isArray(slot.cardAttachments) ? slot.cardAttachments : [],
             raw: p.raw || null,
@@ -1071,6 +1191,8 @@
 
   async function insertCatalog(row) {
     if (SINGLE_TABLE_MODE) {
+      await ensureDbCols();
+      assertGpMetaColumnReady();
       const procNo = String((row && row.procNo) || "").trim();
       const gp = String((row && row.type) || "").trim();
       const processName = String((row && row.process) || "").trim();
@@ -1087,13 +1209,19 @@
       existingNos[existing.length - 1] = sanitizeCatalogTypeNoToken(
         String((row && row.typeNo) || existingNos[existing.length - 1] || "").trim()
       );
+      // Izpildītājs (pārvalde/daļa) glabājas per-GP meta; procesa līmenī pārvaldes ar ", ", daļa netiek atspoguļota.
+      const metaMapIns = buildCatalogMetaMap(
+        raw, gp, existing, row, target.executorPatstaviga, target.executorDala, target.darbibasJoma
+      );
+      const joinedUnitsIns = joinProcessUnitsFromMeta(metaMapIns, existing, target.executorPatstaviga);
+      const joinedJomasIns = joinProcessJomasFromMeta(metaMapIns, existing, target.darbibasJoma);
       const payload = {
         group: row.group != null ? row.group : target.group,
         taskNo: row.taskNo != null ? row.taskNo : target.taskNo,
         task: target.task,
         processNo: procNo || target.processNo,
         process: row.process != null ? row.process : target.process,
-        darbibasJoma: row.darbibasJoma != null ? row.darbibasJoma : target.darbibasJoma,
+        darbibasJoma: joinedJomasIns,
         owner: target.owner,
         products: joinCatalogProducts(existing),
         [typeNoCol]: joinCatalogTypeNos(existingNos.slice(0, existing.length)),
@@ -1104,12 +1232,11 @@
         flowcharts: target.flowcharts,
         itResources: target.itResources,
         optimization: target.optimization,
-        executorPatstaviga: row.unit != null ? row.unit : target.executorPatstaviga,
-        executorDala: row.department != null ? row.department : target.executorDala,
+        executorPatstaviga: joinedUnitsIns,
+        executorDala: "",
         otherMetrics: target.otherMetrics,
       };
-      const metaColIns = GP_KARTINA_META_JSON_KEYS.find((c) => dbCols && dbCols.has(c));
-      if (metaColIns) payload[metaColIns] = mergeGpKartinaMeta(raw, gp, row);
+      attachGpMetaToPayload(payload, metaMapIns);
       await update(target, payload);
       emitSync("catalog", "html");
       return payload;
@@ -1195,6 +1322,8 @@
 
   async function updateCatalog(current, row) {
     if (SINGLE_TABLE_MODE) {
+      await ensureDbCols();
+      assertGpMetaColumnReady();
       const processRows = await load();
       const prevProcNo = String((current && current.procNo) || "").trim();
       const nextProcNo = String((row && row.procNo) || "").trim();
@@ -1234,13 +1363,20 @@
       }
       list = pairs.map((x) => x.name);
       nos = pairs.map((x) => x.no);
+      // Izpildītājs (pārvalde/daļa) glabājas per-GP meta; procesa līmenī pārvaldes tiek
+      // uzskaitītas ar ", " (unikāli), bet daļa procesa līmenī netiek atspoguļota.
+      const metaMapUp = buildCatalogMetaMap(
+        raw, nextType, list, row, targetResolved.executorPatstaviga, targetResolved.executorDala, targetResolved.darbibasJoma
+      );
+      const joinedUnitsUp = joinProcessUnitsFromMeta(metaMapUp, list, targetResolved.executorPatstaviga);
+      const joinedJomasUp = joinProcessJomasFromMeta(metaMapUp, list, targetResolved.darbibasJoma);
     const payload = {
       group: row.group != null ? row.group : targetResolved.group,
         taskNo: row.taskNo != null ? row.taskNo : targetResolved.taskNo,
         task: targetResolved.task,
         processNo: procNo || targetResolved.processNo,
         process: row.process != null ? row.process : targetResolved.process,
-        darbibasJoma: row.darbibasJoma != null ? row.darbibasJoma : targetResolved.darbibasJoma,
+        darbibasJoma: joinedJomasUp,
         owner: targetResolved.owner,
         products: joinCatalogProducts(list),
         [typeNoCol]: joinCatalogTypeNos(nos),
@@ -1251,12 +1387,11 @@
         flowcharts: targetResolved.flowcharts,
         itResources: targetResolved.itResources,
         optimization: targetResolved.optimization,
-        executorPatstaviga: row.unit != null ? row.unit : targetResolved.executorPatstaviga,
-        executorDala: row.department != null ? row.department : targetResolved.executorDala,
+        executorPatstaviga: joinedUnitsUp,
+        executorDala: "",
         otherMetrics: targetResolved.otherMetrics,
       };
-      const metaColUp = GP_KARTINA_META_JSON_KEYS.find((c) => dbCols && dbCols.has(c));
-      if (metaColUp) payload[metaColUp] = mergeGpKartinaMeta(raw, nextType, row);
+      attachGpMetaToPayload(payload, metaMapUp);
       await update(targetResolved, payload);
       emitSync("catalog", "html");
       return payload;
@@ -1940,6 +2075,101 @@
     return true;
   }
 
+  /** Vienreizēja migrācija: procesa līmeņa joma/izpildītājs → per-GP meta JSON slots. */
+  async function migrateLegacyGpMetaIfNeeded() {
+    if (!SINGLE_TABLE_MODE) return { updated: 0 };
+    await ensureDbCols();
+    const metaCol = GP_KARTINA_META_JSON_KEYS.find((c) => dbCols && dbCols.has(c));
+    if (!metaCol) return { updated: 0, reason: "no_meta_column" };
+
+    const { data, error } = await supabaseClient.from(TABLE).select("*");
+    if (error) throw error;
+
+    const productKeys = ["Procesa_galaprodukti", "galaprodukti", "products", "outputProducts"];
+    const unitKeys = [
+      "Procesa_izpilditajs-patstaviga_strukturvieniba",
+      "Procesa_izpilditajs_patstaviga_strukturvieniba",
+      "procesa_izpilditajs-patstaviga_strukturvieniba",
+      "procesa_izpilditajs_patstaviga_strukturvieniba",
+    ];
+    const deptKeys = ["Strukturvieniba_dala", "strukturvieniba_dala", "Dala_nodala", "Daļa_nodaļa"];
+    const jomaKeys = ["Darbibas_joma", "darbibas_joma", "Darbības joma", "darbibasJoma"];
+
+    let updated = 0;
+    for (const row of data || []) {
+      const meta = readGpKartinaMetaMapFromRaw(row);
+      const hasMeta = Object.keys(meta).some((k) => {
+        const s = meta[k] || {};
+        return String(s.unit || "").trim() || String(s.darbibasJoma || "").trim() || String(s.department || "").trim();
+      });
+      if (hasMeta) continue;
+
+      const gps = splitCatalogProducts(gv(row, productKeys));
+      if (!gps.length) continue;
+
+      const seedUnit = gpSlotFallbackFromProcess(gv(row, unitKeys));
+      const seedDept = gpSlotFallbackFromProcess(gv(row, deptKeys));
+      const seedJoma = gpSlotFallbackFromProcess(gv(row, jomaKeys));
+      if (!seedUnit && !seedDept && !seedJoma) continue;
+
+      const newMeta = Object.assign({}, meta);
+      gps.forEach((gp) => {
+        const k = nkey(gp);
+        if (!k) return;
+        const prev = (newMeta[k] && typeof newMeta[k] === "object") ? newMeta[k] : {};
+        newMeta[k] = {
+          additionalInfo: String(prev.additionalInfo != null ? prev.additionalInfo : ""),
+          cardAttachments: Array.isArray(prev.cardAttachments) ? prev.cardAttachments : [],
+          unit: String(prev.unit || seedUnit || "").trim(),
+          department: String(prev.department || seedDept || "").trim(),
+          darbibasJoma: String(prev.darbibasJoma || seedJoma || "").trim(),
+        };
+      });
+
+      const idKey = gid(row);
+      if (!idKey || row[idKey] == null) continue;
+      const { error: upErr } = await supabaseClient
+        .from(TABLE)
+        .update({ [metaCol]: newMeta })
+        .eq(idKey, row[idKey]);
+      if (upErr) throw upErr;
+      updated += 1;
+    }
+    if (updated) emitSync("all", "html");
+    return { updated };
+  }
+
+  /** Salabo jomu reģistra ierakstu, kur nosaukumā ir komats (radīja "metodika un analitika" dropdown). */
+  async function repairCombinedJomaRegistryNames() {
+    let rows = [];
+    try {
+      rows = await loadJomaCards();
+    } catch (_) {
+      return { fixed: 0 };
+    }
+    let fixed = 0;
+    for (const row of rows) {
+      const name = String(row.displayName || "").trim();
+      if (!name.includes(",")) continue;
+      const parts = name.split(/\s*,\s*/).map((p) => String(p || "").trim()).filter(Boolean);
+      if (parts.length < 2) continue;
+      const payload = {
+        skaidrojums: row.skaidrojums || row.notes || "",
+        funkcijas: row.funkcijas || "",
+      };
+      for (const part of parts) {
+        const label = part.charAt(0).toUpperCase() + part.slice(1);
+        await upsertJomaCard(label, payload);
+      }
+      try {
+        await deleteJomaCard(name);
+      } catch (_) {}
+      fixed += 1;
+    }
+    if (fixed) emitSync("joma", "html");
+    return { fixed };
+  }
+
   window.DB = {
     TABLE,
     singleTableMode: SINGLE_TABLE_MODE,
@@ -1961,6 +2191,8 @@
     startSync,
     stopSync,
     mapDbError,
+    migrateLegacyGpMetaIfNeeded,
+    repairCombinedJomaRegistryNames,
     uploadChangeRequestFiles,
     uploadCardAttachmentFiles,
     savePieteikumuVestureSnapshot,

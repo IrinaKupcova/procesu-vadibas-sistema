@@ -860,9 +860,9 @@
   <script>
     window.PV_SUPABASE_STORAGE_BUCKET = "pieteikumu-vesture";
   </script>
-  <script src="DB.js?v=20260706b"></script>
+  <script src="DB.js?v=20260706g"></script>
   <script src="Procesa%20kartina.js?v=20260703a"></script>
-  <script src="GP%20kataogs.js?v=20260706a"></script>
+  <script src="GP%20kataogs.js?v=20260706g"></script>
 
     <script>
       let processRows = [], csvRows = [], catalogRowsView = [], user = "daina", roles = {};
@@ -949,7 +949,6 @@
           return Object.assign({}, x, {
             process: ctx.process || x.process || "",
             group: ctx.group || x.group || "",
-            darbibasJoma: ctx.darbibasJoma || x.darbibasJoma || "",
           });
         });
       }
@@ -972,8 +971,8 @@
               row: {
                 typeNo: "",
                 type: gpName,
-                unit: String((p && p.executorPatstaviga) || "").trim(),
-                department: String((p && p.executorDala) || "").trim(),
+                unit: "",
+                department: "",
                 procNo,
               }
             });
@@ -1139,8 +1138,14 @@
       }
       function buildCatalogRowsForView(){
         const sourceCatalog = Array.isArray(csvRows) ? csvRows : [];
+        // csvRows no DB jau satur per-GP izpildītāju un jomu (meta JSON).
+        if(sourceCatalog.length){
+          return sourceCatalog.map((r)=>Object.assign({}, r, {
+            type: sanitizeGpName(String((r && r.type) || "")),
+          })).filter((r)=>String(r.type || "").trim());
+        }
         const sourceProcess = Array.isArray(processRows) ? processRows : [];
-        if(!sourceProcess.length) return sourceCatalog.slice();
+        if(!sourceProcess.length) return [];
         const byGp = new Map();
         sourceProcess.forEach((r)=>{
           const procNo = String((r && r.processNo) || "").trim();
@@ -1358,24 +1363,7 @@
         return sorted[0];
       }
       function resolveCatalogUnit(row){
-        const direct = String((row && row.unit) || "").trim();
-        if(direct) return direct;
-        const raw = row && row.raw ? row.raw : null;
-        if(!raw || typeof raw !== "object") return "";
-        const exactKeys = [
-          "Procesa_izpilditajs-patstaviga_strukturvieniba",
-          "Procesa_izpilditajs_patstaviga_strukturvieniba",
-          "procesa_izpilditajs-patstaviga_strukturvieniba",
-          "procesa_izpilditajs_patstaviga_strukturvieniba",
-          "Strukturvieniba_izpilditajs_kas_rada_galaprodukta_veidu",
-        ];
-        for (const k of exactKeys){
-          if (Object.prototype.hasOwnProperty.call(raw, k)) {
-            const v = String(raw[k] || "").trim();
-            if(v) return v;
-          }
-        }
-        return "";
+        return String((row && row.unit) || "").trim();
       }
       function pairProductJoma(products, jomas){
         const pVals = splitValues(products);
@@ -1433,12 +1421,12 @@
           ? rows.map((x)=>({
               no: String((x && x.typeNo) || "").trim(),
               gp: sanitizeGpName((x && x.type) || ""),
-              joma: String((x && x.darbibasJoma) || (processRow && processRow.darbibasJoma) || "").trim(),
+              joma: String((x && x.darbibasJoma) || "").trim(),
             }))
           : ((Array.isArray(processRow && processRow.gpItems) ? processRow.gpItems : []).map((g)=>({
               no: String((g && g.typeNosText) || "").split(/[,\n;]/)[0].trim(),
               gp: sanitizeGpName((g && g.name) || ""),
-              joma: String((g && g.jomaText) || (processRow && processRow.darbibasJoma) || "").trim(),
+              joma: String((g && g.jomaText) || "").trim(),
             })));
         if(!normalizedRows.length){ mount.innerHTML = ""; return; }
         const hdr = document.createElement("div");
@@ -1546,7 +1534,6 @@
           if(procNo && (!x.processNo || procNo === x.processNo)) x.processNos.add(procNo);
           splitValues(r.group).forEach((v)=>x.groups.add(normalizeGroupLabel(v)));
           splitUnitValues(r.executorPatstaviga).forEach((v)=>x.executors.add(v));
-          splitValues(r.executorDala).forEach((v)=>x.executorDalas.add(v));
           x.sourceRows.push(r);
           {
             const rowJoma = String((r && r.darbibasJoma) || "").trim();
@@ -1603,6 +1590,8 @@
           relatedCatalogRows.forEach((c)=>{
             const gp = sanitizeGpName((c && c.type) || "");
             if(gp) x.products.add(gp);
+            const u = resolveCatalogUnit(c);
+            if(u) x.executors.add(u);
           });
           const gpSeedNames = Array.from(new Set(relatedCatalogRows.map((c)=>sanitizeGpName((c && c.type) || "")).filter(Boolean)));
           const gpMap = new Map();
@@ -1650,22 +1639,25 @@
               };
             });
           const mergedGroups = Array.from(x.groups).filter(Boolean);
-          const mergedDalas = Array.from(x.executorDalas)
-            .filter((v)=>String(v||"").trim().toLowerCase() !== "uzraudzības un kontroles veikšana");
           const processNoText = Array.from(procNoSet).join(", ");
           const typeNosText = gpItems.map((g)=>g.typeNosText).join("\n");
           const jomaText = gpItems.map((g)=>g.jomaText).join("\n");
           const mergedExecutors = uniqExactStrings(Array.from(x.executors));
+          const jomasFromGp = uniqExactStrings(
+            relatedCatalogRows.map((c)=>String((c && c.darbibasJoma) || "").trim()).filter(Boolean)
+          );
           const productsText = gpItems.map((g)=>g.name).join("\n");
-          const canonicalJoma = pickCanonicalJomaValue(
-            (x.sourceRows || []).map((sr)=>String((sr && sr.darbibasJoma) || "").trim()).filter(Boolean)
-          ) || String(x.darbibasJoma || "").trim();
+          const canonicalJoma = jomasFromGp.length
+            ? jomasFromGp.join(", ")
+            : (pickCanonicalJomaValue(
+                (x.sourceRows || []).map((sr)=>String((sr && sr.darbibasJoma) || "").trim()).filter(Boolean)
+              ) || String(x.darbibasJoma || "").trim());
           return Object.assign({}, x, {
             group: mergedGroups.join(", "),
             processNo: processNoText || x.processNo || "",
             darbibasJoma: canonicalJoma,
             executorPatstaviga: mergedExecutors.join(", "),
-            executorDala: mergedDalas.join(", "),
+            executorDala: "",
             productsText,
             gpItems,
             jomaText,
@@ -2224,6 +2216,28 @@
               bulk.title = anyOpen ? "Aizvērt visus GP akordeonus šajā lapā" : "Atvērt visus GP akordeonus šajā lapā";
             }
           }
+        }
+      }
+
+      async function runDbMaintenanceOnce(){
+        const KEY = "pv_db_maintenance_v2";
+        if(localStorage.getItem(KEY)) return;
+        const api = window.DB;
+        if(!api) return;
+        try{
+          const parts = [];
+          if(typeof api.repairCombinedJomaRegistryNames === "function"){
+            const r = await api.repairCombinedJomaRegistryNames();
+            if(r && r.fixed) parts.push("jomu reģistrs: "+r.fixed);
+          }
+          if(typeof api.migrateLegacyGpMetaIfNeeded === "function"){
+            const r = await api.migrateLegacyGpMetaIfNeeded();
+            if(r && r.updated) parts.push("GP meta: "+r.updated);
+          }
+          localStorage.setItem(KEY, new Date().toISOString());
+          if(parts.length) status("DB uzturēšana — "+parts.join(", "),"ok");
+        }catch(e){
+          console.warn("DB maintenance:", e);
         }
       }
 
@@ -2810,8 +2824,10 @@
         if($("cProcNo")) $("cProcNo").value = no;
         if($("cProcess")) $("cProcess").value = name;
         if($("cGroup")) $("cGroup").value = row ? normalizeGroupLabel(row.group) : "";
-        if($("cUnit")) $("cUnit").value = row ? String(row.executorPatstaviga || "").trim() : "";
-        if($("cDepartment")) $("cDepartment").value = row ? String(row.executorDala || "").trim() : "";
+        if(!o.skipExecutors){
+          if($("cUnit")) $("cUnit").value = row ? String(row.executorPatstaviga || "").trim() : "";
+          if($("cDepartment")) $("cDepartment").value = row ? String(row.executorDala || "").trim() : "";
+        }
         if(!o.skipPickSync && $("cProcessPick")) $("cProcessPick").value = row ? catalogProcessPickValue(row) : "";
         if (window.Joma && typeof Joma.refreshOptions === "function") {
           Joma.refreshOptions({
@@ -2823,14 +2839,14 @@
         const val = $("cProcessPick") ? $("cProcessPick").value : "";
         if(!val) return;
         const row = findCatalogProcessRowByPickValue(val);
-        if(row) applyCatalogProcessRowToForm(row, { skipPickSync: true });
+        if(row) applyCatalogProcessRowToForm(row, { skipPickSync: true, skipExecutors: true });
       }
       function onCatalogProcNoInput(){
         const raw = String($("cProcNo") ? $("cProcNo").value : "").trim();
         const no = raw.toLowerCase() === "nav obligāts" ? "" : raw;
         if(!no) return;
         const row = findCatalogProcessRowByProcNo(no);
-        if(row) applyCatalogProcessRowToForm(row);
+        if(row) applyCatalogProcessRowToForm(row, { skipExecutors: true });
       }
       let __catalogProcessPickerWired = false;
       function wireCatalogProcessPickerOnce(){
@@ -2856,20 +2872,14 @@
         if(r){
           const fromReg = findCatalogProcessRowByProcNo(procNo) || findCatalogProcessRowByPickValue(`${procNo}\u0001${procName}`);
           if(fromReg){
-            applyCatalogProcessRowToForm(fromReg, { skipPickSync: false });
+            applyCatalogProcessRowToForm(fromReg, { skipPickSync: false, skipExecutors: true });
           }else{
             applyCatalogProcessRowToForm({
               processNo: procNo,
               process: procName,
               group: r.group || "",
-              executorPatstaviga: r.unit || "",
-              executorDala: r.department || "",
-            }, { skipPickSync: false });
+            }, { skipPickSync: false, skipExecutors: true });
           }
-        }else{
-          applyCatalogProcessRowToForm(null, { skipPickSync: false });
-        }
-        if(r){
           if(String(r.unit || "").trim()) $("cUnit").value = String(r.unit).trim();
           if(String(r.darbibasJoma || "").trim()){
             $("cDarbibasJoma").value = String(r.darbibasJoma).trim();
@@ -2879,17 +2889,17 @@
               });
             }
           }
+        }else{
+          applyCatalogProcessRowToForm(null, { skipPickSync: false });
         }
-        if($("cDepartment")) {
+        if(r && $("cDepartment")) {
           const raw = r && r.raw ? r.raw : null;
-          const dep = r
-            ? String(
-                r.department
-                || (raw && (raw.Strukturvieniba_dala || raw.strukturvieniba_dala))
-                || ""
-              ).trim()
-            : "";
-          if(dep) $("cDepartment").value = dep;
+          const dep = String(
+            r.department
+            || (raw && (raw.Strukturvieniba_dala || raw.strukturvieniba_dala))
+            || ""
+          ).trim();
+          $("cDepartment").value = dep;
         }
         if ($("cAdditionalInfo")) $("cAdditionalInfo").value = r ? String(r.additionalInfo != null ? r.additionalInfo : "") : "";
         if(window.ProcesaKartina && typeof ProcesaKartina.setAttachments==="function"){
@@ -4247,6 +4257,7 @@
         initThemeToggle();
         const p=new URLSearchParams(location.search); if(p.get("user")) user=p.get("user"); if(["1","2"].includes(p.get("level"))) $("levelSelect").value=p.get("level");
         loadRoles();
+        await runDbMaintenanceOnce();
         await loadDb();
         try{ await loadCatalog(); }catch{}
         if(window.JomaKartina && typeof window.JomaKartina.reloadFromDb === "function"){
@@ -4294,7 +4305,7 @@
     <script src="Skaidrojumi.js"></script>
     <script src="Abreviaturas.js"></script>
     <script src="Navigacija.js"></script>
-    <script src="Joma.js?v=20260706b"></script>
+    <script src="Joma.js?v=20260706g"></script>
     <script src="Joma%20kartina.js?v=20260706b"></script>
   </body>
   </html>
