@@ -1,0 +1,31 @@
+# Supabase free projekts tiek apturēts pēc ~7 dienām bez aktivitātes.
+# Šis workflow reizi nedēļā veic minimālu DB lasījumu (sk. DB.js pingKeepAlive).
+# Anon atslēga jau ir publiska frontendā (DB.js) — tāda pati kā pārlūkā.
+
+name: Supabase keepalive
+
+on:
+  schedule:
+    # Pirmdienas 06:00 UTC (~09:00 Latvijā)
+    - cron: "0 6 * * 1"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping procesu_registrs
+        env:
+          SUPABASE_URL: https://ettesmdcpizztgwewhpx.supabase.co
+          SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0dGVzbWRjcGl6enRnd2V3aHB4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NDM2MjcsImV4cCI6MjA4OTIxOTYyN30.Mv5SZpzQJCiIahOfs5i-j07EsJo5SRrowolKD6Vs0es
+        run: |
+          set -e
+          curl -sf \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            "${SUPABASE_URL}/rest/v1/procesu_registrs?select=id&limit=1"
+          curl -sf \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            "${SUPABASE_URL}/rest/v1/procesu_jomas?select=id&limit=1"
+          echo "Supabase keepalive OK $(date -u +%Y-%m-%dT%H:%M:%SZ)"

@@ -4,7 +4,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Procesu vadības bloks - 4. iterācija (clean)</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" crossorigin="anonymous"
+      onerror="this.onerror=null;this.src='https://unpkg.com/@supabase/supabase-js@2/dist/umd/supabase.min.js'"></script>
     <style>
       body { font-family: Arial, sans-serif; margin: 0; padding: 20px 18px 32px; background: #0f172a; color: #e2e8f0; min-height: 100vh; box-sizing: border-box; }
       h1 { margin: 0 0 6px; font-size: 24px; color: #f8fafc; font-weight: 700; } h2 { margin: 0 0 8px; font-size: 18px; } h3 { margin: 12px 0 6px; font-size: 15px; }
@@ -860,7 +861,7 @@
   <script>
     window.PV_SUPABASE_STORAGE_BUCKET = "pieteikumu-vesture";
   </script>
-  <script src="DB.js?v=20260706h"></script>
+  <script src="DB.js?v=20260724a"></script>
   <script src="Procesa%20kartina.js?v=20260703a"></script>
   <script src="GP%20kataogs.js?v=20260706h"></script>
 
@@ -884,6 +885,19 @@
       let editorReturnContext = null;
       const $ = id => document.getElementById(id);
       const status = (t,k="info") => { $("dbStatus").textContent=t; $("dbStatus").className="status "+k; };
+      function dbErrorMessage(err){
+        const mapper = window.DB && typeof window.DB.mapDbError === "function"
+          ? window.DB.mapDbError
+          : (e => (e && e.message) ? e.message : String(e));
+        return String(mapper(err) || "Nezināma DB kļūda").split("\n")[0].trim();
+      }
+      function warnIfFileProtocol(){
+        if(location.protocol !== "file:") return;
+        status(
+          "Atvērts kā lokāls fails (file://). Lai DB strādātu, izmantojiet GitHub Pages vai VS Code Live Server — nevis dubultklikšķi uz index.html.",
+          "error"
+        );
+      }
       const role = () => roles[user] || "admin_edit";
       const canEdit = () => role()==="admin_edit";
       function normalizeGroupLabel(v){
@@ -1008,10 +1022,8 @@
           catalogRowsView = buildCatalogRowsForView();
           // Nerādām ielādēto galaproduktu skaitu augšā.
         }catch(err){
-          const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (e => (e && e.message) ? e.message : String(e));
-          const msg = mapper(err);
           console.error("Catalog DB load error:", err);
-          status("Kataloga DB kļūda: " + msg, "error");
+          status("Kataloga DB kļūda: " + dbErrorMessage(err), "error");
           // Neiztīrām csvRows: pēc veiksmīgas saglabāšanas lietotājs saglabā datus UI, pat ja atkārtota ielāde kļūdās.
         }
 
@@ -2219,6 +2231,23 @@
         }
       }
 
+      async function runSupabaseKeepaliveIfDue(){
+        const KEY = "pv_supabase_keepalive_at";
+        const WEEK_MS = 6 * 24 * 60 * 60 * 1000;
+        const api = window.DB;
+        if(!api || typeof api.pingKeepAlive !== "function") return;
+        const last = Date.parse(localStorage.getItem(KEY) || "") || 0;
+        if(last && (Date.now() - last) < WEEK_MS) return;
+        try{
+          const r = await api.pingKeepAlive();
+          if(r && r.ok){
+            localStorage.setItem(KEY, r.at || new Date().toISOString());
+          }
+        }catch(e){
+          console.warn("Supabase keepalive:", e);
+        }
+      }
+
       async function runDbMaintenanceOnce(){
         const KEY = "pv_db_maintenance_v3";
         if(localStorage.getItem(KEY)) return;
@@ -2269,8 +2298,7 @@
           status("","info");
         }catch(err){
           console.error("DB load error:", err);
-          const mapper = window.DB && typeof window.DB.mapDbError === "function" ? window.DB.mapDbError : (e => (e && e.message) ? e.message : String(e));
-          status("DB kļūda: "+mapper(err),"error");
+          status("DB kļūda: "+dbErrorMessage(err),"error");
         }
       }
       async function reloadAllData(){
@@ -4261,9 +4289,19 @@
         initThemeToggle();
         const p=new URLSearchParams(location.search); if(p.get("user")) user=p.get("user"); if(["1","2"].includes(p.get("level"))) $("levelSelect").value=p.get("level");
         loadRoles();
-        await runDbMaintenanceOnce();
+        warnIfFileProtocol();
+        if(!window.supabase || typeof window.supabase.createClient !== "function"){
+          status("Supabase bibliotēka nav ielādēta. Pārbaudiet interneta savienojumu (CDN) un pārlādējiet lapu.","error");
+          renderTable(); rebuildMx();
+          return;
+        }
+        await runSupabaseKeepaliveIfDue();
         await loadDb();
-        try{ await loadCatalog(); }catch{}
+        if(Array.isArray(processRows) && processRows.length){
+          await runDbMaintenanceOnce();
+          await loadDb();
+        }
+        try{ await loadCatalog(); }catch(e){ console.warn("Catalog load:", e); }
         if(window.JomaKartina && typeof window.JomaKartina.reloadFromDb === "function"){
           try{ await window.JomaKartina.reloadFromDb(); }catch(e){ console.warn("Joma load:", e); }
         }

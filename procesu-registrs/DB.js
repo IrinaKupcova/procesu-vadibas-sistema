@@ -244,7 +244,15 @@
 
   function mapDbError(err) {
     const msg = String((err && err.message) || err || "");
-    if (msg.toLowerCase().includes("row-level security policy")) {
+    const low = msg.toLowerCase();
+    if (low.includes("failed to fetch") || low.includes("networkerror") || low.includes("network request failed")) {
+      const viaFile = typeof location !== "undefined" && String(location.protocol || "") === "file:";
+      if (viaFile) {
+        return "Nav savienojuma ar Supabase. Neatveriet failu ar dubultklikšķi (file://) — izmantojiet GitHub Pages vai lokālu serveri (piem., VS Code Live Server), un pārbaudiet interneta savienojumu.";
+      }
+      return "Nav savienojuma ar Supabase (Failed to fetch). Pārbaudiet interneta savienojumu un vai ettesmdcpizztgwewhpx.supabase.co nav bloķēts.";
+    }
+    if (low.includes("row-level security policy")) {
       return "Nav DB piekļuves tiesību (RLS). Supabase jāatļauj INSERT/UPDATE/DELETE politikās šai lomai.";
     }
     const code = err && err.code ? String(err.code) : null;
@@ -2193,6 +2201,17 @@
     return { fixed };
   }
 
+  /** Minimāls DB pieprasījums, lai Supabase free projekts neapturētu neaktivitātes dēļ. */
+  async function pingKeepAlive() {
+    const at = new Date().toISOString();
+    const { error: regErr } = await supabaseClient.from(TABLE).select("id").limit(1);
+    if (regErr) throw regErr;
+    try {
+      await supabaseClient.from(JOMA_TABLE).select("id").limit(1);
+    } catch (_) {}
+    return { ok: true, at };
+  }
+
   window.DB = {
     TABLE,
     singleTableMode: SINGLE_TABLE_MODE,
@@ -2217,6 +2236,7 @@
     migrateLegacyGpMetaIfNeeded,
     repairCombinedJomaRegistryNames,
     repairHomogenizedGpMetaJomas,
+    pingKeepAlive,
     uploadChangeRequestFiles,
     uploadCardAttachmentFiles,
     savePieteikumuVestureSnapshot,
