@@ -96,6 +96,10 @@
       .catalog-jump{font-size:11px;padding:4px 6px;border-radius:4px;background:#e2e8f0;color:#0f172a;margin-left:6px}
       .table-body-hidden tbody{display:none}
       .hint{font-size:12px;color:#475569}
+      .na-linked-list{font-size:13px;color:#0f172a;line-height:1.45}
+      .na-linked-list .na-empty-msg{font-size:12px;color:#475569}
+      .na-linked-list .na-linked-item{margin-bottom:4px;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+      .na-check-list{font-size:13px;color:#0f172a}
       .search-hit{outline:2px solid #f59e0b;background:#fef3c7}
       .section-title{margin:0;font-size:18px;font-weight:700}
       .change-req-card h2{margin-top:0}
@@ -322,6 +326,7 @@
           <button type="button" class="secondary side-nav-jump" data-scroll-target="executorsCard">Izpildītāji</button>
           <button type="button" class="secondary side-nav-jump" data-scroll-target="metricsCard">Mērījumi</button>
           <button type="button" class="secondary side-nav-jump" data-scroll-target="reportsCard">Statistika</button>
+          <button type="button" class="secondary side-nav-jump" data-scroll-target="normActsCard">Procesus reglamentējoši normatīvie akti (NA)</button>
           <button type="button" class="secondary side-nav-jump" data-scroll-target="manualCard">Rokasgrāmata</button>
           <button type="button" id="helpAdminOpenBtn" class="secondary side-nav-jump hidden" data-scroll-target="skaidrojumiAdminCard">Skaidrojuma ievietošana</button>
         </div>
@@ -590,7 +595,7 @@
           <h3 class="editor-section-title">1. Pamatinformācija</h3>
           <div class="form-row">
             <div class="form-group form-group--narrow" id="eGroupWrap"><label>Procesa grupa</label><select id="eGroup"><option value="Pamatdarbība">P — Pamatdarbība</option><option value="Atbalsts">A — Atbalsts</option><option value="Pārvaldība">M — Pārvaldība</option></select></div>
-            <div class="form-group form-group--narrow"><label>Procesa Nr.</label><input id="eProcNo" placeholder="piem. P1" list="eProcNoSuggestList" autocomplete="off" /><datalist id="eProcNoSuggestList"></datalist></div>
+            <div class="form-group form-group--narrow"><label>Procesa Nr.</label><input id="eProcNo" placeholder="piem. P-1" list="eProcNoSuggestList" autocomplete="off" /><datalist id="eProcNoSuggestList"></datalist></div>
             <div class="form-group form-group--wide" id="eProcessWrap"><label>Process</label><input id="eProcess" type="text" autocomplete="off" placeholder="Procesa nosaukums" /></div>
           </div>
         </div>
@@ -602,6 +607,12 @@
             <div id="eGpActions" class="hint"></div>
           </div>
           <input type="hidden" id="eDocs" />
+        </div>
+
+        <div class="editor-section" id="eNaEditorWrap">
+          <h3 class="editor-section-title">Procesus reglamentējoši normatīvie akti (NA)</h3>
+          <div id="eNaActions" class="na-linked-list"></div>
+          <button type="button" id="eAddNaBtn" class="secondary" style="margin-top:8px">Pievienot NA</button>
         </div>
 
         <div class="editor-section">
@@ -761,6 +772,11 @@
           <label>Iestādes funkciju piesaiste</label>
           <textarea id="jFunkcijas" rows="6" placeholder="Apraksts par saiti ar iestādes funkcijām."></textarea>
         </div>
+        <div class="form-group">
+          <label>Procesus reglamentējoši normatīvie akti (NA)</label>
+          <div id="jNaActions" class="na-linked-list"></div>
+          <button type="button" id="jAddNaBtn" class="secondary" style="margin-top:8px">Pievienot NA</button>
+        </div>
         <div class="editor-actions">
           <button type="submit">Saglabāt</button>
           <button type="button" id="jomaCloseBtn" class="secondary">Aizvērt</button>
@@ -803,6 +819,12 @@
         </div>
 
         <div class="editor-section">
+          <h3 class="editor-section-title">Procesus reglamentējoši normatīvie akti (NA)</h3>
+          <div id="cNaActions" class="na-linked-list"></div>
+          <button type="button" id="cAddNaBtn" class="secondary" style="margin-top:8px">Pievienot NA</button>
+        </div>
+
+        <div class="editor-section">
           <h3 class="editor-section-title">4. Papildu informācija</h3>
           <div class="form-row">
             <div class="form-group form-group--full">
@@ -837,6 +859,86 @@
       </div>
     </div>
 
+    <div class="card section-block hidden" id="normActsCard">
+      <div class="toolbar">
+        <div class="left"><div class="section-title">Procesus reglamentējoši normatīvie akti (NA)</div></div>
+        <div class="right">
+          <button type="button" id="naNewBtn" class="secondary">Pievienot jaunu NA</button>
+        </div>
+      </div>
+      <p class="hint" style="margin-top:0">Visi normatīvie akti, kas reglamentē procesu darbību.</p>
+      <p class="hint" id="naCountHint" style="margin-top:0">Kopā: 0 akti</p>
+      <div class="form-row" style="margin-bottom:10px">
+        <div class="form-group form-group--wide">
+          <label>Meklēt</label>
+          <input id="naSearchInput" placeholder="Meklēt pēc nosaukuma, numura, jomas, procesa…" autocomplete="off" />
+        </div>
+      </div>
+      <div style="overflow-x:auto;width:100%;">
+        <table id="naTable">
+          <thead>
+            <tr>
+              <th>NA veids</th>
+              <th>NA nosaukums</th>
+              <th>Numurs</th>
+              <th>Pants / punkts</th>
+              <th>Atbildīgā institūcija</th>
+              <th>Statuss</th>
+              <th>Procesu joma</th>
+              <th>Process</th>
+              <th>GP</th>
+              <th>Links</th>
+              <th>Darbība</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="card hidden editor-frame" id="normActEditorCard">
+      <h2 id="naEditorTitle">Normatīvā akta kartiņa</h2>
+      <form id="normActEditorForm">
+        <div class="editor-section">
+          <h3 class="editor-section-title">1. Pamatinformācija</h3>
+          <div class="form-row">
+            <div class="form-group"><label>NA veids</label><select id="naVeids"></select></div>
+            <div class="form-group form-group--wide">
+              <label>Normatīvā akta nosaukums (pilns)</label>
+              <input id="naNosaukums" placeholder="Pilns normatīvā akta nosaukums" />
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Numurs</label><input id="naNumurs" placeholder="piem., MK noteikumi Nr.537" /></div>
+            <div class="form-group form-group--wide"><label>Pants / punkts</label><input id="naPantsPunkts" placeholder="piem., 12. pants, 3. punkts" /></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group"><label>Atbildīgā institūcija</label><select id="naInstitucija"></select></div>
+            <div class="form-group"><label>Statuss</label><select id="naStatuss"></select></div>
+          </div>
+          <div class="form-row">
+            <div class="form-group form-group--full">
+              <label>Links uz aktu</label>
+              <input id="naLinks" type="url" placeholder="https://likumi.lv/…" />
+            </div>
+          </div>
+        </div>
+        <div class="editor-section">
+          <h3 class="editor-section-title">2. Saistība ar procesu reģistru</h3>
+          <div class="form-row">
+            <div class="form-group form-group--wide"><label>Procesu joma</label><select id="naJoma"></select></div>
+            <div class="form-group form-group--wide"><label>Process</label><select id="naProcess"></select></div>
+            <div class="form-group form-group--wide"><label>Galaprodukts (GP)</label><select id="naGp"></select></div>
+          </div>
+        </div>
+        <div class="editor-actions">
+          <button type="submit">Saglabāt</button>
+          <button type="button" id="naCloseBtn" class="secondary">Aizvērt</button>
+          <button type="button" id="naDeleteBtn" class="danger hidden">Dzēst</button>
+        </div>
+      </form>
+    </div>
+
     <div class="card section-block hidden" id="metricsCard">
       <div class="toolbar">
         <div class="left"><div class="section-title">Mērījumi</div></div>
@@ -861,7 +963,7 @@
   <script>
     window.PV_SUPABASE_STORAGE_BUCKET = "pieteikumu-vesture";
   </script>
-  <script src="DB.js?v=20260724a"></script>
+  <script src="DB.js?v=20260731b"></script>
   <script src="Procesa%20kartina.js?v=20260731a"></script>
   <script src="GP%20kataogs.js?v=20260706h"></script>
 
@@ -2272,7 +2374,10 @@
             const raw = (r && r.raw) || {};
             const darbibasJoma = r && r.darbibasJoma != null ? r.darbibasJoma : (raw.Darbibas_joma || raw.darbibas_joma || raw.darbibasJoma || "");
             const executorDala = r && r.executorDala != null ? r.executorDala : (raw.Strukturvieniba_dala || raw.strukturvieniba_dala || raw.executorDala || "");
-            return Object.assign({}, r, { darbibasJoma, executorDala, group: normalizeGroupLabel(r.group) });
+            const mapped = Object.assign({}, r, { darbibasJoma, executorDala, group: normalizeGroupLabel(r.group) });
+            return (window.Numeracija && typeof Numeracija.normalizeProcessRow === "function")
+              ? Numeracija.normalizeProcessRow(mapped)
+              : mapped;
           });
           catalogRowsView = buildCatalogRowsForView();
           refreshCatalogLiveCount();
@@ -2738,8 +2843,12 @@
         if($("eAvg")){ $("eAvg").placeholder = isNew ? "Katrs pakalpojums savā rindā" : ""; }
         if(isNew){
           if($("eGpActions")) $("eGpActions").innerHTML = "";
+          if($("eNaActions")) $("eNaActions").innerHTML = "";
         }else{
           renderProcessGpActions($("eProcNo").value, r);
+        }
+        if(window.NormAkti && typeof NormAkti.renderProcessLinks === "function"){
+          NormAkti.renderProcessLinks($("eProcNo").value, r);
         }
         if(window.Numeracija && typeof Numeracija.afterFillProcessForm === "function"){
           Numeracija.afterFillProcessForm({ isNew, row: r });
@@ -2775,9 +2884,9 @@
       function catalogProcessPickLabel(r){
         const no = String((r && r.processNo) || "").trim();
         const name = String((r && r.process) || "").trim();
-        if(no && name) return `${no} — ${name}`;
-        if(name) return `${name} (bez procesa Nr.)`;
-        return `${no} (bez nosaukuma)`;
+        if(name) return name;
+        if(no) return no;
+        return "—";
       }
       function findCatalogProcessRowByPickValue(val){
         const parts = String(val || "").split("\u0001");
@@ -2837,7 +2946,10 @@
       }
       function applyCatalogProcessRowToForm(row, opts){
         const o = opts || {};
-        const no = row ? String((row && row.processNo) || "").trim() : "";
+        const noRaw = row ? String((row && row.processNo) || "").trim() : "";
+        const no = (noRaw && window.Numeracija && typeof Numeracija.normalizeProcessNo === "function")
+          ? Numeracija.normalizeProcessNo(noRaw)
+          : noRaw;
         const name = row ? String((row && row.process) || "").trim() : "";
         if($("cProcNo")) $("cProcNo").value = no;
         if($("cProcess")) $("cProcess").value = name;
@@ -2939,10 +3051,16 @@
         if(window.Numeracija && typeof Numeracija.afterFillCatalogForm === "function"){
           Numeracija.afterFillCatalogForm({ isNew: !r, row: r });
         }
+        if(window.NormAkti && typeof NormAkti.renderCatalogLinks === "function"){
+          NormAkti.renderCatalogLinks();
+        }
       }
       function catalogFormVals(){
         const rawProcNo = $("cProcNo").value.trim();
-        const procNo = rawProcNo.toLowerCase() === "nav obligāts" ? "" : rawProcNo;
+        let procNo = rawProcNo.toLowerCase() === "nav obligāts" ? "" : rawProcNo;
+        if (procNo && window.Numeracija && typeof Numeracija.normalizeProcessNo === "function") {
+          procNo = Numeracija.normalizeProcessNo(procNo);
+        }
         const rawTypeNo = $("cTypeNo").value.trim();
         const typeNo = (window.Numeracija && typeof Numeracija.normalizeGpTypeNo === "function")
           ? Numeracija.normalizeGpTypeNo(rawTypeNo, procNo)
@@ -3129,7 +3247,10 @@
       }
       function formVals(){
         const rawProcNo = $("eProcNo").value.trim();
-        const processNo = rawProcNo.toLowerCase() === "nav obligāts" ? "" : rawProcNo;
+        let processNo = rawProcNo.toLowerCase() === "nav obligāts" ? "" : rawProcNo;
+        if (processNo && window.Numeracija && typeof Numeracija.normalizeProcessNo === "function") {
+          processNo = Numeracija.normalizeProcessNo(processNo);
+        }
         return {group:$("eGroup").value.trim(),processNo,process:$("eProcess").value.trim(),
         products:$("eLaws").value.trim(),productTypes:$("eDocs").value.trim(),input:$("eInput").value.trim(),executorPatstaviga:$("eExecutorPatstaviga").value.trim(),executorDala:$("eExecutorDala").value.trim(),relatedProcesses:$("eOutCount").value.trim(),
         services:$("eAvg").value.trim(),flowcharts:$("eKpi").value.trim(),itResources:$("eRisk").value.trim(),optimization:$("eOpt").value.trim(),otherMetrics:$("eOther").value.trim(),
@@ -3220,7 +3341,7 @@
         throw new Error("DB API nav pieejams: updateCatalog/insertCatalog.");
       }
       function getVisibleMainSection(){
-        const ids = ["tasksViewCard","processListCard","catalogListCard","processGroupsCard","processJomasCard","executorsCard","reportsCard","metricsCard","manualCard","skaidrojumiAdminCard"];
+        const ids = ["tasksViewCard","processListCard","catalogListCard","processGroupsCard","processJomasCard","executorsCard","reportsCard","normActsCard","metricsCard","manualCard","skaidrojumiAdminCard"];
         for (const id of ids){
           const n = $(id);
           if(n && !n.classList.contains("hidden")) return id;
@@ -3438,12 +3559,12 @@
       }
       function initLeftNav(){
         const navButtons = Array.from(document.querySelectorAll(".side-nav-jump[data-scroll-target]"));
-        const secondaryIds = new Set(["metricsCard","manualCard","reportsCard"]);
-        const mainIds = ["topToolbarCard","changeRequestCard","tasksViewCard","processListCard","catalogListCard","processGroupsCard","processJomasCard","executorsCard","editorCard","catalogEditorCard","jomaEditorCard","taskEditorCard","skaidrojumiAdminCard"];
+        const secondaryIds = new Set(["metricsCard","manualCard","reportsCard","normActsCard"]);
+        const mainIds = ["topToolbarCard","changeRequestCard","tasksViewCard","processListCard","catalogListCard","processGroupsCard","processJomasCard","executorsCard","editorCard","catalogEditorCard","jomaEditorCard","taskEditorCard","normActEditorCard","skaidrojumiAdminCard"];
         let activeNavId = null;
         function closeAllMainSections(){
           // “Redz TIKAI vienu sadaļu”: paslēpjam visas kartītes, pēc tam openSectionById atvērs tikai vajadzīgo.
-          ["tasksViewCard","processListCard","catalogListCard","processGroupsCard","processJomasCard","executorsCard","reportsCard","metricsCard","manualCard","editorCard","catalogEditorCard","jomaEditorCard","taskEditorCard","skaidrojumiAdminCard"].forEach((id)=>{
+          ["tasksViewCard","processListCard","catalogListCard","processGroupsCard","processJomasCard","executorsCard","reportsCard","normActsCard","metricsCard","manualCard","editorCard","catalogEditorCard","jomaEditorCard","taskEditorCard","normActEditorCard","skaidrojumiAdminCard"].forEach((id)=>{
             const n = $(id);
             if(n) n.classList.add("hidden");
           });
@@ -3557,6 +3678,12 @@
             clearProcessAccordionExpandedMemory();
             const card = $("reportsCard");
             if(card) card.classList.remove("hidden");
+          }else if(id==="normActsCard"){
+            closeAllMainSections();
+            clearProcessAccordionExpandedMemory();
+            const card = $("normActsCard");
+            if(card) card.classList.remove("hidden");
+            if(window.NormAkti && typeof NormAkti.render === "function") NormAkti.render();
           }else if(id==="metricsCard"){
             closeAllMainSections();
             clearProcessAccordionExpandedMemory();
@@ -3621,11 +3748,13 @@
               !!($("editorCard") && !$("editorCard").classList.contains("hidden")) ||
               !!($("catalogEditorCard") && !$("catalogEditorCard").classList.contains("hidden")) ||
               !!($("jomaEditorCard") && !$("jomaEditorCard").classList.contains("hidden")) ||
-              !!($("taskEditorCard") && !$("taskEditorCard").classList.contains("hidden"));
+              !!($("taskEditorCard") && !$("taskEditorCard").classList.contains("hidden")) ||
+              !!($("normActEditorCard") && !$("normActEditorCard").classList.contains("hidden"));
             if($("editorCard")) $("editorCard").classList.add("hidden");
             if($("catalogEditorCard")) $("catalogEditorCard").classList.add("hidden");
             if($("jomaEditorCard")) $("jomaEditorCard").classList.add("hidden");
             if($("taskEditorCard")) $("taskEditorCard").classList.add("hidden");
+            if($("normActEditorCard")) $("normActEditorCard").classList.add("hidden");
             const id = btn.getAttribute("data-scroll-target");
             const node = id ? $(id) : null;
             if(!id || !node) return;
@@ -3858,6 +3987,7 @@
         if(opened){
           if($("executorsCard")) $("executorsCard").classList.add("hidden");
           if($("reportsCard")) $("reportsCard").classList.add("hidden");
+          if($("normActsCard")) $("normActsCard").classList.add("hidden");
           if($("metricsCard")) $("metricsCard").classList.add("hidden");
           if($("manualCard")) $("manualCard").classList.add("hidden");
           const tasksTable = $("tasksSummaryTable");
@@ -3891,6 +4021,7 @@
         if(opened){
           if($("executorsCard")) $("executorsCard").classList.add("hidden");
           if($("reportsCard")) $("reportsCard").classList.add("hidden");
+          if($("normActsCard")) $("normActsCard").classList.add("hidden");
           if($("metricsCard")) $("metricsCard").classList.add("hidden");
           if($("manualCard")) $("manualCard").classList.add("hidden");
           const tasksTable = $("tasksSummaryTable");
@@ -3930,6 +4061,7 @@
         if(opened){
           if($("executorsCard")) $("executorsCard").classList.add("hidden");
           if($("reportsCard")) $("reportsCard").classList.add("hidden");
+          if($("normActsCard")) $("normActsCard").classList.add("hidden");
           if($("metricsCard")) $("metricsCard").classList.add("hidden");
           if($("manualCard")) $("manualCard").classList.add("hidden");
           const processTable = $("processTable");
@@ -4333,6 +4465,13 @@
               renderProcessJomasView();
             }
           }
+          if((kind==="all" || kind==="normAkti") && source!=="html"){
+            const naEditorOpen = !!($("normActEditorCard") && !$("normActEditorCard").classList.contains("hidden"));
+            const naVisible = !!($("normActsCard") && !$("normActsCard").classList.contains("hidden"));
+            if(!naEditorOpen && naVisible && window.NormAkti && typeof NormAkti.render === "function"){
+              try{ await NormAkti.render(); }catch(e){ console.warn("NormAkti sync:", e); }
+            }
+          }
         });
 
         // Polling noņemts no index.html, jo sinhronizāciju centralizē DB.js (startSync).
@@ -4351,10 +4490,11 @@
     <script src="Izmainu_pieteikums.js"></script>
     <script src="Skaidrojumi.js"></script>
     <script src="Abreviaturas.js"></script>
+    <script src="Norm_akti.js?v=20260731p"></script>
     <script src="Navigacija.js"></script>
-    <script src="Numeracija.js?v=20260731c"></script>
+    <script src="Numeracija.js?v=20260731d"></script>
     <script src="Joma.js?v=20260706g"></script>
-    <script src="Joma%20kartina.js?v=20260706b"></script>
+    <script src="Joma%20kartina.js?v=20260731b"></script>
   </body>
   </html>
 

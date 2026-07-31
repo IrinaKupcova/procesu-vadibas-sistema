@@ -1,7 +1,7 @@
 /**
  * Procesu un galaproduktu numerācija:
  * Pamatdarbība → P, Atbalsts → A, Pārvaldība → M;
- * process: P1, A1, M1…; GP: P-1-1, A-2-3…
+ * process: P-1, A-2, M-1…; GP: P-1-1, A-2-3…
  */
 (function () {
   "use strict";
@@ -24,15 +24,35 @@
     return GROUP_PREFIX[normGroupKey(group)] || "P";
   }
 
+  function normalizePrefixLetter(ch) {
+    const p = String(ch || "").toUpperCase();
+    if (p === "V") return "M";
+    return p;
+  }
+
   function parseProcessNo(val) {
     const s = String(val || "").trim();
-    const m = s.match(/^([PAM])\s*(\d+)$/i);
+    let m = s.match(/^([PAMV])\s*-\s*(\d+)$/i);
+    if (m) {
+      return { prefix: normalizePrefixLetter(m[1]), num: parseInt(m[2], 10) };
+    }
+    m = s.match(/^([PAMV])\s*(\d+)$/i);
     if (!m) return null;
-    return { prefix: m[1].toUpperCase(), num: parseInt(m[2], 10) };
+    return { prefix: normalizePrefixLetter(m[1]), num: parseInt(m[2], 10) };
   }
 
   function formatProcessNo(prefix, num) {
-    return `${String(prefix || "P").toUpperCase()}${num}`;
+    return `${normalizePrefixLetter(prefix || "P")}-${num}`;
+  }
+
+  function normalizeProcessNo(val) {
+    const p = parseProcessNo(val);
+    if (!p) return String(val || "").trim();
+    return formatProcessNo(p.prefix, p.num);
+  }
+
+  function processNoKey(val) {
+    return normalizeProcessNo(val).toUpperCase();
   }
 
   function processRows() {
@@ -46,12 +66,12 @@
   function collectUsedProcessNumbers(prefix, excludeProcessNo) {
     const pfx = String(prefix || "P").toUpperCase();
     const used = new Set();
-    const ex = String(excludeProcessNo || "").trim().toUpperCase();
+    const exKey = ex ? processNoKey(ex) : "";
     const add = (val) => {
       const p = parseProcessNo(val);
       if (!p || p.prefix !== pfx) return;
-      const key = formatProcessNo(p.prefix, p.num).toUpperCase();
-      if (ex && key === ex) return;
+      const key = processNoKey(formatProcessNo(p.prefix, p.num));
+      if (exKey && key === exKey) return;
       used.add(p.num);
     };
     processRows().forEach((r) => add(r && r.processNo));
@@ -93,23 +113,36 @@
       const parsed = parseGpTypeNo(s, pn);
       if (parsed) return formatGpTypeNo(pn, parsed.sub);
     }
-    const compact = s.match(/^([PAM])(\d+)-(\d+)$/i);
+    const compact = s.match(/^([PAMV])(\d+)-(\d+)$/i);
     if (compact) {
-      return `${compact[1].toUpperCase()}-${parseInt(compact[2], 10)}-${parseInt(compact[3], 10)}`;
+      return `${normalizePrefixLetter(compact[1])}-${parseInt(compact[2], 10)}-${parseInt(compact[3], 10)}`;
     }
-    const dashed = s.match(/^([PAM])-(\d+)-(\d+)$/i);
+    const dashed = s.match(/^([PAMV])-(\d+)-(\d+)$/i);
     if (dashed) {
-      return `${dashed[1].toUpperCase()}-${parseInt(dashed[2], 10)}-${parseInt(dashed[3], 10)}`;
+      return `${normalizePrefixLetter(dashed[1])}-${parseInt(dashed[2], 10)}-${parseInt(dashed[3], 10)}`;
     }
     return s;
   }
 
   function normalizeCatalogRow(row) {
     if (!row) return row;
-    const procNo = String(row.procNo || "").trim();
+    const procNo = normalizeProcessNo(row.procNo);
     const typeNo = normalizeGpTypeNo(row.typeNo, procNo);
-    if (typeNo === String(row.typeNo || "").trim()) return row;
-    return Object.assign({}, row, { typeNo });
+    const curProc = String(row.procNo || "").trim();
+    const curType = String(row.typeNo || "").trim();
+    if (procNo === curProc && typeNo === curType) return row;
+    return Object.assign({}, row, { procNo, typeNo });
+  }
+
+  function normalizeProcessRow(row) {
+    if (!row) return row;
+    const processNo = normalizeProcessNo(row.processNo);
+    if (processNo === String(row.processNo || "").trim()) return row;
+    return Object.assign({}, row, { processNo });
+  }
+
+  function normalizeProcessRows(rows) {
+    return (rows || []).map((r) => normalizeProcessRow(r));
   }
 
   function normalizeCatalogRows(rows) {
@@ -154,11 +187,11 @@
       used.add(p.sub);
     };
     catalogRows().forEach((r) => {
-      if (String((r && r.procNo) || "").trim().toUpperCase() !== pn.toUpperCase()) return;
+      if (processNoKey((r && r.procNo) || "") !== processNoKey(pn)) return;
       add(r && r.typeNo);
     });
     processRows().forEach((r) => {
-      if (String((r && r.processNo) || "").trim().toUpperCase() !== pn.toUpperCase()) return;
+      if (processNoKey((r && r.processNo) || "") !== processNoKey(pn)) return;
       const raw = (r && r.raw) || {};
       const tn =
         raw["Procesa_galaprodukta_Nr."]
@@ -275,7 +308,7 @@
       refreshProcessNoSuggestions(group, exclude);
       return;
     }
-    procEl.value = nextAvailableProcessNo(group, exclude);
+    procEl.value = normalizeProcessNo(nextAvailableProcessNo(group, exclude));
     refreshProcessNoSuggestions(group, exclude);
   }
 
@@ -312,6 +345,8 @@
       row: c.row || null,
       force: !!c.isNew,
     });
+    const procEl = $("eProcNo");
+    if (procEl && procEl.value) procEl.value = normalizeProcessNo(procEl.value);
   }
 
   function afterFillCatalogForm(ctx) {
@@ -334,7 +369,7 @@
     const processChanged =
       !!procNo
       && !!prevProc
-      && procNo.toUpperCase() !== prevProc.toUpperCase();
+      && processNoKey(procNo) !== processNoKey(prevProc);
     applyGpNumberSuggestion({
       isNew,
       row: editRow,
@@ -372,6 +407,9 @@
   window.Numeracija = {
     groupPrefix,
     parseProcessNo,
+    formatProcessNo,
+    normalizeProcessNo,
+    processNoKey,
     nextAvailableProcessNo,
     nextAvailableGpTypeNo,
     listAvailableProcessNos,
@@ -379,6 +417,8 @@
     normalizeGpTypeNo,
     normalizeCatalogRow,
     normalizeCatalogRows,
+    normalizeProcessRow,
+    normalizeProcessRows,
     afterFillProcessForm,
     afterFillCatalogForm,
     afterCatalogProcessLinked,

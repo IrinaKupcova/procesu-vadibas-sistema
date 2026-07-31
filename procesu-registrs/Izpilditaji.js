@@ -59,6 +59,7 @@
       table.style.minWidth = "980px";
       table.style.borderCollapse = "collapse";
       table.innerHTML = `
+        <colgroup class="ex-cols"><col><col><col></colgroup>
         <thead>
           <tr>
             <th>Procesa izpildītājs, pārvalde</th>
@@ -85,7 +86,20 @@
       }
     }
 
+    lockExecutorsTableLayout(table);
     return table;
+  }
+
+  function lockExecutorsTableLayout(table) {
+    if (!table) return;
+    table.classList.add("ex-table-fixed");
+    let cg = table.querySelector("colgroup.ex-cols");
+    if (!cg) {
+      cg = document.createElement("colgroup");
+      cg.className = "ex-cols";
+      cg.innerHTML = "<col><col><col>";
+      table.insertBefore(cg, table.firstChild);
+    }
   }
 
   function ensureStyles() {
@@ -93,11 +107,24 @@
     const s = document.createElement("style");
     s.id = "executorsAccordionCss";
     s.textContent = `
+      #${TABLE_ID}.ex-table-fixed,
+      #${TABLE_ID}.ex-table-fixed.data-col-sized{table-layout:fixed!important;width:100%}
+      #${TABLE_ID}.ex-table-fixed th:nth-child(1),
+      #${TABLE_ID}.ex-table-fixed td:nth-child(1){width:24%!important;min-width:0}
+      #${TABLE_ID}.ex-table-fixed th:nth-child(2),
+      #${TABLE_ID}.ex-table-fixed td:nth-child(2){width:38%!important;min-width:0}
+      #${TABLE_ID}.ex-table-fixed th:nth-child(3),
+      #${TABLE_ID}.ex-table-fixed td:nth-child(3){width:38%!important;min-width:0}
+      #${TABLE_ID}.ex-table-fixed th.col-narrow,
+      #${TABLE_ID}.ex-table-fixed td.col-narrow,
+      #${TABLE_ID}.ex-table-fixed th.col-wide,
+      #${TABLE_ID}.ex-table-fixed td.col-wide{white-space:normal}
+      #${TABLE_ID}.ex-table-fixed td{overflow-wrap:anywhere;word-break:break-word;vertical-align:top}
       #${TABLE_ID} .ex-unit-hdr td{font-weight:700;background:#e2e8f0;color:#0f172a;border-top:2px solid #94a3b8}
       #${TABLE_ID} .ex-proc-hdr td{background:#f8fafc;color:#1f2937}
       #${TABLE_ID} .ex-gp-row td{background:#ffffff}
       #${TABLE_ID} .ex-toggle{cursor:pointer;text-decoration:none;color:inherit;user-select:none}
-      #${TABLE_ID} .ex-chip{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 8px;border-radius:999px;background:#334155;color:#fff;font-size:12px;font-weight:700;line-height:1}
+      #${TABLE_ID} .ex-chip{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 8px;border-radius:999px;background:#334155;color:#fff;font-size:12px;font-weight:700;line-height:1;white-space:nowrap}
       #${TABLE_ID} .ex-chip-btn{cursor:pointer}
       #${TABLE_ID} .ex-muted-chip{background:#94a3b8}
       #${TABLE_ID} .ex-link{color:#0f172a;text-decoration:none;cursor:pointer}
@@ -448,6 +475,7 @@
     if (typeof window.refreshExtraTableFilters === "function") {
       window.refreshExtraTableFilters();
     }
+    lockExecutorsTableLayout(table);
   }
 
   // publiskais API

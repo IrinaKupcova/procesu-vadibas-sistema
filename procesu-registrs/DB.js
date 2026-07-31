@@ -11,6 +11,8 @@
   const TABLE = "procesu_registrs";
   const CATALOG_TABLE = "Procesu_galaproduktu_veidu_katalogs";
   const JOMA_TABLE = "procesu_jomas";
+  const NA_TABLE = "normativie_akti";
+  const NA_KLAS_TABLE = "norm_akti_klasifikatori";
   const SINGLE_TABLE_MODE = (() => {
     try {
       if (typeof window !== "undefined" && window.PV_SINGLE_TABLE_MODE != null) return !!window.PV_SINGLE_TABLE_MODE;
@@ -30,6 +32,8 @@
   let dbCols = new Set();
   let catalogCols = new Set();
   let jomaCols = new Set();
+  let naCols = new Set();
+  let naKlasCols = new Set();
 
   const fk = (o, a) => a.find((k) => Object.prototype.hasOwnProperty.call(o, k));
   const gv = (o, a) => {
@@ -1770,6 +1774,16 @@
         { event: "*", schema: "public", table: JOMA_TABLE },
         () => emitSync("joma", "db")
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: NA_TABLE },
+        () => emitSync("normAkti", "db")
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: NA_KLAS_TABLE },
+        () => emitSync("normAkti", "db")
+      )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") emitSync("all", "db");
       });
@@ -1782,6 +1796,11 @@
           "postgres_changes",
           { event: "*", schema: "public", table: JOMA_TABLE },
           () => emitSync("joma", "db")
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: NA_TABLE },
+          () => emitSync("normAkti", "db")
         )
         .subscribe((status) => {
           if (status === "SUBSCRIBED") emitSync("all", "db");
@@ -1929,7 +1948,7 @@
     ]);
     const updatedAt = gv(d, ["updated_at", "updatedAt"]);
     return {
-      id: gid(d),
+      id: String(gv(d, ["id", "ID", "Id"]) || ""),
       key: String(key || "").trim(),
       displayName: String(displayName || "").trim(),
       notes: String(notes || ""),
@@ -2025,6 +2044,162 @@
     }
     emitSync("joma", "html");
     return deleted;
+  }
+
+  function mapNormActDbToUi(d) {
+    return {
+      id: String(gv(d, ["id", "ID", "Id"]) || ""),
+      nosaukums: String(gv(d, ["na_nosaukums", "NA_nosaukums", "nosaukums"]) || "").trim(),
+      veids: String(gv(d, ["na_veids", "NA_veids", "veids"]) || "").trim(),
+      numurs: String(gv(d, ["numurs", "Numurs"]) || "").trim(),
+      pantsPunkts: String(gv(d, ["pants_punkts", "Pants_punkts", "pants_punkts"]) || "").trim(),
+      institucija: String(gv(d, ["atbildiga_institucija", "institucija", "Atbildiga_institucija"]) || "").trim(),
+      links: String(gv(d, ["links", "Links", "saite"]) || "").trim(),
+      statuss: String(gv(d, ["statuss", "Statuss"]) || "").trim(),
+      joma: String(gv(d, ["procesu_joma", "joma", "Procesu_joma"]) || "").trim(),
+      processNo: String(gv(d, ["procesa_nr", "procesa_numurs", "process_no"]) || "").trim(),
+      process: String(gv(d, ["process_nosaukums", "process", "Process_nosaukums"]) || "").trim(),
+      gpTypeNo: String(gv(d, ["gp_nr", "gp_type_no", "GP_nr"]) || "").trim(),
+      gp: String(gv(d, ["gp_nosaukums", "gp", "GP_nosaukums"]) || "").trim(),
+      createdAt: String(gv(d, ["created_at", "createdAt"]) || ""),
+      updatedAt: String(gv(d, ["updated_at", "updatedAt"]) || ""),
+      raw: d,
+    };
+  }
+
+  function pickNaCol(candidates, fallback) {
+    if (naCols && naCols.size) {
+      const hit = candidates.find((c) => naCols.has(c));
+      if (hit) return hit;
+    }
+    return fallback;
+  }
+
+  function normActUiToPayload(row) {
+    const r = row || {};
+    const payload = {};
+    payload[pickNaCol(["na_nosaukums"], "na_nosaukums")] = String(r.nosaukums || "").trim();
+    payload[pickNaCol(["na_veids"], "na_veids")] = String(r.veids || "").trim();
+    payload[pickNaCol(["numurs"], "numurs")] = String(r.numurs || "").trim();
+    payload[pickNaCol(["pants_punkts"], "pants_punkts")] = String(r.pantsPunkts || "").trim();
+    payload[pickNaCol(["atbildiga_institucija"], "atbildiga_institucija")] = String(r.institucija || "").trim();
+    payload[pickNaCol(["links"], "links")] = String(r.links || "").trim();
+    payload[pickNaCol(["statuss"], "statuss")] = String(r.statuss || "").trim();
+    payload[pickNaCol(["procesu_joma"], "procesu_joma")] = String(r.joma || "").trim();
+    payload[pickNaCol(["procesa_nr"], "procesa_nr")] = String(r.processNo || "").trim();
+    payload[pickNaCol(["process_nosaukums"], "process_nosaukums")] = String(r.process || "").trim();
+    payload[pickNaCol(["gp_nr"], "gp_nr")] = String(r.gpTypeNo || "").trim();
+    payload[pickNaCol(["gp_nosaukums"], "gp_nosaukums")] = String(r.gp || "").trim();
+    payload[pickNaCol(["updated_at"], "updated_at")] = new Date().toISOString();
+    return payload;
+  }
+
+  async function loadNormActs() {
+    const { data, error } = await supabaseClient.from(NA_TABLE).select("*").order("id", { ascending: true });
+    if (error) {
+      if (isMissingDbObjectError(error)) return [];
+      throw error;
+    }
+    naCols = new Set();
+    (data || []).forEach((r) => {
+      Object.keys(r || {}).forEach((k) => naCols.add(k));
+    });
+    return (data || []).map(mapNormActDbToUi);
+  }
+
+  async function insertNormAct(row) {
+    if (!naCols || !naCols.size) {
+      try { await loadNormActs(); } catch (_) {}
+    }
+    const payload = normActUiToPayload(row);
+    if (!payload[pickNaCol(["na_nosaukums"], "na_nosaukums")]) {
+      throw new Error("Normatīvā akta nosaukums nav norādīts.");
+    }
+    const createdCol = pickNaCol(["created_at"], "created_at");
+    if (createdCol) payload[createdCol] = new Date().toISOString();
+    const { data, error } = await supabaseClient.from(NA_TABLE).insert(payload).select("*").single();
+    if (error) {
+      if (isMissingDbObjectError(error)) return null;
+      throw error;
+    }
+    emitSync("normAkti", "html");
+    return mapNormActDbToUi(data);
+  }
+
+  function normActDbIdValue(id) {
+    const s = String(id || "").trim();
+    if (!s || s === "id" || s.startsWith("na_")) return null;
+    if (/^\d+$/.test(s)) return Number(s);
+    return s;
+  }
+
+  async function updateNormAct(id, row) {
+    const actId = normActDbIdValue(id);
+    if (actId == null) throw new Error("Normatīvā akta ID nav derīgs.");
+    if (!naCols || !naCols.size) {
+      try { await loadNormActs(); } catch (_) {}
+    }
+    const idCol = pickNaCol(["id"], "id");
+    const payload = normActUiToPayload(row);
+    const { data, error } = await supabaseClient.from(NA_TABLE).update(payload).eq(idCol, actId).select("*").single();
+    if (error) {
+      if (isMissingDbObjectError(error)) return null;
+      throw error;
+    }
+    emitSync("normAkti", "html");
+    return mapNormActDbToUi(data);
+  }
+
+  async function deleteNormAct(id) {
+    const actId = normActDbIdValue(id);
+    if (actId == null) throw new Error("Normatīvā akta ID nav derīgs.");
+    const idCol = pickNaCol(["id"], "id");
+    const { error, count } = await supabaseClient.from(NA_TABLE).delete({ count: "exact" }).eq(idCol, actId);
+    if (error && !isMissingDbObjectError(error)) throw error;
+    emitSync("normAkti", "html");
+    return Number(count || 0);
+  }
+
+  async function loadNormActKlasifikatori() {
+    const { data, error } = await supabaseClient.from(NA_KLAS_TABLE).select("*");
+    if (error) {
+      if (isMissingDbObjectError(error)) return { veidi: [], institucijas: [] };
+      throw error;
+    }
+    naKlasCols = new Set();
+    (data || []).forEach((r) => {
+      Object.keys(r || {}).forEach((k) => naKlasCols.add(k));
+    });
+    const katCol = (data && data[0]) ? (fk(data[0], ["kategorija", "Kategorija"]) || "kategorija") : "kategorija";
+    const valCol = (data && data[0]) ? (fk(data[0], ["vertiba", "Vertiba"]) || "vertiba") : "vertiba";
+    const veidi = [];
+    const institucijas = [];
+    (data || []).forEach((r) => {
+      const k = String(r[katCol] || "").trim().toLowerCase();
+      const v = String(r[valCol] || "").trim();
+      if (!v) return;
+      if (k === "veids") veidi.push(v);
+      else if (k === "institucija") institucijas.push(v);
+    });
+    return { veidi, institucijas };
+  }
+
+  async function upsertNormActKlasifikators(kategorija, vertiba) {
+    const kat = String(kategorija || "").trim().toLowerCase();
+    const val = String(vertiba || "").trim();
+    if (!kat || !val) return null;
+    if (!naKlasCols || !naKlasCols.size) {
+      try { await loadNormActKlasifikatori(); } catch (_) {}
+    }
+    const payload = {
+      kategorija: kat,
+      vertiba: val,
+      updated_at: new Date().toISOString(),
+    };
+    const { error } = await supabaseClient.from(NA_KLAS_TABLE).upsert(payload, { onConflict: "kategorija,vertiba" });
+    if (error) throw error;
+    emitSync("normAkti", "html");
+    return payload;
   }
 
   async function updateProcessNoBulk(oldProcessNo, processName, newProcessNo) {
@@ -2209,6 +2384,9 @@
     try {
       await supabaseClient.from(JOMA_TABLE).select("id").limit(1);
     } catch (_) {}
+    try {
+      await supabaseClient.from(NA_TABLE).select("id").limit(1);
+    } catch (_) {}
     return { ok: true, at };
   }
 
@@ -2230,6 +2408,12 @@
     loadJomaCards,
     upsertJomaCard,
     deleteJomaCard,
+    loadNormActs,
+    insertNormAct,
+    updateNormAct,
+    deleteNormAct,
+    loadNormActKlasifikatori,
+    upsertNormActKlasifikators,
     startSync,
     stopSync,
     mapDbError,
