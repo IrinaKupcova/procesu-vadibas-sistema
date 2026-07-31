@@ -84,6 +84,38 @@
     return `${p.prefix}-${p.num}-${sub}`;
   }
 
+  /** P1-1 → P-1-1; jau pareizs formāts paliek nemainīts. */
+  function normalizeGpTypeNo(val, procNo) {
+    const s = String(val || "").trim();
+    if (!s) return "";
+    const pn = String(procNo || "").trim();
+    if (pn) {
+      const parsed = parseGpTypeNo(s, pn);
+      if (parsed) return formatGpTypeNo(pn, parsed.sub);
+    }
+    const compact = s.match(/^([PAM])(\d+)-(\d+)$/i);
+    if (compact) {
+      return `${compact[1].toUpperCase()}-${parseInt(compact[2], 10)}-${parseInt(compact[3], 10)}`;
+    }
+    const dashed = s.match(/^([PAM])-(\d+)-(\d+)$/i);
+    if (dashed) {
+      return `${dashed[1].toUpperCase()}-${parseInt(dashed[2], 10)}-${parseInt(dashed[3], 10)}`;
+    }
+    return s;
+  }
+
+  function normalizeCatalogRow(row) {
+    if (!row) return row;
+    const procNo = String(row.procNo || "").trim();
+    const typeNo = normalizeGpTypeNo(row.typeNo, procNo);
+    if (typeNo === String(row.typeNo || "").trim()) return row;
+    return Object.assign({}, row, { typeNo });
+  }
+
+  function normalizeCatalogRows(rows) {
+    return (rows || []).map((r) => normalizeCatalogRow(r));
+  }
+
   function parseGpTypeNo(val, procNo) {
     const s = String(val || "").trim();
     const pn = String(procNo || "").trim();
@@ -269,6 +301,7 @@
       return;
     }
     typeEl.value = nextAvailableGpTypeNo(procNo, exclude);
+    typeEl.value = normalizeGpTypeNo(typeEl.value, procNo);
     refreshGpTypeNoSuggestions(procNo, exclude);
   }
 
@@ -343,6 +376,9 @@
     nextAvailableGpTypeNo,
     listAvailableProcessNos,
     listAvailableGpTypeNos,
+    normalizeGpTypeNo,
+    normalizeCatalogRow,
+    normalizeCatalogRows,
     afterFillProcessForm,
     afterFillCatalogForm,
     afterCatalogProcessLinked,

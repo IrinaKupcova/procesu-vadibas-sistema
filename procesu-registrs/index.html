@@ -1077,6 +1077,9 @@
             return;
           }
           csvRows = await api.loadCatalogTypes();
+          if (window.Numeracija && typeof Numeracija.normalizeCatalogRows === "function") {
+            csvRows = Numeracija.normalizeCatalogRows(csvRows);
+          }
           catalogRowsView = buildCatalogRowsForView();
           // Nerādām ielādēto galaproduktu skaitu augšā.
         }catch(err){
@@ -1182,11 +1185,16 @@
           .map((x)=>String(x||"").trim())
           .filter(Boolean);
       }
-      function splitTypeNoValues(v){
-        return String(v||"")
+      function splitTypeNoValues(v, procNo){
+        const parts = String(v||"")
           .split(/[;,\n]/)
           .map((x)=>String(x||"").trim())
           .filter(Boolean);
+        if (window.Numeracija && typeof Numeracija.normalizeGpTypeNo === "function") {
+          const pn = String(procNo || "").trim();
+          return parts.map((x)=>Numeracija.normalizeGpTypeNo(x, pn));
+        }
+        return parts;
       }
       function splitProductValues(v){
         const raw = String(v || "");
@@ -1241,7 +1249,8 @@
               || raw["procesa_galaprodukta_nr"]
               || raw["Procesa_galaprodukta_nr"]
               || ""
-            )
+            ),
+            procNo
           );
           gpNames.forEach((gp, idx)=>{
             const gpNorm = normTextKey(gp);
@@ -1618,7 +1627,7 @@
             || raw["Procesa_galaprodukta_nr"]
             || ""
           ).trim();
-          const gpTypeNos = splitTypeNoValues(gpTypeNoRaw).map((v)=>String(v || "").trim()).filter(Boolean);
+          const gpTypeNos = splitTypeNoValues(gpTypeNoRaw, procNo).map((v)=>String(v || "").trim()).filter(Boolean);
           gpNames.forEach((v, idx)=>{
             x.products.add(v);
             const n = gpTypeNos[idx] || "";
@@ -2877,7 +2886,13 @@
       }
       function fillCatalogForm(r){
         $("cTypeNoOrig").value = r ? String(r.typeNo || "") : "";
-        $("cTypeNo").value = r ? String(r.typeNo || "") : "";
+        const procNoForGp = r ? String(r.procNo || "").trim() : "";
+        const rawTypeNo = r ? String(r.typeNo || "") : "";
+        $("cTypeNo").value = r
+          ? (window.Numeracija && typeof Numeracija.normalizeGpTypeNo === "function"
+            ? Numeracija.normalizeGpTypeNo(rawTypeNo, procNoForGp)
+            : rawTypeNo)
+          : "";
         $("cType").value = r ? (r.type || "") : "";
         $("cUnit").value = r ? (r.unit || "") : "";
         const procNo = r ? String(r.procNo || "").trim() : "";
@@ -2928,8 +2943,12 @@
       function catalogFormVals(){
         const rawProcNo = $("cProcNo").value.trim();
         const procNo = rawProcNo.toLowerCase() === "nav obligāts" ? "" : rawProcNo;
+        const rawTypeNo = $("cTypeNo").value.trim();
+        const typeNo = (window.Numeracija && typeof Numeracija.normalizeGpTypeNo === "function")
+          ? Numeracija.normalizeGpTypeNo(rawTypeNo, procNo)
+          : rawTypeNo;
         return {
-          typeNo: $("cTypeNo").value.trim(),
+          typeNo,
           type: $("cType").value.trim(),
           unit: $("cUnit").value.trim(),
           procNo,
@@ -4333,7 +4352,7 @@
     <script src="Skaidrojumi.js"></script>
     <script src="Abreviaturas.js"></script>
     <script src="Navigacija.js"></script>
-    <script src="Numeracija.js?v=20260731b"></script>
+    <script src="Numeracija.js?v=20260731c"></script>
     <script src="Joma.js?v=20260706g"></script>
     <script src="Joma%20kartina.js?v=20260706b"></script>
   </body>
