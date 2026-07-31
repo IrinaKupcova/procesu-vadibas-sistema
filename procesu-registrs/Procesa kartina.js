@@ -158,6 +158,9 @@
       if (cType) cType.value = "";
       if (cTypeNo) cTypeNo.value = "";
       if (cTypeNoOrig) cTypeNoOrig.value = "";
+      if (window.Numeracija && typeof Numeracija.applyGpNumberSuggestion === "function") {
+        Numeracija.applyGpNumberSuggestion({ isNew: true, procNo, force: true });
+      }
       if (window.ProcesaKartina && typeof ProcesaKartina.setAttachments === "function") {
         ProcesaKartina.setAttachments("catalog", []);
       }

@@ -379,7 +379,7 @@
         </div>
         <h3>Procesu reģistrs (ieraksta dati, kurus vēlaties mainīt / pievienot)</h3>
         <div class="form-row">
-          <div class="form-group"><label>Procesa grupa</label><select id="ch_pr_group"><option value=""></option><option>Pamatdarbība</option><option>Atbalsts</option><option>Pārvaldība</option></select></div>
+          <div class="form-group"><label>Procesa grupa</label><select id="ch_pr_group"><option value=""></option><option value="Pamatdarbība">P — Pamatdarbība</option><option value="Atbalsts">A — Atbalsts</option><option value="Pārvaldība">M — Pārvaldība</option></select></div>
           <div class="form-group"><label>Procesa Nr.</label><input id="ch_pr_processNo" /></div>
         </div>
         <div class="form-row">
@@ -589,8 +589,8 @@
         <div class="editor-section">
           <h3 class="editor-section-title">1. Pamatinformācija</h3>
           <div class="form-row">
-            <div class="form-group form-group--narrow" id="eGroupWrap"><label>Procesa grupa</label><select id="eGroup"><option>Pamatdarbība</option><option>Atbalsts</option><option>Pārvaldība</option></select></div>
-            <div class="form-group form-group--narrow"><label>Procesa Nr.</label><input id="eProcNo" placeholder="Nav obligāts" /></div>
+            <div class="form-group form-group--narrow" id="eGroupWrap"><label>Procesa grupa</label><select id="eGroup"><option value="Pamatdarbība">P — Pamatdarbība</option><option value="Atbalsts">A — Atbalsts</option><option value="Pārvaldība">M — Pārvaldība</option></select></div>
+            <div class="form-group form-group--narrow"><label>Procesa Nr.</label><input id="eProcNo" placeholder="piem. P1" list="eProcNoSuggestList" autocomplete="off" /><datalist id="eProcNoSuggestList"></datalist></div>
             <div class="form-group form-group--wide" id="eProcessWrap"><label>Process</label><input id="eProcess" type="text" autocomplete="off" placeholder="Procesa nosaukums" /></div>
           </div>
         </div>
@@ -775,19 +775,19 @@
         <input id="cTypeNoOrig" type="hidden" />
 
         <div class="editor-section">
-          <h3 class="editor-section-title">1. Pamatinformācija</h3>
-          <div class="form-row">
-            <div class="form-group form-group--narrow"><label>Procesa galaprodukta Nr.</label><input id="cTypeNo" placeholder="Nav obligāts" /></div>
-            <div class="form-group form-group--wide"><label>Galaprodukta nosaukums</label><input id="cType" /></div>
-          </div>
-        </div>
-
-        <div class="editor-section">
-          <h3 class="editor-section-title">2. Saistītais process</h3>
+          <h3 class="editor-section-title">1. Saistītais process</h3>
           <div class="form-row">
             <div class="form-group form-group--narrow"><label>Procesa Nr.</label><input id="cProcNo" placeholder="Nav obligāts" list="cProcNoList" autocomplete="off" /><datalist id="cProcNoList"></datalist></div>
             <div class="form-group form-group--wide"><label>Process</label><select id="cProcessPick"><option value="">— Izvēlēties procesu —</option></select><input id="cProcess" type="hidden" /></div>
             <div class="form-group form-group--narrow"><label>Procesa grupa</label><input id="cGroup" readonly tabindex="-1" style="background:#f1f5f9" /></div>
+          </div>
+        </div>
+
+        <div class="editor-section">
+          <h3 class="editor-section-title">2. Pamatinformācija</h3>
+          <div class="form-row">
+            <div class="form-group form-group--narrow"><label>Procesa galaprodukta Nr.</label><input id="cTypeNo" placeholder="piem. P-1-1" list="cTypeNoSuggestList" autocomplete="off" /><datalist id="cTypeNoSuggestList"></datalist></div>
+            <div class="form-group form-group--wide"><label>Galaprodukta nosaukums</label><input id="cType" /></div>
           </div>
         </div>
 
@@ -862,7 +862,7 @@
     window.PV_SUPABASE_STORAGE_BUCKET = "pieteikumu-vesture";
   </script>
   <script src="DB.js?v=20260724a"></script>
-  <script src="Procesa%20kartina.js?v=20260703a"></script>
+  <script src="Procesa%20kartina.js?v=20260731a"></script>
   <script src="GP%20kataogs.js?v=20260706h"></script>
 
     <script>
@@ -881,6 +881,8 @@
       let catalogOpenReturnTarget = "catalog";
       let editingRow = null;
       let editingCatalogRow = null;
+      window.getEditingProcessRow = () => editingRow;
+      window.getEditingCatalogRow = () => editingCatalogRow;
       let editingTaskNo = null;
       let editorReturnContext = null;
       const $ = id => document.getElementById(id);
@@ -907,6 +909,62 @@
         if(t.includes("atbal")) return "Atbalsts";
         if(t.includes("vad") || t.includes("pārvald")) return "Pārvaldība";
         return String(v||"").trim();
+      }
+      function formatGroupWithPrefix(v){
+        const g = normalizeGroupLabel(v);
+        if(!g) return "";
+        if(g === "Pamatdarbība") return "P — Pamatdarbība";
+        if(g === "Atbalsts") return "A — Atbalsts";
+        if(g === "Pārvaldība") return "M — Pārvaldība";
+        return g;
+      }
+      function groupPrefixLetter(v){
+        const g = normalizeGroupLabel(v);
+        if(g === "Pamatdarbība") return "P";
+        if(g === "Atbalsts") return "A";
+        if(g === "Pārvaldība") return "M";
+        return "";
+      }
+      function renderGroupPieSvg(pie, legend, slices, totalCount){
+        if(!pie) return;
+        const total = totalCount > 0 ? totalCount : 1;
+        const cx = 92, cy = 120, r = 82, innerR = 44;
+        let acc = 0;
+        const rad = (deg)=> (Math.PI / 180) * deg;
+        const paths = [];
+        const segmentLetters = [];
+        const labels = [];
+        (slices || []).forEach((s)=>{
+          const val = s.val || 0;
+          const angle = (val / total) * 360;
+          const start = acc;
+          const end = acc + angle;
+          acc = end;
+          if(angle <= 0) return;
+          const x1 = cx + r * Math.cos(rad(start - 90));
+          const y1 = cy + r * Math.sin(rad(start - 90));
+          const x2 = cx + r * Math.cos(rad(end - 90));
+          const y2 = cy + r * Math.sin(rad(end - 90));
+          const large = angle > 180 ? 1 : 0;
+          paths.push(`<path d="M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z" fill="${s.color}" />`);
+          const letter = groupPrefixLetter(s.name);
+          if(letter && angle >= 10){
+            const midAngle = start + angle / 2;
+            const labelR = (innerR + r) / 2;
+            const lx = cx + labelR * Math.cos(rad(midAngle - 90));
+            const ly = cy + labelR * Math.sin(rad(midAngle - 90));
+            segmentLetters.push(`<text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" dominant-baseline="middle" font-size="18" font-weight="700" fill="#ffffff">${letter}</text>`);
+          }
+          const pct = totalCount ? Math.round((val / totalCount) * 100) : 0;
+          labels.push({ text: `${formatGroupWithPrefix(s.name)}: ${val} (${pct}%)`, color: s.color });
+        });
+        pie.setAttribute("viewBox", "0 0 420 240");
+        const legendSvg = labels.map((x, i)=>{
+          const y = 96 + (i * 30);
+          return `<circle cx="220" cy="${y-4}" r="5" fill="${x.color}"></circle><text x="232" y="${y}" font-size="12" fill="#334155">${x.text}</text>`;
+        }).join("");
+        pie.innerHTML = `${paths.join("")}${segmentLetters.join("")}<circle cx="${cx}" cy="${cy}" r="${innerR}" fill="#fff"></circle><text x="${cx}" y="${cy+4}" text-anchor="middle" font-size="12" fill="#334155">${totalCount}</text>${legendSvg}`;
+        if(legend) legend.innerHTML = "";
       }
       function mergeCatalogRowsFromProcessRows(){
         if(!Array.isArray(processRows) || !Array.isArray(csvRows)) return;
@@ -1861,42 +1919,12 @@
         });
         if($("statProcessJomaCount")) $("statProcessJomaCount").textContent = String(collectAllJomaKeys().size);
         if($("statProcessUniqueCount")) $("statProcessUniqueCount").textContent = String(list.length);
-        const total = list.length || 1;
         const slices = [
           { name: "Pamatdarbība", val: groups["Pamatdarbība"], color: "#3b82f6" },
           { name: "Atbalsts", val: groups["Atbalsts"], color: "#22c55e" },
           { name: "Pārvaldība", val: groups["Pārvaldība"], color: "#f59e0b" },
         ];
-        const pie = $("processGroupPie");
-        const legend = $("processGroupPieLegend");
-        if(!pie || !legend) return;
-        const cx = 92, cy = 120, r = 82;
-        let acc = 0;
-        const rad = (deg)=> (Math.PI / 180) * deg;
-        const paths = [];
-        const labels = [];
-        slices.forEach((s)=>{
-          const angle = (s.val / total) * 360;
-          const start = acc;
-          const end = acc + angle;
-          acc = end;
-          if(angle <= 0) return;
-          const x1 = cx + r * Math.cos(rad(start - 90));
-          const y1 = cy + r * Math.sin(rad(start - 90));
-          const x2 = cx + r * Math.cos(rad(end - 90));
-          const y2 = cy + r * Math.sin(rad(end - 90));
-          const large = angle > 180 ? 1 : 0;
-          paths.push(`<path d="M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z" fill="${s.color}" />`);
-          const pct = list.length ? Math.round((s.val / list.length) * 100) : 0;
-          labels.push({ text: `${s.name}: ${s.val} (${pct}%)`, color: s.color });
-        });
-        pie.setAttribute("viewBox", "0 0 420 240");
-        const legendSvg = labels.map((x, i)=>{
-          const y = 96 + (i * 30);
-          return `<circle cx="220" cy="${y-4}" r="5" fill="${x.color}"></circle><text x="232" y="${y}" font-size="12" fill="#334155">${x.text}</text>`;
-        }).join("");
-        pie.innerHTML = `${paths.join("")}<circle cx="${cx}" cy="${cy}" r="44" fill="#fff"></circle><text x="${cx}" y="${cy+4}" text-anchor="middle" font-size="12" fill="#334155">${list.length}</text>${legendSvg}`;
-        legend.innerHTML = "";
+        renderGroupPieSvg($("processGroupPie"), $("processGroupPieLegend"), slices, list.length);
       }
       function renderProcessGroupsView(){
         const card = $("processGroupsCard");
@@ -1927,39 +1955,12 @@
         });
         if($("pgStatProcessJomaCount")) $("pgStatProcessJomaCount").textContent = String(collectAllJomaKeys().size);
         if($("pgStatProcessUniqueCount")) $("pgStatProcessUniqueCount").textContent = String(list.length);
-        const total = list.length || 1;
         const slices = [
           { name: "Pamatdarbība", val: (byGroup.get("Pamatdarbība") || []).length, color: "#3b82f6" },
           { name: "Atbalsts", val: (byGroup.get("Atbalsts") || []).length, color: "#22c55e" },
           { name: "Pārvaldība", val: (byGroup.get("Pārvaldība") || []).length, color: "#f59e0b" },
         ];
-        const cx = 92, cy = 120, r = 82;
-        let acc = 0;
-        const rad = (deg)=> (Math.PI / 180) * deg;
-        const paths = [];
-        const labels = [];
-        slices.forEach((s)=>{
-          const angle = (s.val / total) * 360;
-          const start = acc;
-          const end = acc + angle;
-          acc = end;
-          if(angle <= 0) return;
-          const x1 = cx + r * Math.cos(rad(start - 90));
-          const y1 = cy + r * Math.sin(rad(start - 90));
-          const x2 = cx + r * Math.cos(rad(end - 90));
-          const y2 = cy + r * Math.sin(rad(end - 90));
-          const large = angle > 180 ? 1 : 0;
-          paths.push(`<path d="M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z" fill="${s.color}" />`);
-          const pct = list.length ? Math.round((s.val / list.length) * 100) : 0;
-          labels.push({ text: `${s.name}: ${s.val} (${pct}%)`, color: s.color });
-        });
-        pie.setAttribute("viewBox", "0 0 420 240");
-        const legendSvg = labels.map((x, i)=>{
-          const y = 96 + (i * 30);
-          return `<circle cx="220" cy="${y-4}" r="5" fill="${x.color}"></circle><text x="232" y="${y}" font-size="12" fill="#334155">${x.text}</text>`;
-        }).join("");
-        pie.innerHTML = `${paths.join("")}<circle cx="${cx}" cy="${cy}" r="44" fill="#fff"></circle><text x="${cx}" y="${cy+4}" text-anchor="middle" font-size="12" fill="#334155">${list.length}</text>${legendSvg}`;
-        legend.innerHTML = "";
+        renderGroupPieSvg(pie, legend, slices, list.length);
 
         const sortedGroups = Array.from(byGroup.keys()).sort((a,b)=>a.localeCompare(b,"lv",{sensitivity:"base"}));
         tbody.innerHTML = "";
@@ -1973,7 +1974,7 @@
           hdr.setAttribute("aria-expanded", groupOpen ? "true" : "false");
           hdr.setAttribute("data-process-group", groupName);
           const groupColor = groupName === "Pamatdarbība" ? "#3b82f6" : (groupName === "Atbalsts" ? "#22c55e" : (groupName === "Pārvaldība" ? "#f59e0b" : "#312e81"));
-          hdr.innerHTML = `<td><strong style="color:${groupColor}">${groupName}</strong></td><td><strong>Kopā: ${groupRows.length} procesi</strong></td><td></td>`;
+          hdr.innerHTML = `<td><strong style="color:${groupColor}">${formatGroupWithPrefix(groupName)}</strong></td><td><strong>Kopā: ${groupRows.length} procesi</strong></td><td></td>`;
           tbody.appendChild(hdr);
           groupRows.forEach((r)=>{
             const tr = document.createElement("tr");
@@ -2107,39 +2108,12 @@
           const g = normalizeGroupLabel(r.group || "");
           if(groups[g] != null) groups[g] += 1;
         });
-        const total = allProcKeys.size || 1;
         const topSlices = [
           { name: "Pamatdarbība", val: groups["Pamatdarbība"], color: "#3b82f6" },
           { name: "Atbalsts", val: groups["Atbalsts"], color: "#22c55e" },
           { name: "Pārvaldība", val: groups["Pārvaldība"], color: "#f59e0b" },
         ];
-        const cx = 92, cy = 120, r = 82;
-        let acc = 0;
-        const rad = (deg)=> (Math.PI / 180) * deg;
-        const paths = [];
-        const labels = [];
-        topSlices.forEach((s)=>{
-          const angle = (s.val / total) * 360;
-          const start = acc;
-          const end = acc + angle;
-          acc = end;
-          if(angle <= 0) return;
-          const x1 = cx + r * Math.cos(rad(start - 90));
-          const y1 = cy + r * Math.sin(rad(start - 90));
-          const x2 = cx + r * Math.cos(rad(end - 90));
-          const y2 = cy + r * Math.sin(rad(end - 90));
-          const large = angle > 180 ? 1 : 0;
-          paths.push(`<path d="M ${cx} ${cy} L ${x1} ${y1} A ${r} ${r} 0 ${large} 1 ${x2} ${y2} Z" fill="${s.color}" />`);
-          const pct = allProcKeys.size ? Math.round((s.val / allProcKeys.size) * 100) : 0;
-          labels.push({ text: `${s.name}: ${s.val} (${pct}%)`, color: s.color });
-        });
-        pie.setAttribute("viewBox", "0 0 420 240");
-        const legendSvg = labels.map((x, i)=>{
-          const y = 96 + (i * 30);
-          return `<circle cx="220" cy="${y-4}" r="5" fill="${x.color}"></circle><text x="232" y="${y}" font-size="12" fill="#334155">${x.text}</text>`;
-        }).join("");
-        pie.innerHTML = `${paths.join("")}<circle cx="${cx}" cy="${cy}" r="44" fill="#fff"></circle><text x="${cx}" y="${cy+4}" text-anchor="middle" font-size="12" fill="#334155">${allProcKeys.size}</text>${legendSvg}`;
-        legend.innerHTML = "";
+        renderGroupPieSvg(pie, legend, topSlices, allProcKeys.size);
 
         const sortedJomas = Array.from(byJoma.values()).sort((a,b)=>String(a.display || "").localeCompare(String(b.display || ""),"lv",{sensitivity:"base"}));
         tbody.innerHTML = "";
@@ -2758,6 +2732,9 @@
         }else{
           renderProcessGpActions($("eProcNo").value, r);
         }
+        if(window.Numeracija && typeof Numeracija.afterFillProcessForm === "function"){
+          Numeracija.afterFillProcessForm({ isNew, row: r });
+        }
       }
       function collectCatalogProcessPickerRows(){
         const out = [];
@@ -2855,7 +2832,7 @@
         const name = row ? String((row && row.process) || "").trim() : "";
         if($("cProcNo")) $("cProcNo").value = no;
         if($("cProcess")) $("cProcess").value = name;
-        if($("cGroup")) $("cGroup").value = row ? normalizeGroupLabel(row.group) : "";
+        if($("cGroup")) $("cGroup").value = row ? formatGroupWithPrefix(row.group) : "";
         if(!o.skipExecutors){
           if($("cUnit")) $("cUnit").value = row ? String(row.executorPatstaviga || "").trim() : "";
           if($("cDepartment")) $("cDepartment").value = row ? String(row.executorDala || "").trim() : "";
@@ -2872,6 +2849,9 @@
         if(!val) return;
         const row = findCatalogProcessRowByPickValue(val);
         if(row) applyCatalogProcessRowToForm(row, { skipPickSync: true, skipExecutors: true });
+        if(window.Numeracija && typeof Numeracija.afterCatalogProcessLinked === "function"){
+          Numeracija.afterCatalogProcessLinked();
+        }
       }
       function onCatalogProcNoInput(){
         const raw = String($("cProcNo") ? $("cProcNo").value : "").trim();
@@ -2879,6 +2859,9 @@
         if(!no) return;
         const row = findCatalogProcessRowByProcNo(no);
         if(row) applyCatalogProcessRowToForm(row, { skipExecutors: true });
+        if(window.Numeracija && typeof Numeracija.afterCatalogProcessLinked === "function"){
+          Numeracija.afterCatalogProcessLinked();
+        }
       }
       let __catalogProcessPickerWired = false;
       function wireCatalogProcessPickerOnce(){
@@ -2938,6 +2921,9 @@
           ProcesaKartina.setAttachments("catalog", r && Array.isArray(r.cardAttachments) ? r.cardAttachments : []);
         }
         $("catalogDeleteBtn").classList.toggle("hidden", !r);
+        if(window.Numeracija && typeof Numeracija.afterFillCatalogForm === "function"){
+          Numeracija.afterFillCatalogForm({ isNew: !r, row: r });
+        }
       }
       function catalogFormVals(){
         const rawProcNo = $("cProcNo").value.trim();
@@ -2948,7 +2934,7 @@
           unit: $("cUnit").value.trim(),
           procNo,
           process: $("cProcess") ? $("cProcess").value.trim() : "",
-          group: $("cGroup") ? $("cGroup").value.trim() : "",
+          group: $("cGroup") ? normalizeGroupLabel($("cGroup").value.trim()) : "",
           darbibasJoma: $("cDarbibasJoma") ? $("cDarbibasJoma").value.trim() : "",
           department: $("cDepartment") ? $("cDepartment").value.trim() : "",
           additionalInfo: $("cAdditionalInfo") ? $("cAdditionalInfo").value : "",
@@ -4347,6 +4333,7 @@
     <script src="Skaidrojumi.js"></script>
     <script src="Abreviaturas.js"></script>
     <script src="Navigacija.js"></script>
+    <script src="Numeracija.js?v=20260731b"></script>
     <script src="Joma.js?v=20260706g"></script>
     <script src="Joma%20kartina.js?v=20260706b"></script>
   </body>
