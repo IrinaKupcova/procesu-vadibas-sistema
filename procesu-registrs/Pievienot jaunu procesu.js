@@ -6,6 +6,7 @@
   }
 
   function isAdminEditRole() {
+    if (typeof window.canEdit === "function") return window.canEdit();
     const roleSelect = $("roleSelect");
     if (roleSelect && roleSelect.value === "admin_edit") return true;
 

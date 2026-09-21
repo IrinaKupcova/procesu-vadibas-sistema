@@ -9,6 +9,7 @@
     "catalogListCard",
     "executorsCard",
     "metricsCard",
+    "optimizacijaCard",
     "normActsCard",
   ];
 
@@ -18,6 +19,7 @@
     "catalogListCard",
     "executorsCard",
     "metricsCard",
+    "optimizacijaCard",
     "normActsCard",
     "reportsCard",
     "processGroupsCard",
@@ -49,6 +51,21 @@
       const title = metricsCard.querySelector(".toolbar .section-title") || metricsCard.querySelector(".section-title");
       if (title) title.textContent = METRICS_LABEL;
     }
+  }
+
+  function ensureOptimizacijaNav() {
+    const existing = document.querySelector(".side-nav-jump[data-scroll-target='optimizacijaCard']");
+    if (existing) return;
+    const anchor =
+      document.querySelector(".side-nav-jump[data-scroll-target='metricsCard']") ||
+      document.querySelector(".side-nav-jump[data-scroll-target='normActsCard']");
+    if (!anchor || !anchor.parentElement) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "secondary side-nav-jump nav-subsection";
+    btn.setAttribute("data-scroll-target", "optimizacijaCard");
+    btn.textContent = "Optimizācija";
+    anchor.insertAdjacentElement("afterend", btn);
   }
 
   function ensureProcessGroupsNav() {
@@ -84,6 +101,7 @@
     relabelReportsToStats();
     relabelMetrics();
     ensureProcessGroupsNav();
+    ensureOptimizacijaNav();
     reorderSideNav();
     applyProcessRegisterSubsections();
   }

@@ -13,6 +13,7 @@ Ja migrācija jau ir palaista, daudzas ir idempotent (droši palaist atkārtoti)
 | 5 | `2026-07-03_gp-nr-to-text.sql` | GP numura lauks → teksts |
 | 6 | `2026-07-06_gp-kartinas-meta-json.sql` | GP kartiņas meta JSON |
 | 7 | `2026-07-31_normativie_akti.sql` | Tabula `normativie_akti` + klasifikatori |
+| 8 | `2026-09-21_procesu_optimizacija.sql` | Tabula `procesu_optimizacija` (pasākumi masīvā `pasakumi_json`) |
 
 ## Papildu fails (sakne)
 

@@ -180,6 +180,7 @@
   }
 
   function canEdit() {
+    if (typeof window.canEdit === "function") return window.canEdit();
     const role = document.getElementById("roleSelect");
     return !!(role && role.value === "admin_edit");
   }

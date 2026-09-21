@@ -175,6 +175,33 @@
     }, 0);
   }
 
+  /** Procesa kartiņā — tikai grupas nosaukums (bez P/A/M prefiksa). */
+  function normalizeProcessGroupSelectLabels() {
+    const sel = document.getElementById("eGroup");
+    if (!sel) return;
+    Array.from(sel.options).forEach((opt) => {
+      const name = String(opt.value || "").trim();
+      if (name) {
+        opt.textContent = name;
+        return;
+      }
+      opt.textContent = String(opt.textContent || "")
+        .replace(/^[A-Za-zĀ-ž]\s*[—\-–:]\s*/u, "")
+        .trim();
+    });
+  }
+
+  function wireProcessGroupLabels() {
+    normalizeProcessGroupSelectLabels();
+    const card = document.getElementById("editorCard");
+    if (!card || card.dataset.groupLabelsWired) return;
+    card.dataset.groupLabelsWired = "1";
+    const obs = new MutationObserver(() => {
+      if (!card.classList.contains("hidden")) normalizeProcessGroupSelectLabels();
+    });
+    obs.observe(card, { attributes: true, attributeFilter: ["class"] });
+  }
+
   function wireProcessAddGp() {
     const wrap = document.getElementById("eGpEditorWrap");
     if (!wrap) return;
@@ -199,9 +226,24 @@
     addNewGpFromProcessCard,
   };
 
+  function refreshProcessCardFromGp() {
+    if (typeof window.refreshProcessCardGpPanel === "function") {
+      window.refreshProcessCardGpPanel();
+    }
+  }
+
   document.addEventListener("DOMContentLoaded", () => {
     wire("process");
     wire("catalog");
+    wireProcessGroupLabels();
     wireProcessAddGp();
+    window.addEventListener("app:db-sync", (ev) => {
+      const kind = ev && ev.detail ? ev.detail.kind : "all";
+      const card = document.getElementById("editorCard");
+      if (!card || card.classList.contains("hidden")) return;
+      if (kind === "all" || kind === "catalog" || kind === "process") {
+        refreshProcessCardFromGp();
+      }
+    });
   });
 })();

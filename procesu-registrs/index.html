@@ -69,10 +69,12 @@
       button.danger{background:#db2929}button.danger:hover{background:#b91c1c}
       .hidden{display:none!important}.status{font-size:12px}.status.info{color:#334155}.status.ok{color:#166534}.status.error{color:#b91c1c}
       .editor-frame{border:2px solid #cbd5e1;border-radius:14px;padding:16px 18px}
-      .editor-frame h2{margin:0 0 14px;font-size:1.25rem}
-      .editor-frame label{font-size:12px;font-weight:600;text-transform:none;letter-spacing:0;color:#334155}
+      .editor-frame h2{margin:0 0 14px;font-size:1.25rem;letter-spacing:.06em}
+      #editorCard .editor-title-kicker{font-weight:800;color:#64748b}
+      .editor-frame label{font-size:12px;font-weight:600;text-transform:none;letter-spacing:.03em;color:#334155}
       .editor-frame .editor-section{border:1px solid #c7d2fe;border-left:5px solid #6366f1;border-radius:10px;padding:14px 16px;margin:0 0 18px;background:linear-gradient(180deg,#eef2ff 0%, #e0e7ff 100%);box-shadow:0 1px 3px rgba(79,70,229,0.08)}
-      .editor-frame .editor-section-title{margin:0 0 12px;font-size:16px;font-weight:800;color:#312e81;letter-spacing:.3px;padding-bottom:8px;border-bottom:2px solid #a5b4fc}
+      .editor-frame .editor-section-title{margin:0 0 12px;font-size:16px;font-weight:800;color:#312e81;letter-spacing:.08em;padding-bottom:8px;border-bottom:2px solid #a5b4fc}
+      #editorCard #eExecutorPatstaviga{background:#f1f5f9;cursor:default}
       .editor-frame .editor-section .form-row{margin-bottom:0}
       .editor-frame .editor-section .form-row + .form-row{margin-top:10px}
       .manual-attachment-list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
@@ -88,7 +90,7 @@
       .editor-frame textarea{width:100%;box-sizing:border-box;resize:vertical}
       #editorCard .editor-gp-panel{border:1px solid #cbd5e1;border-radius:8px;background:#fff;padding:10px;min-height:80px}
       #editorCard #eGpActions{display:flex;flex-direction:column;gap:8px;margin:0}
-      #editorCard .editor-gp-grid{display:grid;grid-template-columns:minmax(88px,0.75fr) minmax(140px,1.4fr) auto minmax(160px,1fr);gap:10px;align-items:center}
+      #editorCard .editor-gp-grid{display:grid;grid-template-columns:minmax(140px,1.2fr) minmax(140px,1.4fr) minmax(160px,1fr) auto;gap:10px;align-items:center}
       #editorCard .editor-gp-grid-hdr{font-size:11px;font-weight:600;color:#64748b;margin:0 0 2px}
       #editorCard .editor-gp-row{border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;background:#fff}
       #editorCard .editor-gp-cell{font-size:12px;color:#334155;word-break:break-word;line-height:1.35}
@@ -332,6 +334,7 @@
           <button type="button" class="secondary side-nav-jump" data-scroll-target="processJomasCard">Jomas (piesaiste galaproduktiem)</button>
           <button type="button" class="secondary side-nav-jump" data-scroll-target="executorsCard">Izpildītāji</button>
           <button type="button" class="secondary side-nav-jump" data-scroll-target="metricsCard">Mērījumi</button>
+          <button type="button" class="secondary side-nav-jump nav-subsection" data-scroll-target="optimizacijaCard">Optimizācija</button>
           <button type="button" class="secondary side-nav-jump" data-scroll-target="reportsCard">Statistika</button>
           <button type="button" class="secondary side-nav-jump" data-scroll-target="normActsCard">Procesus reglamentējoši normatīvie akti (NA)</button>
           <button type="button" class="secondary side-nav-jump" data-scroll-target="manualCard">Rokasgrāmata</button>
@@ -597,6 +600,7 @@
       <h2 id="editorTitle">Procesa kartiņa</h2>
       <form id="editorForm">
         <input id="eId" type="hidden" />
+        <input id="eInput" type="hidden" />
 
         <div class="editor-section">
           <h3 class="editor-section-title">1. Pamatinformācija</h3>
@@ -616,24 +620,25 @@
           <input type="hidden" id="eDocs" />
         </div>
 
-        <div class="editor-section" id="eNaEditorWrap">
-          <h3 class="editor-section-title">Procesus reglamentējoši normatīvie akti (NA)</h3>
-          <div id="eNaActions" class="na-linked-list"></div>
-          <button type="button" id="eAddNaBtn" class="secondary" style="margin-top:8px">Pievienot NA</button>
-        </div>
-
         <div class="editor-section">
-          <h3 class="editor-section-title">3. Izpildītāji un saistības</h3>
+          <h3 class="editor-section-title">3. Izpildītāji</h3>
           <div class="form-row">
-            <div class="form-group"><label>Procesa iniciātors (input)</label><input id="eInput" /></div>
-            <div class="form-group"><label>Procesa izpildītājs, pārvalde</label><input id="eExecutorPatstaviga" /></div>
+            <div class="form-group form-group--full">
+              <label>Procesa izpildītāji (pārvaldes)</label>
+              <input id="eExecutorPatstaviga" readonly tabindex="-1" title="Apvienots no GP kartiņām" />
+            </div>
             <div class="form-group" style="display:none"><label>Procesa izpildītājs, daļa</label><input id="eExecutorDala" /></div>
-            <div class="form-group"><label>Saistītie procesi</label><input id="eOutCount" /></div>
           </div>
         </div>
 
+        <div class="editor-section" id="eNaEditorWrap">
+          <h3 class="editor-section-title">4. Procesu reglamentējošie normatīvie akti</h3>
+          <div id="eNaActions" class="na-linked-list"></div>
+          <button type="button" id="eAddNaBtn" class="secondary" style="margin-top:8px">Pievienot normatīvo aktu</button>
+        </div>
+
         <div class="editor-section">
-          <h3 class="editor-section-title">4. Pakalpojumi un resursi</h3>
+          <h3 class="editor-section-title">5. Procesu sasaiste un resursi</h3>
           <div class="form-row">
             <div class="form-group form-group--full">
               <label>Pakalpojumi <span class="hint" id="eAvgHint" style="font-weight:normal">(katrs savā rindā)</span></label>
@@ -641,17 +646,22 @@
             </div>
           </div>
           <div class="form-row">
-            <div class="form-group"><label>Plūsmas shēmas</label><input id="eKpi" /></div>
-            <div class="form-group"><label>IT resursi</label><input id="eRisk" /></div>
+            <div class="form-group form-group--wide"><label>Saistītie procesi</label><input id="eOutCount" /></div>
+            <div class="form-group form-group--wide"><label>IT resursi</label><input id="eRisk" /></div>
           </div>
+        </div>
+
+        <div class="editor-section">
+          <h3 class="editor-section-title">6. Plūsmas shēmas un rādītāji</h3>
           <div class="form-row">
+            <div class="form-group"><label>Plūsmas shēmas</label><input id="eKpi" /></div>
             <div class="form-group"><label>Optimizācija</label><input id="eOpt" /></div>
             <div class="form-group"><label>Citi rādītāji</label><input id="eOther" /></div>
           </div>
         </div>
 
         <div class="editor-section">
-          <h3 class="editor-section-title">5. Papildu informācija</h3>
+          <h3 class="editor-section-title">7. Papildu informācija</h3>
           <div class="form-row">
             <div class="form-group form-group--full">
               <label>Papildu informācija</label>
@@ -946,6 +956,12 @@
       </form>
     </div>
 
+    <div class="card section-block hidden" id="optimizacijaCard">
+      <div class="toolbar">
+        <div class="left"><div class="section-title">Optimizācija</div></div>
+      </div>
+    </div>
+
     <div class="card section-block hidden" id="metricsCard">
       <div class="toolbar">
         <div class="left"><div class="section-title">Mērījumi</div></div>
@@ -1021,7 +1037,8 @@
         );
       }
       const role = () => roles[user] || "admin_edit";
-      const canEdit = () => role()==="admin_edit";
+      /** Pagaidām — labošana visiem lietotājiem; vēlāk precizēt (jomas, lomas u.c.). */
+      const canEdit = () => true;
       function normalizeGroupLabel(v){
         const t = String(v||"").trim().toLowerCase();
         if(!t) return "";
@@ -1594,11 +1611,44 @@
         }
         return new Set(splitProductValues(row.productsText || row.products).map((n)=>normTextKey(sanitizeGpName(n))).filter(Boolean));
       }
+      function collectProcessExecutorPatstavigas(procNo, processRow){
+        const tokens = new Set();
+        const addToken = (v)=>{
+          String(v || "")
+            .split(/[,;\n]/)
+            .map((x)=>String(x || "").trim())
+            .filter(Boolean)
+            .forEach((t)=>tokens.add(t));
+        };
+        const p = String(procNo || "").trim();
+        const processNameKey = normTextKey((processRow && processRow.process) || "");
+        (csvRows || []).forEach((x)=>{
+          const rowProcNo = String((x && x.procNo) || "").trim();
+          const sameProcNo = p ? rowProcNo === p : false;
+          const rowProcNameKey = normTextKey((x && x.process) || "");
+          const sameProcName = processNameKey ? rowProcNameKey === processNameKey : false;
+          if(p){
+            if(!sameProcNo) return;
+            if(processNameKey && rowProcNameKey && !sameProcName) return;
+          }else if(processNameKey){
+            if(!sameProcName) return;
+          }else{
+            return;
+          }
+          addToken(x && x.unit);
+        });
+        if(Array.isArray(processRow && processRow.gpItems)){
+          processRow.gpItems.forEach((g)=>addToken(g && g.executorText));
+        }
+        if(!tokens.size) addToken(processRow && processRow.executorPatstaviga);
+        return Array.from(tokens).join(", ");
+      }
       function renderProcessGpActions(procNo, processRow){
         const mount = $("eGpActions");
         if(!mount) return;
         const p = String(procNo || "").trim();
-        const processNameKey = normTextKey((processRow && processRow.process) || "");
+        const processName = String((processRow && processRow.process) || ($("eProcess") && $("eProcess").value) || "").trim();
+        const processNameKey = normTextKey(processName);
         let allowedKeys = processRow ? processRowGpAllowKeySet(processRow) : null;
         if (allowedKeys && !allowedKeys.size) allowedKeys = null;
         const rows = (csvRows || []).filter((x)=>{
@@ -1630,7 +1680,7 @@
         if(!normalizedRows.length){ mount.innerHTML = ""; return; }
         const hdr = document.createElement("div");
         hdr.className = "editor-gp-grid editor-gp-grid-hdr";
-        ["Procesa galaprodukta Nr.", "Procesa galaprodukts", "Galaprodukta kartiņa", "Joma (piesaiste galaproduktam)"].forEach((t)=>{
+        ["Process", "Galaprodukts", "Galaprodukta joma", "Galaprodukta kartiņa"].forEach((t)=>{
           const d = document.createElement("div");
           d.textContent = t;
           hdr.appendChild(d);
@@ -1649,28 +1699,41 @@
           seen.add(key);
           const line = document.createElement("div");
           line.className = "editor-gp-grid editor-gp-row";
-          const cNo = document.createElement("div");
-          cNo.className = "editor-gp-cell editor-gp-cell--no";
-          cNo.textContent = no || "—";
+          const cProc = document.createElement("div");
+          cProc.className = "editor-gp-cell editor-gp-cell--name";
+          cProc.textContent = processName || "—";
           const cGp = document.createElement("div");
           cGp.className = "editor-gp-cell editor-gp-cell--name";
           cGp.textContent = gp;
+          const cJoma = document.createElement("div");
+          cJoma.className = "editor-gp-cell";
+          cJoma.textContent = gpJoma || "—";
           const b = document.createElement("button");
           b.type = "button";
           b.className = "catalog-jump";
           b.textContent = "Galaprodukta kartiņa";
           b.title = `${no ? no + " — " : ""}${gp || "GP"}`;
           b.onclick = ()=>gotoCatalogFor(p, gp);
-          const cJoma = document.createElement("div");
-          cJoma.className = "editor-gp-cell";
-          cJoma.textContent = gpJoma || "—";
-          line.appendChild(cNo);
+          line.appendChild(cProc);
           line.appendChild(cGp);
-          line.appendChild(b);
           line.appendChild(cJoma);
+          line.appendChild(b);
           mount.appendChild(line);
         });
+        if($("eExecutorPatstaviga")){
+          $("eExecutorPatstaviga").value = collectProcessExecutorPatstavigas(p, processRow);
+        }
       }
+      window.refreshProcessCardGpPanel = function(){
+        const procNo = $("eProcNo") ? String($("eProcNo").value || "").trim() : "";
+        const procName = $("eProcess") ? String($("eProcess").value || "").trim() : "";
+        let row = null;
+        if(typeof window.getMergedProcessRegisterRows === "function"){
+          row = (window.getMergedProcessRegisterRows() || []).find((x)=>String((x && x.processNo) || "").trim() === procNo) || null;
+        }
+        if(!row && procName) row = { process: procName, processNo: procNo };
+        renderProcessGpActions(procNo, row);
+      };
       function buildEditorGpText(procNo, fallbackProducts, allowedGpNameKeys){
         const p = String(procNo || "").trim();
         const filter = allowedGpNameKeys instanceof Set ? allowedGpNameKeys : null;
@@ -2852,7 +2915,10 @@
         const gpAllowedKeys = !isNew && r ? processRowGpAllowKeySet(r) : null;
         $("eLaws").value=isNew ? "" : buildEditorGpText(r ? r.processNo : "", r ? (r.productsText || r.products) : "", gpAllowedKeys);
         $("eDocs").value=isNew ? "" : fv("productTypes");
-        $("eInput").value=fv("input"); $("eExecutorPatstaviga").value=fv("executorPatstaviga"); $("eExecutorDala").value=fv("executorDala"); $("eOutCount").value=fv("relatedProcesses"); $("eAvg").value=fv("services"); $("eKpi").value=fv("flowcharts"); $("eRisk").value=fv("itResources"); $("eOpt").value=fv("optimization"); $("eOther").value=fv("otherMetrics");
+        $("eInput").value=fv("input"); $("eExecutorDala").value=fv("executorDala"); $("eOutCount").value=fv("relatedProcesses"); $("eAvg").value=fv("services"); $("eKpi").value=fv("flowcharts"); $("eRisk").value=fv("itResources"); $("eOpt").value=fv("optimization"); $("eOther").value=fv("otherMetrics");
+        if($("eExecutorPatstaviga")){
+          $("eExecutorPatstaviga").value = isNew ? "" : collectProcessExecutorPatstavigas(r ? r.processNo : "", r);
+        }
         if($("eAdditionalInfo")) $("eAdditionalInfo").value = r ? String(r.additionalInfo != null ? r.additionalInfo : "") : "";
         if(window.ProcesaKartina && typeof ProcesaKartina.setAttachments==="function"){
           ProcesaKartina.setAttachments("process", r && Array.isArray(r.cardAttachments) ? r.cardAttachments : []);
@@ -3065,7 +3131,10 @@
         if(window.ProcesaKartina && typeof ProcesaKartina.setAttachments==="function"){
           ProcesaKartina.setAttachments("catalog", r && Array.isArray(r.cardAttachments) ? r.cardAttachments : []);
         }
-        $("catalogDeleteBtn").classList.toggle("hidden", !r);
+        if($("catalogDeleteBtn")){
+          $("catalogDeleteBtn").classList.toggle("hidden", !r || !canEdit());
+          $("catalogDeleteBtn").disabled = false;
+        }
         if(window.Numeracija && typeof Numeracija.afterFillCatalogForm === "function"){
           Numeracija.afterFillCatalogForm({ isNew: !r, row: r });
         }
@@ -3359,7 +3428,7 @@
         throw new Error("DB API nav pieejams: updateCatalog/insertCatalog.");
       }
       function getVisibleMainSection(){
-        const ids = ["tasksViewCard","processListCard","catalogListCard","processGroupsCard","processJomasCard","executorsCard","reportsCard","normActsCard","metricsCard","manualCard","skaidrojumiAdminCard"];
+        const ids = ["tasksViewCard","processListCard","catalogListCard","processGroupsCard","processJomasCard","executorsCard","reportsCard","normActsCard","metricsCard","optimizacijaCard","manualCard","skaidrojumiAdminCard"];
         for (const id of ids){
           const n = $(id);
           if(n && !n.classList.contains("hidden")) return id;
@@ -3488,8 +3557,8 @@
           ec.classList.toggle("editor-new-process", !src);
         }
         $("editorTitle").innerHTML = procName
-          ? `<span style="color:#1d4ed8;font-weight:700">${procName}</span> — Procesa kartiņa`
-          : `<span style="color:#1d4ed8;font-weight:700">Jauns process</span> — kartiņa`;
+          ? `<span class="editor-title-kicker">Procesa kartiņa —</span> <span style="color:#1d4ed8;font-weight:700">${procName}</span>`
+          : `<span class="editor-title-kicker">Procesa kartiņa —</span> <span style="color:#1d4ed8;font-weight:700">Jauns process</span>`;
         // Jauns process: null (ne {}), citādi laukos parādās teksts "undefined".
         if (!src) fillForm(null);
         else fillForm(Object.assign({}, r || {}, src || {}));
@@ -3590,7 +3659,14 @@
         fillCatalogForm(editingCatalogRow);
         wireCatalogProcessPickerOnce();
         const e = canEdit();
-        $("catalogEditorForm").querySelectorAll("input,select,textarea,button").forEach(el=>{ if(el.id==="catalogCloseBtn") return; el.disabled=!e;});
+        $("catalogEditorForm").querySelectorAll("input,select,textarea,button").forEach(el=>{
+          if(el.id==="catalogCloseBtn" || el.id==="catalogDeleteBtn") return;
+          el.disabled=!e;
+        });
+        if($("catalogDeleteBtn")){
+          $("catalogDeleteBtn").classList.toggle("hidden", !editingCatalogRow || !e);
+          $("catalogDeleteBtn").disabled = false;
+        }
         const sec = catalogOpenReturnTarget === "process"
           ? "processListCard"
           : (catalogOpenReturnTarget === "executors" ? "executorsCard" : "catalogListCard");
@@ -3627,7 +3703,7 @@
         try{roles=JSON.parse(localStorage.getItem("roleMap")||"{}");}catch{roles={};}
         // Lai testēšana/rediģēšana vienmēr strādā, piespiedam daina būt admin_edit.
         roles.daina="admin_edit";
-        if(!roles.guest) roles.guest="viewer";
+        if(!roles.guest) roles.guest="admin_edit";
         renderRoles();
       }
       function saveRoles(){ localStorage.setItem("roleMap",JSON.stringify(roles)); renderRoles(); }
@@ -3637,14 +3713,37 @@
         const isViewer=rs.value==="viewer";
         btn.classList.toggle("hidden", isViewer);
       }
+      function refreshOpenEditorDeleteButtons(){
+        const e = canEdit();
+        if($("editorCard") && !$("editorCard").classList.contains("hidden")){
+          $("deleteBtn").classList.toggle("hidden", !(editingRow && e));
+        }
+        if($("catalogEditorCard") && !$("catalogEditorCard").classList.contains("hidden")){
+          $("catalogEditorForm").querySelectorAll("input,select,textarea,button").forEach(el=>{
+            if(el.id==="catalogCloseBtn" || el.id==="catalogDeleteBtn") return;
+            el.disabled=!e;
+          });
+          if($("catalogDeleteBtn")){
+            $("catalogDeleteBtn").classList.toggle("hidden", !(editingCatalogRow && e));
+            $("catalogDeleteBtn").disabled = false;
+          }
+        }
+        if(window.JomaKartina && typeof window.JomaKartina.refreshDeleteVisibility === "function"){
+          window.JomaKartina.refreshDeleteVisibility();
+        }
+        if($("jomaEditorCard") && !$("jomaEditorCard").classList.contains("hidden") && window.JomaKartina && typeof window.JomaKartina.fillForm === "function"){
+          const jn = $("jJomaName") ? String($("jJomaName").value || "").trim() : "";
+          if(jn) window.JomaKartina.fillForm(jn);
+        }
+      }
       function initLeftNav(){
-        const navButtons = Array.from(document.querySelectorAll(".side-nav-jump[data-scroll-target]"));
-        const secondaryIds = new Set(["metricsCard","manualCard","reportsCard","normActsCard"]);
+        const navList = document.querySelector(".side-nav-list");
+        const secondaryIds = new Set(["metricsCard","optimizacijaCard","manualCard","reportsCard","normActsCard"]);
         const mainIds = ["topToolbarCard","changeRequestCard","tasksViewCard","processListCard","catalogListCard","processGroupsCard","processJomasCard","executorsCard","editorCard","catalogEditorCard","jomaEditorCard","taskEditorCard","normActEditorCard","skaidrojumiAdminCard"];
         let activeNavId = null;
         function closeAllMainSections(){
           // “Redz TIKAI vienu sadaļu”: paslēpjam visas kartītes, pēc tam openSectionById atvērs tikai vajadzīgo.
-          ["tasksViewCard","processListCard","catalogListCard","processGroupsCard","processJomasCard","executorsCard","reportsCard","normActsCard","metricsCard","manualCard","editorCard","catalogEditorCard","jomaEditorCard","taskEditorCard","normActEditorCard","skaidrojumiAdminCard"].forEach((id)=>{
+          ["tasksViewCard","processListCard","catalogListCard","processGroupsCard","processJomasCard","executorsCard","reportsCard","normActsCard","metricsCard","optimizacijaCard","manualCard","editorCard","catalogEditorCard","jomaEditorCard","taskEditorCard","normActEditorCard","skaidrojumiAdminCard"].forEach((id)=>{
             const n = $(id);
             if(n) n.classList.add("hidden");
           });
@@ -3756,24 +3855,25 @@
           }else if(id==="reportsCard"){
             closeAllMainSections();
             clearProcessAccordionExpandedMemory();
-            const card = $("reportsCard");
-            if(card) card.classList.remove("hidden");
+            showNavCard("reportsCard");
           }else if(id==="normActsCard"){
             closeAllMainSections();
             clearProcessAccordionExpandedMemory();
-            const card = $("normActsCard");
-            if(card) card.classList.remove("hidden");
+            showNavCard("normActsCard");
             if(window.NormAkti && typeof NormAkti.render === "function") NormAkti.render();
           }else if(id==="metricsCard"){
             closeAllMainSections();
             clearProcessAccordionExpandedMemory();
-            const card = $("metricsCard");
-            if(card) card.classList.remove("hidden");
+            showNavCard("metricsCard");
+          }else if(id==="optimizacijaCard"){
+            closeAllMainSections();
+            clearProcessAccordionExpandedMemory();
+            showNavCard("optimizacijaCard");
+            if(window.Optimizacija && typeof window.Optimizacija.render === "function") window.Optimizacija.render();
           }else if(id==="manualCard"){
             closeAllMainSections();
             clearProcessAccordionExpandedMemory();
-            const card = $("manualCard");
-            if(card) card.classList.remove("hidden");
+            showNavCard("manualCard");
             if(window.Rokasgramata && typeof Rokasgramata.render === "function") Rokasgramata.render();
             if(window.Rokasgramata && typeof Rokasgramata.refreshAdminUi === "function") Rokasgramata.refreshAdminUi();
           }else if(id==="skaidrojumiAdminCard"){
@@ -3784,8 +3884,17 @@
           }
           refreshProcessFooterVisibility();
         }
+        function showNavCard(cardId){
+          const card = $(cardId);
+          if(!card) return null;
+          card.classList.remove("hidden");
+          card.classList.remove("nav-page-hidden");
+          return card;
+        }
         function setActive(id){
-          navButtons.forEach((b)=>b.classList.toggle("nav-active", b.getAttribute("data-scroll-target")===id));
+          document.querySelectorAll(".side-nav-jump[data-scroll-target]").forEach((b)=>{
+            b.classList.toggle("nav-active", b.getAttribute("data-scroll-target")===id);
+          });
         }
         function closeSectionById(id){
           if(id==="processListCard"){
@@ -3824,8 +3933,9 @@
           }
           refreshProcessFooterVisibility();
         }
-        navButtons.forEach((btn)=>{
-          btn.addEventListener("click", ()=>{
+        if(navList) navList.addEventListener("click", (ev)=>{
+            const btn = ev.target.closest(".side-nav-jump[data-scroll-target]");
+            if(!btn || !navList.contains(btn)) return;
             const editorWasOpen =
               !!($("editorCard") && !$("editorCard").classList.contains("hidden")) ||
               !!($("catalogEditorCard") && !$("catalogEditorCard").classList.contains("hidden")) ||
@@ -3866,7 +3976,6 @@
               }
             }
           });
-        });
         function pvApplyNavHistoryState(state){
           if(!state || !state.pvApp) return;
           pvHistoryApplying = true;
@@ -4509,9 +4618,9 @@
       };
       $("shareBtn").onclick=async()=>{ const u=new URL(location.href); u.searchParams.set("user",user); u.searchParams.set("level",$("levelSelect").value); try{await navigator.clipboard.writeText(u.toString()); alert("Saite nokopēta.");}catch{alert("Neizdevās kopēt saiti.");}};
       $("emailBtn").onclick=()=>{ const u=new URL(location.href); u.searchParams.set("user",user); u.searchParams.set("level",$("levelSelect").value); location.href="mailto:?subject="+encodeURIComponent("Procesu vadības bloks")+"&body="+encodeURIComponent("Saite:\n"+u.toString()); };
-      if($("userSelect")) $("userSelect").onchange=()=>{ user=$("userSelect").value; if($("roleSelect")) $("roleSelect").value=role(); refreshSaveRoleBtnVisibility(); renderTable(); if(typeof window.refreshHelpAdminVisibility==="function")window.refreshHelpAdminVisibility(); };
-      if($("roleSelect")) $("roleSelect").addEventListener("change", refreshSaveRoleBtnVisibility);
-      if($("saveRoleBtn")) $("saveRoleBtn").onclick=()=>{ roles[user]=$("roleSelect").value; saveRoles(); renderTable(); refreshSaveRoleBtnVisibility(); if(typeof window.refreshHelpAdminVisibility==="function")window.refreshHelpAdminVisibility(); };
+      if($("userSelect")) $("userSelect").onchange=()=>{ user=$("userSelect").value; if($("roleSelect")) $("roleSelect").value=role(); refreshSaveRoleBtnVisibility(); refreshOpenEditorDeleteButtons(); renderTable(); if(typeof window.refreshHelpAdminVisibility==="function")window.refreshHelpAdminVisibility(); };
+      if($("roleSelect")) $("roleSelect").addEventListener("change", ()=>{ refreshSaveRoleBtnVisibility(); refreshOpenEditorDeleteButtons(); });
+      if($("saveRoleBtn")) $("saveRoleBtn").onclick=()=>{ roles[user]=$("roleSelect").value; saveRoles(); renderTable(); refreshSaveRoleBtnVisibility(); refreshOpenEditorDeleteButtons(); if(typeof window.refreshHelpAdminVisibility==="function")window.refreshHelpAdminVisibility(); };
       if($("assignRoleBtn")) $("assignRoleBtn").onclick=()=>{ const u=$("newUserInput").value.trim(); if(!u) return; roles[u]=$("newRoleSelect").value; saveRoles(); $("newUserInput").value=""; };
       if($("roleTable")) $("roleTable").onclick=(e)=>{ const b=e.target.closest("button[data-u]"); if(!b) return; const u=b.getAttribute("data-u"); if(u==="daina"){alert("Primāro admin lietotāju nedzēšam.");return;} delete roles[u]; saveRoles(); };
 
@@ -4609,6 +4718,12 @@
               try{ await NormAkti.render(); }catch(e){ console.warn("NormAkti sync:", e); }
             }
           }
+          if((kind==="all" || kind==="optimizacija" || kind==="process" || kind==="catalog") && source!=="html"){
+            const optVisible = !!($("optimizacijaCard") && !$("optimizacijaCard").classList.contains("hidden"));
+            if(optVisible && window.Optimizacija && typeof window.Optimizacija.render === "function"){
+              try{ await window.Optimizacija.render(); }catch(e){ console.warn("Optimizacija sync:", e); }
+            }
+          }
         });
 
         // Polling noņemts no index.html, jo sinhronizāciju centralizē DB.js (startSync).
@@ -4624,6 +4739,7 @@
     <script src="Procesu%20registrs.js"></script>
     <script src="Pievienot%20jaunu%20procesu.js"></script>
     <script src="Statistika.js"></script>
+    <script src="Optimizacija.js"></script>
     <script src="Izmainu_pieteikums.js"></script>
     <script src="Rokasgramata.js?v=20260818b"></script>
     <script src="Skaidrojumi.js"></script>

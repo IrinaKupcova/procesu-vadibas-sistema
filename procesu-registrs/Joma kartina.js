@@ -326,11 +326,19 @@
     }
   }
 
+  function refreshJomaDeleteBtnVisibility() {
+    const delBtn = $("jomaDeleteBtn");
+    if (!delBtn) return;
+    const name = String(($("jJomaName") && $("jJomaName").value) || "").trim();
+    delBtn.classList.toggle("hidden", !(name && isAdminEdit()));
+    delBtn.disabled = false;
+  }
+
   function setFormDisabled(disabled) {
     const form = $("jomaEditorForm");
     if (!form) return;
     form.querySelectorAll("input,select,textarea,button[type='submit']").forEach((el) => {
-      if (el.id === "jomaCloseBtn") return;
+      if (el.id === "jomaCloseBtn" || el.id === "jomaDeleteBtn") return;
       if (!disabled && (el.id === "jSkaidrojums" || el.id === "jJomaName")) {
         el.readOnly = false;
         el.disabled = false;
@@ -345,6 +353,7 @@
       el.disabled = !!disabled;
     });
     if ($("jAddNaBtn")) $("jAddNaBtn").disabled = !!disabled;
+    refreshJomaDeleteBtnVisibility();
   }
 
   function fillForm(jomaLabel) {
@@ -361,8 +370,7 @@
         : "Jomas kartiņa";
     }
     setFormDisabled(!isAdminEdit());
-    const delBtn = $("jomaDeleteBtn");
-    if (delBtn) delBtn.classList.toggle("hidden", !(name && isAdminEdit()));
+    refreshJomaDeleteBtnVisibility();
     if (window.NormAkti && typeof NormAkti.renderJomaLinks === "function") {
       NormAkti.renderJomaLinks(name);
     }
@@ -559,6 +567,15 @@
       rs.__jomaKartinaRoleWired = true;
       rs.addEventListener("change", () => {
         if (isEditorOpen()) setFormDisabled(!isAdminEdit());
+        else refreshJomaDeleteBtnVisibility();
+      });
+    }
+    const us = $("userSelect");
+    if (us && !us.__jomaKartinaUserWired) {
+      us.__jomaKartinaUserWired = true;
+      us.addEventListener("change", () => {
+        if (isEditorOpen()) setFormDisabled(!isAdminEdit());
+        else refreshJomaDeleteBtnVisibility();
       });
     }
   }
@@ -584,6 +601,7 @@
     openNew: openNewJoma,
     close: closeEditor,
     deleteCard: deleteCurrentJoma,
+    refreshDeleteVisibility: refreshJomaDeleteBtnVisibility,
     fillForm,
   };
   window.openJomaEditor = openEditor;

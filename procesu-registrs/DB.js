@@ -16,6 +16,7 @@
   const JOMA_TABLE = "procesu_jomas";
   const NA_TABLE = "normativie_akti";
   const NA_KLAS_TABLE = "norm_akti_klasifikatori";
+  const OPT_TABLE = "procesu_optimizacija";
   const SINGLE_TABLE_MODE = (() => {
     try {
       if (typeof window !== "undefined" && window.PV_SINGLE_TABLE_MODE != null) return !!window.PV_SINGLE_TABLE_MODE;
@@ -37,6 +38,7 @@
   let jomaCols = new Set();
   let naCols = new Set();
   let naKlasCols = new Set();
+  let optCols = new Set();
 
   const fk = (o, a) => a.find((k) => Object.prototype.hasOwnProperty.call(o, k));
   const gv = (o, a) => {
@@ -1787,6 +1789,11 @@
         { event: "*", schema: "public", table: NA_KLAS_TABLE },
         () => emitSync("normAkti", "db")
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: OPT_TABLE },
+        () => emitSync("optimizacija", "db")
+      )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") emitSync("all", "db");
       });
@@ -1804,6 +1811,11 @@
           "postgres_changes",
           { event: "*", schema: "public", table: NA_TABLE },
           () => emitSync("normAkti", "db")
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: OPT_TABLE },
+          () => emitSync("optimizacija", "db")
         )
         .subscribe((status) => {
           if (status === "SUBSCRIBED") emitSync("all", "db");
@@ -2390,7 +2402,132 @@
     try {
       await supabaseClient.from(NA_TABLE).select("id").limit(1);
     } catch (_) {}
+    try {
+      await supabaseClient.from(OPT_TABLE).select("id").limit(1);
+    } catch (_) {}
     return { ok: true, at };
+  }
+
+  function optimizacijaKey(row) {
+    const procNo = nkey(row && (row.procesaNumurs || row.procNo || row.processNo));
+    const gpNo = nkey(row && (row.gpNumurs || row.gpNo || row.typeNo || row.productNumber));
+    const gpName = nkey(row && (row.gpNosaukums || row.gpName || row.type || row.productName));
+    return `${procNo}|${gpNo}|${gpName}`;
+  }
+
+  function mapOptimizacijaDbToUi(r) {
+    if (!r) return null;
+    return {
+      id: r.id,
+      procNo: gv(r, ["procesa_numurs", "Procesa_numurs"]),
+      process: gv(r, ["process_nosaukums", "Process_nosaukums"]),
+      gpNo: gv(r, ["gp_numurs", "GP_numurs"]),
+      gpName: gv(r, ["gp_nosaukums", "GP_nosaukums"]),
+      progres: gv(r, ["progres", "Progres"]),
+      rz: gv(r, ["rz", "RZ"]),
+      apraksts: gv(r, ["apraksts", "Apraksts"]),
+      izpilditajs: gv(r, ["izpilditajs", "Izpilditajs"]),
+      strukturvieniba: gv(r, ["strukturvieniba", "Strukturvieniba"]),
+      pasakumi: r.pasakumi_json || [],
+      kartina: r.kartina_json || {},
+      updatedAt: gv(r, ["updated_at", "Updated_at"]),
+    };
+  }
+
+  function optimizacijaUiToPayload(row) {
+    const r = row || {};
+    return {
+      procesa_numurs: String(r.procNo || r.procesaNumurs || "").trim(),
+      process_nosaukums: String(r.process || r.processNosaukums || "").trim() || null,
+      gp_numurs: String(r.gpNo || r.gpNumurs || "").trim(),
+      gp_nosaukums: String(r.gpName || r.gpNosaukums || "").trim(),
+      progres: String(r.progres || "").trim() || null,
+      rz: String(r.rz || "").trim() || null,
+      apraksts: String(r.apraksts || "").trim() || null,
+      izpilditajs: String(r.izpilditajs || "").trim() || null,
+      strukturvieniba: String(r.strukturvieniba || "").trim() || null,
+      pasakumi_json: Array.isArray(r.pasakumi) ? r.pasakumi : [],
+      kartina_json: r.kartina && typeof r.kartina === "object" ? r.kartina : {},
+      updated_at: new Date().toISOString(),
+    };
+  }
+
+  async function loadOptimizacija() {
+    const { data, error } = await supabaseClient
+      .from(OPT_TABLE)
+      .select("*")
+      .order("procesa_numurs", { ascending: true })
+      .order("gp_numurs", { ascending: true });
+    if (error) {
+      if (isMissingDbObjectError(error)) return [];
+      throw error;
+    }
+    optCols = new Set();
+    (data || []).forEach((r) => {
+      Object.keys(r || {}).forEach((k) => optCols.add(k));
+    });
+    return (data || []).map(mapOptimizacijaDbToUi);
+  }
+
+  async function insertOptimizacija(row) {
+    const payload = optimizacijaUiToPayload(row);
+    if (!payload.gp_nosaukums && !payload.gp_numurs) {
+      throw new Error("GP identifikators nav norādīts.");
+    }
+    payload.created_at = new Date().toISOString();
+    const { data, error } = await supabaseClient.from(OPT_TABLE).insert(payload).select("*").single();
+    if (error) {
+      if (isMissingDbObjectError(error)) return null;
+      throw error;
+    }
+    emitSync("optimizacija", "html");
+    return mapOptimizacijaDbToUi(data);
+  }
+
+  async function updateOptimizacija(id, row) {
+    const actId = normActDbIdValue(id);
+    if (actId == null) throw new Error("Optimizācijas ieraksta ID nav derīgs.");
+    const payload = optimizacijaUiToPayload(row);
+    const { data, error } = await supabaseClient
+      .from(OPT_TABLE)
+      .update(payload)
+      .eq("id", actId)
+      .select("*")
+      .single();
+    if (error) {
+      if (isMissingDbObjectError(error)) return null;
+      throw error;
+    }
+    emitSync("optimizacija", "html");
+    return mapOptimizacijaDbToUi(data);
+  }
+
+  async function upsertOptimizacija(row) {
+    const payload = optimizacijaUiToPayload(row);
+    const procNo = payload.procesa_numurs;
+    const gpNo = payload.gp_numurs;
+    const gpName = payload.gp_nosaukums;
+    let query = supabaseClient.from(OPT_TABLE).select("*").limit(1);
+    query = qeq(query, "procesa_numurs", procNo);
+    query = qeq(query, "gp_numurs", gpNo);
+    query = qeq(query, "gp_nosaukums", gpName);
+    const { data: found, error: findErr } = await query.maybeSingle();
+    if (findErr && !isMissingDbObjectError(findErr)) throw findErr;
+    if (isMissingDbObjectError(findErr)) return null;
+    if (found && found.id != null) return updateOptimizacija(found.id, row);
+    return insertOptimizacija(row);
+  }
+
+  async function deleteOptimizacija(id) {
+    const actId = normActDbIdValue(id);
+    if (actId == null) throw new Error("Optimizācijas ieraksta ID nav derīgs.");
+    const { error } = await supabaseClient.from(OPT_TABLE).delete().eq("id", actId);
+    if (error) {
+      if (isMissingDbObjectError(error)) return false;
+      throw error;
+    }
+    emitSync("optimizacija", "html");
+    return true;
   }
 
   window.DB = {
@@ -2415,6 +2552,12 @@
     insertNormAct,
     updateNormAct,
     deleteNormAct,
+    loadOptimizacija,
+    insertOptimizacija,
+    updateOptimizacija,
+    upsertOptimizacija,
+    deleteOptimizacija,
+    optimizacijaKey,
     loadNormActKlasifikatori,
     upsertNormActKlasifikators,
     startSync,

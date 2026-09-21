@@ -22,6 +22,7 @@
   const $ = (id) => document.getElementById(id);
 
   function isAdminEdit() {
+    if (typeof window.canEdit === "function") return window.canEdit();
     const rs = $("roleSelect");
     return rs && rs.value === "admin_edit";
   }

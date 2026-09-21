@@ -97,6 +97,7 @@
   }
 
   function canEdit() {
+    if (typeof window.canEdit === "function") return window.canEdit();
     const rs = $("roleSelect");
     return rs && rs.value === "admin_edit";
   }
@@ -723,7 +724,12 @@
     try {
       await loadFromDb(true);
     } catch (_) {}
-    statusMsg(shouldLink ? "NA saistīts." : "NA noņemts no kartiņas.", "ok");
+    statusMsg(
+      shouldLink
+        ? cfg.linkOkMsg || "NA saistīts."
+        : cfg.unlinkOkMsg || "NA noņemts no kartiņas.",
+      "ok"
+    );
     if (pickMount) pickMount.dataset.naPickOpen = pickMount.style.display !== "none" ? "1" : "0";
     if (typeof cfg.refresh === "function") cfg.refresh();
     return true;
@@ -801,8 +807,9 @@
 
     renderNaLinkedSummary(summaryMount, linked, editMode, cfg, pickMount);
 
+    const procCardNa = addBtn && addBtn.id === "eAddNaBtn";
     if (addBtn) {
-      addBtn.textContent = "Pievienot NA";
+      addBtn.textContent = procCardNa ? "Pievienot normatīvo aktu" : "Pievienot NA";
       addBtn.classList.remove("hidden");
       addBtn.style.display = editMode ? "" : "none";
       addBtn.disabled = !canLink;
@@ -810,7 +817,12 @@
       addBtn.onclick = () => {
         if (!canEdit()) return;
         if (cfg.canLink && !cfg.canLink()) {
-          window.alert(cfg.blockedMsg || "Norādiet kartiņas datus, lai varētu saistīt NA.");
+          window.alert(
+            cfg.blockedMsg ||
+              (procCardNa
+                ? "Norādiet kartiņas datus, lai varētu saistīt normatīvo aktu."
+                : "Norādiet kartiņas datus, lai varētu saistīt NA.")
+          );
           return;
         }
         const open = pickMount.style.display === "none" || !pickMount.style.display;
@@ -826,13 +838,17 @@
     const hint = document.createElement("div");
     hint.className = "hint";
     hint.style.marginBottom = "6px";
-    hint.textContent = "Atzīmējiet NA, ko saistīt ar šo kartiņu (jaunu NA pievieno NA sadaļā):";
+    hint.textContent = procCardNa
+      ? "Atzīmējiet normatīvos aktus, ko saistīt ar šo kartiņu (jaunu normatīvo aktu pievieno normatīvo aktu sadaļā):"
+      : "Atzīmējiet NA, ko saistīt ar šo kartiņu (jaunu NA pievieno NA sadaļā):";
     pickMount.appendChild(hint);
 
     if (!all.length) {
       const empty = document.createElement("div");
       empty.className = "hint";
-      empty.textContent = "Nav reģistrētu NA — vispirms pievienojiet NA sadaļā.";
+      empty.textContent = procCardNa
+        ? "Nav reģistrētu normatīvo aktu — vispirms pievienojiet normatīvo aktu sadaļā."
+        : "Nav reģistrētu NA — vispirms pievienojiet NA sadaļā.";
       pickMount.appendChild(empty);
       return;
     }
@@ -840,7 +856,11 @@
     if (!canLink && editMode) {
       const warn = document.createElement("div");
       warn.className = "hint";
-      warn.textContent = cfg.blockedMsg || "Norādiet kartiņas datus, lai varētu saistīt NA.";
+      warn.textContent =
+        cfg.blockedMsg ||
+        (procCardNa
+          ? "Norādiet kartiņas datus, lai varētu saistīt normatīvo aktu."
+          : "Norādiet kartiņas datus, lai varētu saistīt NA.");
       pickMount.appendChild(warn);
     }
 
@@ -999,6 +1019,8 @@
       isLinked: (act) => actLinkedToProcess(act, pNo, pName),
       canLink: () => !!(pNo || pName),
       blockedMsg: "Norādiet procesa nosaukumu vai Nr.",
+      linkOkMsg: "Normatīvais akts saistīts.",
+      unlinkOkMsg: "Normatīvais akts noņemts no kartiņas.",
       getLinkPatch: () => ({ processNo: pNo, process: pName }),
       getUnlinkData: (act) =>
         normalizeActRow(
