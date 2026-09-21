@@ -1,6 +1,30 @@
-/* Navigācijas teksti */
+/* Navigācijas teksti un izkārtojums */
 (function () {
   "use strict";
+
+  const METRICS_LABEL = "Mērījumi/ procesu rādītāji";
+
+  /** Apakšsadaļas zem «Procesu reģistrs». */
+  const PROCESS_SUBSECTION_IDS = [
+    "catalogListCard",
+    "executorsCard",
+    "metricsCard",
+    "normActsCard",
+  ];
+
+  /** Galvenā izvēlne (secība). */
+  const NAV_ORDER = [
+    "processListCard",
+    "catalogListCard",
+    "executorsCard",
+    "metricsCard",
+    "normActsCard",
+    "reportsCard",
+    "processGroupsCard",
+    "processJomasCard",
+    "manualCard",
+    "skaidrojumiAdminCard",
+  ];
 
   function relabelReportsToStats() {
     document.querySelectorAll(".side-nav-jump[data-scroll-target='__home']").forEach((btn) => btn.remove());
@@ -10,10 +34,23 @@
 
     const reportsCard = document.getElementById("reportsCard");
     if (reportsCard) {
-      const title = reportsCard.querySelector(".toolbar .section-title");
+      const title = reportsCard.querySelector(".toolbar .section-title") || reportsCard.querySelector(".section-title");
       if (title) title.textContent = "Statistika";
     }
   }
+
+  function relabelMetrics() {
+    document.querySelectorAll(".side-nav-jump[data-scroll-target='metricsCard']").forEach((btn) => {
+      btn.textContent = METRICS_LABEL;
+    });
+
+    const metricsCard = document.getElementById("metricsCard");
+    if (metricsCard) {
+      const title = metricsCard.querySelector(".toolbar .section-title") || metricsCard.querySelector(".section-title");
+      if (title) title.textContent = METRICS_LABEL;
+    }
+  }
+
   function ensureProcessGroupsNav() {
     const existing = document.querySelector(".side-nav-jump[data-scroll-target='processGroupsCard']");
     if (existing) return;
@@ -26,27 +63,38 @@
     btn.textContent = "Procesu grupas";
     catalogBtn.insertAdjacentElement("afterend", btn);
   }
+
   function applyProcessRegisterSubsections() {
-    ["catalogListCard", "processGroupsCard", "processJomasCard", "executorsCard"].forEach((id) => {
-      document.querySelectorAll(`.side-nav-jump[data-scroll-target='${id}']`).forEach((btn) => {
-        btn.classList.add("nav-subsection");
-      });
+    document.querySelectorAll(".side-nav-jump[data-scroll-target]").forEach((btn) => {
+      const id = btn.getAttribute("data-scroll-target");
+      btn.classList.toggle("nav-subsection", PROCESS_SUBSECTION_IDS.includes(id));
     });
   }
 
-  function boot() {
+  function reorderSideNav() {
+    const list = document.querySelector(".side-nav-list");
+    if (!list) return;
+    NAV_ORDER.forEach((id) => {
+      const btn = list.querySelector(`.side-nav-jump[data-scroll-target='${id}']`);
+      if (btn) list.appendChild(btn);
+    });
+  }
+
+  function applyNavigationLayout() {
     relabelReportsToStats();
+    relabelMetrics();
     ensureProcessGroupsNav();
+    reorderSideNav();
     applyProcessRegisterSubsections();
+  }
+
+  function boot() {
+    applyNavigationLayout();
     const processBtn = document.querySelector(".side-nav-jump[data-scroll-target='processListCard']");
     if (processBtn) processBtn.classList.add("nav-active");
 
     // Vienreizējs atkārtots mēģinājums pēc dinamiska satura ielādes.
-    setTimeout(() => {
-      relabelReportsToStats();
-      ensureProcessGroupsNav();
-      applyProcessRegisterSubsections();
-    }, 300);
+    setTimeout(applyNavigationLayout, 300);
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

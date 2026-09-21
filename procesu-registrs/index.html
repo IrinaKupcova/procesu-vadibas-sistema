@@ -75,6 +75,13 @@
       .editor-frame .editor-section-title{margin:0 0 12px;font-size:16px;font-weight:800;color:#312e81;letter-spacing:.3px;padding-bottom:8px;border-bottom:2px solid #a5b4fc}
       .editor-frame .editor-section .form-row{margin-bottom:0}
       .editor-frame .editor-section .form-row + .form-row{margin-top:10px}
+      .manual-attachment-list{display:flex;flex-direction:column;gap:10px;margin-top:10px}
+      .manual-attachment-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 12px;border:1px solid #e2e8f0;border-radius:8px;background:#f8fafc}
+      .manual-attachment-row .attachment-name{font-weight:600;font-size:14px;flex:1;min-width:220px}
+      .manual-attachment-row .attachment-name a{color:#1d4ed8;text-decoration:none}
+      .manual-attachment-row .attachment-name a:hover{text-decoration:underline}
+      .manual-attachment-row .attachment-actions{display:flex;gap:6px;flex-wrap:wrap}
+      .manual-attachment-row .attachment-actions button{font-size:12px;padding:4px 10px}
       .editor-frame .form-group--narrow{flex:0 1 150px;min-width:130px;max-width:200px}
       .editor-frame .form-group--wide{flex:2 1 280px;min-width:220px}
       .editor-frame .form-group--full{flex:1 1 100%;min-width:100%}
@@ -954,16 +961,27 @@
         <button type="button" id="methodologyOpenBtn" class="secondary">Procesu vadības metodika</button>
         <button type="button" id="conceptOpenBtn" class="secondary">Koncepts</button>
       </div>
+      <div style="margin-top:18px;padding-top:14px;border-top:1px solid #e2e8f0">
+        <div class="section-title" style="font-size:15px;margin-bottom:6px">Pielikumi</div>
+        <p class="hint">Word un citus dokumentus var atvērt, saglabāt datorā, nosūtīt e-pastā vai noņemt no saraksta.</p>
+        <div id="manualAttachmentsList" class="manual-attachment-list"></div>
+        <div id="manualAttachmentsAdmin" class="hidden" style="margin-top:12px">
+          <input type="file" id="manualAttachmentFile" multiple="" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.html,.md,application/pdf" style="display:none" />
+          <button type="button" id="manualAddAttachmentBtn" class="secondary">Pievienot pielikumu</button>
+        </div>
+      </div>
     </div>
 
     </main>
     </div>
 
-  <!-- Visi lokālie .js tajā pašā mapē ar index.html. Supabase: sk. SUPABASE_STORAGE_izmainu_pielikumi.md -->
+  <!-- Visi lokālie .js tajā pašā mapē ar index.html. Supabase: sk. README.md un docs/DEPLOY_IESTADE.md -->
   <script>
     window.PV_SUPABASE_STORAGE_BUCKET = "pieteikumu-vesture";
   </script>
-  <script src="DB.js?v=20260731b"></script>
+  <!-- Neobligāti: config.js no config.example.js (iestādes Supabase). Ja nav — DB.js noklusējums. -->
+  <script src="config.js"></script>
+  <script src="DB.js?v=20260818a"></script>
   <script src="Procesa%20kartina.js?v=20260731a"></script>
   <script src="GP%20kataogs.js?v=20260706h"></script>
 
@@ -3348,6 +3366,61 @@
         }
         return "processListCard";
       }
+      // Pārlūka «Atpakaļ» — paliek lietotnē, atgriežas iepriekšējā sadaļā/redaktorā.
+      let pvHistoryApplying = false;
+      function pvEditorCardIds(){
+        return ["editorCard","catalogEditorCard","jomaEditorCard","taskEditorCard","normActEditorCard"];
+      }
+      function pvHideAllEditors(){
+        pvEditorCardIds().forEach((id)=>{
+          const n = $(id);
+          if(n) n.classList.add("hidden");
+        });
+        const ec = $("editorCard");
+        if(ec) ec.classList.remove("editor-new-process");
+      }
+      function pvBuildHistoryState(sectionId, editorKind){
+        return { pvApp: true, section: sectionId || null, editor: editorKind || null };
+      }
+      function pvHistoryUrl(state){
+        const u = new URL(location.href);
+        if(state.section){
+          u.hash = state.editor
+            ? `#view/${encodeURIComponent(state.section)}/editor/${encodeURIComponent(state.editor)}`
+            : `#view/${encodeURIComponent(state.section)}`;
+        }else{
+          u.hash = "";
+        }
+        return u.pathname + u.search + u.hash;
+      }
+      function pvReadHistoryState(){
+        if(history.state && history.state.pvApp) return history.state;
+        const m = String(location.hash || "").match(/^#view\/([^/]+)(?:\/editor\/([^/]+))?$/);
+        if(m){
+          return pvBuildHistoryState(
+            decodeURIComponent(m[1]),
+            m[2] ? decodeURIComponent(m[2]) : null
+          );
+        }
+        return null;
+      }
+      function pvHistoryPush(sectionId, editorKind, opts){
+        if(pvHistoryApplying) return;
+        const replace = !!(opts && opts.replace);
+        const state = pvBuildHistoryState(sectionId, editorKind);
+        const url = pvHistoryUrl(state);
+        if(replace) history.replaceState(state, "", url);
+        else history.pushState(state, "", url);
+      }
+      window.pvHistoryPush = pvHistoryPush;
+      window.pvHistoryTryBack = function(editorKind){
+        const s = history.state;
+        if(s && s.pvApp && s.editor === editorKind){
+          history.back();
+          return true;
+        }
+        return false;
+      };
       function captureEditorReturnContext(preferredSectionId){
         const pt = $("processTable");
         const ct = $("catalogTable");
@@ -3423,6 +3496,8 @@
         const e=canEdit(); $("deleteBtn").classList.toggle("hidden", !(src&&e));
         $("editorForm").querySelectorAll("input,select,textarea,button").forEach(el=>{ if(el.id==="closeBtn") return; el.disabled=!e;});
         $("modeHint").textContent=e?"Labošanas režīms ieslēgts.":"Skatīšanās režīms.";
+        const sec = (editorReturnContext && editorReturnContext.sectionId) || "processListCard";
+        pvHistoryPush(sec, "process");
       }
       function resolveProcessEditorRowByProcNo(procNo){
         const pn = String(procNo || "").trim();
@@ -3516,6 +3591,10 @@
         wireCatalogProcessPickerOnce();
         const e = canEdit();
         $("catalogEditorForm").querySelectorAll("input,select,textarea,button").forEach(el=>{ if(el.id==="catalogCloseBtn") return; el.disabled=!e;});
+        const sec = catalogOpenReturnTarget === "process"
+          ? "processListCard"
+          : (catalogOpenReturnTarget === "executors" ? "executorsCard" : "catalogListCard");
+        pvHistoryPush(sec, "catalog");
       }
 
       function openTaskEditor(task){
@@ -3541,6 +3620,7 @@
           if(el.id === "taskCloseBtn") return;
           el.disabled = !e;
         });
+        pvHistoryPush("tasksViewCard", "task");
       }
 
       function loadRoles(){
@@ -3694,6 +3774,8 @@
             clearProcessAccordionExpandedMemory();
             const card = $("manualCard");
             if(card) card.classList.remove("hidden");
+            if(window.Rokasgramata && typeof Rokasgramata.render === "function") Rokasgramata.render();
+            if(window.Rokasgramata && typeof Rokasgramata.refreshAdminUi === "function") Rokasgramata.refreshAdminUi();
           }else if(id==="skaidrojumiAdminCard"){
             closeAllMainSections();
             clearProcessAccordionExpandedMemory();
@@ -3764,6 +3846,7 @@
               closeSectionById(id);
               setActive("");
               activeNavId = null;
+              if(!pvHistoryApplying) pvHistoryPush(null, null);
               return;
             }
 
@@ -3771,6 +3854,7 @@
             activeNavId = id;
             setNavPageMode(id);
             openSectionById(id);
+            if(!pvHistoryApplying) pvHistoryPush(id, null);
             node.scrollIntoView({ behavior:"smooth", block:"start" });
             if(window.matchMedia && window.matchMedia("(max-width: 768px)").matches){
               const panel = $("leftSidePanel");
@@ -3783,10 +3867,51 @@
             }
           });
         });
-        setNavPageMode("processListCard");
-        setActive("processListCard");
-        activeNavId = "processListCard";
-        openSectionById("processListCard");
+        function pvApplyNavHistoryState(state){
+          if(!state || !state.pvApp) return;
+          pvHistoryApplying = true;
+          try{
+            pvHideAllEditors();
+            editingRow = null;
+            editingCatalogRow = null;
+            editingTaskNo = null;
+
+            if(!state.section){
+              if(activeNavId) closeSectionById(activeNavId);
+              setActive("");
+              activeNavId = null;
+              return;
+            }
+
+            setActive(state.section);
+            activeNavId = state.section;
+            setNavPageMode(state.section);
+            openSectionById(state.section);
+
+            if(!state.editor){
+              restoreEditorReturnContext(state.section);
+            }
+          }finally{
+            pvHistoryApplying = false;
+          }
+        }
+
+        window.addEventListener("popstate", ()=>{
+          const st = pvReadHistoryState();
+          if(st) pvApplyNavHistoryState(st);
+        });
+
+        const hashState = pvReadHistoryState();
+        if(hashState && hashState.section){
+          pvApplyNavHistoryState(hashState);
+          if(!hashState.editor) pvHistoryPush(hashState.section, null, { replace: true });
+        }else{
+          setNavPageMode("processListCard");
+          setActive("processListCard");
+          activeNavId = "processListCard";
+          openSectionById("processListCard");
+          pvHistoryPush("processListCard", null, { replace: true });
+        }
       }
       function initMobileNavToggle(){
         const btn = $("mobileNavToggle");
@@ -4124,9 +4249,16 @@
       initFormUndo("editorForm","processUndoBtn");
       initFormUndo("catalogEditorForm","catalogUndoBtn");
       initFormUndo("taskEditorForm","taskUndoBtn");
-      $("newBtn").onclick=()=>openEditor(null); $("closeBtn").onclick=()=>{ const ec=$("editorCard"); if(ec){ ec.classList.add("hidden"); ec.classList.remove("editor-new-process"); } restoreEditorReturnContext("processListCard"); editingRow=null;};
+      $("newBtn").onclick=()=>openEditor(null);
+      $("closeBtn").onclick=()=>{
+        if(window.pvHistoryTryBack("process")) return;
+        const ec=$("editorCard"); if(ec){ ec.classList.add("hidden"); ec.classList.remove("editor-new-process"); }
+        restoreEditorReturnContext("processListCard");
+        editingRow=null;
+      };
       $("newCatalogBtn").onclick=()=>openCatalogEditor(null);
       $("catalogCloseBtn").onclick=()=>{
+        if(window.pvHistoryTryBack("catalog")) return;
         $("catalogEditorCard").classList.add("hidden");
         restoreEditorReturnContext(
           catalogOpenReturnTarget === "process"
@@ -4135,7 +4267,12 @@
         );
         editingCatalogRow=null;
       };
-      $("taskCloseBtn").onclick=()=>{$("taskEditorCard").classList.add("hidden"); restoreEditorReturnContext("tasksViewCard"); editingTaskNo=null;};
+      $("taskCloseBtn").onclick=()=>{
+        if(window.pvHistoryTryBack("task")) return;
+        $("taskEditorCard").classList.add("hidden");
+        restoreEditorReturnContext("tasksViewCard");
+        editingTaskNo=null;
+      };
       $("taskEditorForm").onsubmit=async(e)=>{
         e.preventDefault();
         if(!canEdit()){alert("Labošana pieejama tikai admin (labot)."); return;}
@@ -4488,6 +4625,7 @@
     <script src="Pievienot%20jaunu%20procesu.js"></script>
     <script src="Statistika.js"></script>
     <script src="Izmainu_pieteikums.js"></script>
+    <script src="Rokasgramata.js?v=20260818b"></script>
     <script src="Skaidrojumi.js"></script>
     <script src="Abreviaturas.js"></script>
     <script src="Norm_akti.js?v=20260731p"></script>

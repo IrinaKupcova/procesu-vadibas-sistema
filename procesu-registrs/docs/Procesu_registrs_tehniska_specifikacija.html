@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="lv">
+<head>
+  <meta charset="utf-8" />
+  <title>Procesu reģistrs — tehniskā specifikācija</title>
+  <style>
+    @page { margin: 2cm; }
+    body { font-family: "Segoe UI", Calibri, Arial, sans-serif; font-size: 11pt; line-height: 1.45; color: #111; max-width: 900px; margin: 0 auto; padding: 24px; }
+    h1 { font-size: 22pt; text-align: center; margin-bottom: 0.2em; }
+    h2 { font-size: 14pt; margin-top: 1.4em; border-bottom: 1px solid #cbd5e1; padding-bottom: 4px; color: #1e3a8a; }
+    h3 { font-size: 12pt; margin-top: 1em; color: #334155; }
+    .subtitle { text-align: center; font-size: 14pt; margin-bottom: 2em; }
+    .meta { text-align: center; color: #475569; margin-bottom: 2em; }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0 16px; font-size: 10pt; }
+    th, td { border: 1px solid #cbd5e1; padding: 6px 8px; vertical-align: top; text-align: left; }
+    th { background: #eef2ff; font-weight: 600; }
+    ul { margin: 8px 0 12px; }
+    li { margin-bottom: 4px; }
+    .print-hint { background: #fef3c7; border: 1px solid #f59e0b; padding: 10px 12px; border-radius: 6px; margin-bottom: 20px; font-size: 10pt; }
+    @media print { .print-hint { display: none; } body { padding: 0; } }
+  </style>
+</head>
+<body>
+  <p class="print-hint">PDF: pārlūkā <strong>Ctrl+P</strong> → «Saglabāt kā PDF» / «Microsoft Print to PDF».</p>
+
+  <h1>PROCESU REĢISTRS</h1>
+  <p class="subtitle">Tehniskā specifikācija</p>
+  <p class="meta">Versija 1.0 · 2026. gada augusts<br>MAPES — Vadības sistēmas arhitektūra</p>
+
+  <h2>1. Dokumenta mērķis</h2>
+  <p>Šis dokuments apraksta «Procesu reģistra» informācijas sistēmas tehnisko arhitektūru, datu modeli, integrācijas un izvietošanas prasības izstrādei, uzturēšanai un pārcelšanai uz iestādes darba vidi.</p>
+
+  <h2>2. Sistēmas kopsavilkums</h2>
+  <p>Procesu reģistrs ir tīmekļa lietotne procesu, galaproduktu (GP), procesu jomu, normatīvo aktu (NA) un izpildītāju uzskaites un pārvaldības atbalstam. Lietotne ir statiska — HTML, CSS un JavaScript — bez build soļa un bez atsevišķa backend servera repozitorijā.</p>
+  <ul>
+    <li>Lietotāja saskarne: <code>index.html</code> + modulāri <code>.js</code> faili</li>
+    <li>Datu glabāšana: Supabase (PostgreSQL + Storage)</li>
+    <li>Hostēšana: statisks HTTPS (GitHub Pages, iestādes web serveris)</li>
+    <li>Neatbalstīts: atvēršana ar <code>file://</code></li>
+  </ul>
+
+  <h2>3. Tehnoloģiju stack un atkarības</h2>
+  <p>Procesu reģistrs <strong>neizmanto NPM</strong>. Nav <code>package.json</code>, nav <code>node_modules</code>, nav build soļa.</p>
+  <h3>3.1. Stack</h3>
+  <table>
+    <tr><th>Komponents</th><th>Tehnoloģija</th><th>Piezīmes</th></tr>
+    <tr><td>Frontend</td><td>HTML5, CSS3, Vanilla JS</td><td>Nav framework</td></tr>
+    <tr><td>Build</td><td>Nav</td><td>Nav npm/bundler</td></tr>
+    <tr><td>Datu bāze</td><td>Supabase / PostgreSQL</td><td>REST caur supabase-js</td></tr>
+    <tr><td>Storage</td><td>Supabase Storage</td><td>Bucket: pieteikumu-vesture</td></tr>
+    <tr><td>Realtime</td><td>Supabase + polling</td><td>app:db-sync</td></tr>
+    <tr><td>CDN</td><td>@supabase/supabase-js v2</td><td>jsDelivr / unpkg fallback</td></tr>
+    <tr><td>CI</td><td>GitHub Actions</td><td>Supabase keepalive</td></tr>
+  </table>
+  <h3>3.2. Runtime atkarības</h3>
+  <table>
+    <tr><th>ID</th><th>Nosaukums</th><th>Avots</th><th>Obligāts</th></tr>
+    <tr><td>DEP-001</td><td>@supabase/supabase-js v2</td><td>jsDelivr CDN</td><td>Jā</td></tr>
+    <tr><td>DEP-002</td><td>Supabase PostgreSQL + Storage</td><td>Supabase projekts</td><td>Jā</td></tr>
+    <tr><td>DEP-003</td><td>HTTP(S) serveris</td><td>GitHub Pages / iestāde</td><td>Jā</td></tr>
+  </table>
+  <p><strong>NPM pakotnes:</strong> nav. Deploy bez <code>npm install</code>.</p>
+
+  <h2>4. Repozitorija struktūra</h2>
+  <p>Git sakne: <strong>vadības sistēmas arhitektura/</strong>. Lietotne: <strong>procesu-registrs/</strong>.</p>
+  <ul>
+    <li><code>procesu-registrs/index.html</code> — ieejas punkts</li>
+    <li><code>procesu-registrs/DB.js</code> — datu slānis</li>
+    <li><code>procesu-registrs/migrations/</code> — SQL migrācijas</li>
+    <li><code>procesu-registrs/config.example.js</code> — Supabase konfigurācijas paraugs</li>
+  </ul>
+
+  <h2>5. Programmatūras moduļi</h2>
+  <table>
+    <tr><th>Modulis</th><th>Atbildība</th></tr>
+    <tr><td>DB.js</td><td>Supabase CRUD, mapēšana, Storage, sinhronizācija</td></tr>
+    <tr><td>Procesu registrs.js</td><td>Procesu tabula</td></tr>
+    <tr><td>Procesa kartina.js</td><td>Procesa kartiņa, pielikumi</td></tr>
+    <tr><td>GP kataogs.js</td><td>GP katalogs</td></tr>
+    <tr><td>Joma.js / Joma kartina.js</td><td>Procesu jomas</td></tr>
+    <tr><td>Norm_akti.js</td><td>Normatīvie akti</td></tr>
+    <tr><td>Izpilditaji.js</td><td>Izpildītāju skats</td></tr>
+    <tr><td>Filtrs.js</td><td>Filtrēšana, meklēšana</td></tr>
+    <tr><td>Statistika.js</td><td>Statistika</td></tr>
+    <tr><td>Izmainu_pieteikums.js</td><td>Izmaiņu pieteikums</td></tr>
+    <tr><td>Skaidrojumi.js</td><td>Palīdzība, BUJ</td></tr>
+    <tr><td>Numeracija.js</td><td>Numerācijas noteikumi</td></tr>
+  </table>
+
+  <h2>6. Datu modelis</h2>
+  <h3>6.1. Hierarhija</h3>
+  <p>Uzdevums → Process(es) → Galaprodukts(i) → saistības (joma, NA, izpildītājs)</p>
+  <h3>6.2. Entītijas</h3>
+  <table>
+    <tr><th>Entītija</th><th>Tabula / lauks</th><th>Piezīmes</th></tr>
+    <tr><td>Uzdevums</td><td>procesu_registrs</td><td>Uzdevuma_Nr., Uzdevums</td></tr>
+    <tr><td>Process</td><td>procesu_registrs</td><td>Procesa_numurs, Process, Procesa_grupa</td></tr>
+    <tr><td>GP</td><td>procesu_registrs + JSON</td><td>GP_kartinas_papildu_JSON</td></tr>
+    <tr><td>Joma</td><td>procesu_jomas</td><td>Jomu kartiņas</td></tr>
+    <tr><td>NA</td><td>normativie_akti</td><td>Normatīvie akti</td></tr>
+  </table>
+
+  <h2>7. SQL migrācijas (secība)</h2>
+  <table>
+    <tr><th>Nr.</th><th>Fails</th><th>Mērķis</th></tr>
+    <tr><td>1</td><td>2026-04-30_joma_un_saglabasana.sql</td><td>Jomas lauki</td></tr>
+    <tr><td>2</td><td>2026-05-05_single-table-procesu-registrs.sql</td><td>Vienas tabulas modelis</td></tr>
+    <tr><td>3</td><td>2026-06-18_procesu_jomas.sql</td><td>procesu_jomas</td></tr>
+    <tr><td>4</td><td>2026-06-19_procesu_jomas_lauki.sql</td><td>Papildu lauki</td></tr>
+    <tr><td>5</td><td>2026-07-03_gp-nr-to-text.sql</td><td>GP numurs → teksts</td></tr>
+    <tr><td>6</td><td>2026-07-06_gp-kartinas-meta-json.sql</td><td>GP meta JSON</td></tr>
+    <tr><td>7</td><td>2026-07-31_normativie_akti.sql</td><td>Normatīvie akti</td></tr>
+  </table>
+
+  <h2>8. Supabase integrācija</h2>
+  <ul>
+    <li>Anon atslēga frontendā; konfigurācija: <code>config.js</code> vai <code>DB.js</code></li>
+    <li>Storage: izmaiņu pieteikumu pielikumi, kartiņu pielikumi</li>
+    <li>Realtime + polling (7 s)</li>
+    <li>RLS politikas — jāpārskata produkcijā</li>
+  </ul>
+
+  <h2>9. Lietotāju lomas</h2>
+  <table>
+    <tr><th>Kods</th><th>Nosaukums</th><th>Tiesības</th></tr>
+    <tr><td>viewer</td><td>skatītājs</td><td>Tikai skatīšana</td></tr>
+    <tr><td>admin_view</td><td>administrators (skatīt)</td><td>Skatīšana</td></tr>
+    <tr><td>admin_edit</td><td>administrators (labot)</td><td>CRUD</td></tr>
+  </table>
+  <p>Lomas: <code>localStorage.roleMap</code>. Nav Supabase Auth — produkcijā svarīgs RLS.</p>
+
+  <h2>10. Galvenās funkcijas</h2>
+  <ul>
+    <li>Procesu reģistrs, GP katalogs, uzdevumu skats</li>
+    <li>Procesu jomas un grupas</li>
+    <li>Izpildītāji, statistika, normatīvie akti</li>
+    <li>Izmaiņu pieteikums ar pielikumiem</li>
+    <li>Filtrēšana, Excel eksports, palīdzība</li>
+  </ul>
+
+  <h2>11. Izvietošana</h2>
+  <ul>
+    <li>Deploy mape: <code>procesu-registrs/</code></li>
+    <li><code>config.example.js</code> → <code>config.js</code> (iestādes Supabase)</li>
+    <li><strong>NPM instalācija nav nepieciešama</strong></li>
+    <li>Detalizēti: <code>docs/DEPLOY_IESTADE.md</code></li>
+  </ul>
+
+  <h2>12. Drošība</h2>
+  <table>
+    <tr><th>Risks</th><th>Mitigācija</th></tr>
+    <tr><td>Service role repozitorijā</td><td>Tikai anon key frontendā</td></tr>
+    <tr><td>Klienta lomas</td><td>RLS produkcijā</td></tr>
+    <tr><td>Dev DB produkcijā</td><td>config.js iestādei</td></tr>
+  </table>
+
+  <h2>13. Saistītie dokumenti</h2>
+  <ul>
+    <li>docs/README.md — dokumentu indekss</li>
+    <li>docs/Procesu_registrs_funkcionala_specifikacija.md</li>
+    <li>README.md</li>
+    <li>docs/DEPLOY_IESTADE.md</li>
+    <li>migrations/README.md</li>
+    <li>SUPABASE_STORAGE_izmainu_pielikumi.md</li>
+  </ul>
+</body>
+</html>

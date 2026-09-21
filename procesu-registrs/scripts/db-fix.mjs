@@ -7,16 +7,29 @@ import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 
 const __dir = dirname(fileURLToPath(import.meta.url));
-const dbJs = readFileSync(join(__dir, "..", "DB.js"), "utf8");
-const urlMatch = dbJs.match(/SUPABASE_URL\s*=\s*"([^"]+)"/);
-const keyMatch = dbJs.match(/SUPABASE_ANON_KEY\s*=\s*"([^"]+)"/);
-if (!urlMatch || !keyMatch) {
-  console.error("Nevar nolasīt Supabase konfigurāciju no DB.js");
-  process.exit(1);
+const root = join(__dir, "..");
+const dbJs = readFileSync(join(root, "DB.js"), "utf8");
+let configJs = "";
+try {
+  configJs = readFileSync(join(root, "config.js"), "utf8");
+} catch (_) {}
+
+function pick(re, text) {
+  const m = text && re.exec(text);
+  return m ? m[1] : "";
 }
 
-const SUPABASE_URL = urlMatch[1];
-const KEY = keyMatch[1];
+const SUPABASE_URL =
+  pick(/window\.PV_SUPABASE_URL\s*=\s*"([^"]+)"/, configJs) ||
+  (dbJs.match(/"(https:\/\/[^"]+\.supabase\.co)"/) || [])[1];
+const KEY =
+  pick(/window\.PV_SUPABASE_ANON_KEY\s*=\s*"([^"]+)"/, configJs) ||
+  (dbJs.match(/"(eyJ[^"]+)"/) || [])[1];
+
+if (!SUPABASE_URL || !KEY) {
+  console.error("Nevar nolasīt Supabase konfigurāciju no config.js vai DB.js");
+  process.exit(1);
+}
 const headers = {
   apikey: KEY,
   Authorization: `Bearer ${KEY}`,

@@ -1090,6 +1090,13 @@
     setEditorDisabled(!canEdit());
     const card = $("normActEditorCard");
     if (card && card.scrollIntoView) card.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (window.pvHistoryPush) {
+      let sec = "normActsCard";
+      if (ctx && ctx.process) sec = "processListCard";
+      else if (ctx && ctx.catalog) sec = "catalogListCard";
+      else if (ctx && ctx.joma) sec = "processJomasCard";
+      window.pvHistoryPush(sec, "normAct");
+    }
   }
 
   function openEditor(id, opts) {
@@ -1107,9 +1114,11 @@
     setEditorDisabled(!canEdit());
     const card = $("normActEditorCard");
     if (card && card.scrollIntoView) card.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (window.pvHistoryPush) window.pvHistoryPush("normActsCard", "normAct");
   }
 
   function closeEditor() {
+    if (window.pvHistoryTryBack && window.pvHistoryTryBack("normAct")) return;
     restoreAfterClose();
   }
 

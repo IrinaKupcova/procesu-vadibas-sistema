@@ -3,9 +3,12 @@
 (function () {
   "use strict";
 
-  const SUPABASE_URL = "https://ettesmdcpizztgwewhpx.supabase.co";
-  // Anon/public (JWT) key no UI (tāds kā iepriekš ielikts HTML).
+  // Noklusējums: dev vide. Iestādē var pārrakstīt ar config.js → window.PV_SUPABASE_* (sk. config.example.js).
+  const SUPABASE_URL =
+    (typeof window !== "undefined" && window.PV_SUPABASE_URL) ||
+    "https://ettesmdcpizztgwewhpx.supabase.co";
   const SUPABASE_ANON_KEY =
+    (typeof window !== "undefined" && window.PV_SUPABASE_ANON_KEY) ||
     "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV0dGVzbWRjcGl6enRnd2V3aHB4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM2NDM2MjcsImV4cCI6MjA4OTIxOTYyN30.Mv5SZpzQJCiIahOfs5i-j07EsJo5SRrowolKD6Vs0es";
 
   const TABLE = "procesu_registrs";

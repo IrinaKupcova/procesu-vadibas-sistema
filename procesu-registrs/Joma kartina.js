@@ -426,6 +426,7 @@
   }
 
   function closeEditor() {
+    if (typeof window.pvHistoryTryBack === "function" && window.pvHistoryTryBack("joma")) return;
     editingJomaKey = null;
     editingJomaOriginalName = null;
     const card = $("jomaEditorCard");
@@ -453,6 +454,7 @@
     card.classList.remove("hidden");
     fillForm(name);
     if (card.scrollIntoView) card.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (typeof window.pvHistoryPush === "function") window.pvHistoryPush("processJomasCard", "joma");
   }
 
   async function openNewJoma() {
