@@ -685,7 +685,7 @@
       </form>
     </div>
 
-    <div class="card section-block section-block--catalog" id="catalogListCard">
+    <div class="card section-block section-block--catalog catalog-detail-open" id="catalogListCard">
       <div class="toolbar">
         <div class="left"><div class="section-title">Galaproduktu katalogs</div></div>
         <div class="right">
@@ -697,17 +697,13 @@
         <div class="stat-box"><div class="stat-k">Aktuālais galaproduktu skaits</div><div class="stat-v" id="statCatalogLiveCount">0</div></div>
       </div>
       <div id="catalogListBody">
-        <div id="catalogRightZone">
-          <button type="button" id="toggleCatalogFullBtn" class="secondary">Atvērt detalizēto skatu</button>
-        </div>
-        <table id="catalogTable" class="catalog-view--compact"><thead><tr>
+        <table id="catalogTable" class="catalog-view--expanded"><thead><tr>
           <th data-filter-label="Procesa galaprodukta Nr.">Procesa galaprodukta Nr.<br><strong class="th-db-col">Procesa_galaprodukta_Nr.</strong></th>
           <th data-filter-label="Procesa galaprodukts">Procesa galaprodukts<br><strong class="th-db-col">Procesa_galaprodukti</strong></th>
           <th data-filter-label="Procesa izpildītājs, pārvalde">Procesa izpildītājs, pārvalde<br><strong class="th-db-col">Procesa_izpilditajs-patstaviga_strukturvieniba</strong></th>
           <th data-filter-label="Daļas nosaukums">Daļas nosaukums<br><strong class="th-db-col">Strukturvieniba_dala</strong></th>
           <th data-filter-label="Procesa Nr.">Procesa Nr.<br><strong class="th-db-col">Procesa_Nr.</strong></th>
           <th data-filter-label="Process">Process<br><strong class="th-db-col">Process</strong></th>
-          <th data-filter-label="Procesa grupa">Procesa grupa<br><strong class="th-db-col">Procesa_grupa</strong></th>
           <th data-filter-label="Galaprodukta joma">Galaprodukta joma<br><strong class="th-db-col">Darbibas_joma</strong></th>
           <th data-filter-label="GP kartiņa">GP kartiņa</th>
         </tr></thead><tbody></tbody></table>
@@ -1016,7 +1012,6 @@
       const processGroupsExpanded = new Set();
       const processJomasExpanded = new Set();
       let catalogInlineEditMode = false;
-      let catalogFullViewMode = false;
       let executorsInlineEditMode = false;
       let processPage = 1;
       let processPageSize = 100;
@@ -1257,41 +1252,19 @@
 
         const tbody=$("catalogTable").querySelector("tbody");
         tbody.innerHTML="";
-        renderCatalogTableHead(catalogFullViewMode);
+        renderCatalogTableHead();
         const detailRowsFlat = ((Array.isArray(catalogRowsView) && catalogRowsView.length) ? catalogRowsView : csvRows).map((r)=>Object.assign({}, r, {
           type: sanitizeGpName((r && r.type) || ""),
         })).filter((r)=>String(r.type || "").trim());
-        const detailByGp = buildCatalogDetailRowsByGp();
-        const uniqueRows = Array.from(detailByGp.entries()).map(([_, list])=>{
-          const first = (list && list[0]) || {};
-          const uniqNos = Array.from(new Set((list || []).map((z)=>String((z && z.typeNo) || "").trim()).filter(Boolean)));
-          return {
-            typeNo: uniqNos.join(", "),
-            type: sanitizeGpName(first.type || ""),
-            department: String((first && first.department) || "").trim(),
-            __catalogSourceRow: first.__catalogSourceRow || first,
-          };
-        }).sort((a,b)=>{
-          const c = compareTypeNoAsc(a && (a.typeNo || ""), b && (b.typeNo || ""));
-          if (c !== 0) return c;
-          const ta = String((a && a.type) || "");
-          const tb = String((b && b.type) || "");
-          return ta.localeCompare(tb, "lv", { sensitivity: "base" });
-        });
-        const appendCatalogRow = (x, options)=>{
-          const o = options || {};
+        const appendCatalogRow = (x)=>{
           const tr=document.createElement("tr");
-          if(o.isDetail) tr.classList.add("catalog-detail-row");
+          tr.classList.add("catalog-detail-row");
           const makeCell = (val)=>{
             const td=document.createElement("td");
             td.textContent = val || "";
             return td;
           };
-          if(!catalogFullViewMode){
-            [x.typeNo, sanitizeGpName(x.type)].forEach(v=>tr.appendChild(makeCell(v)));
-          }else{
-            [x.typeNo, sanitizeGpName(x.type), x.unit, x.department, x.procNo, x.process, x.group, x.darbibasJoma].forEach(v=>tr.appendChild(makeCell(v)));
-          }
+          [x.typeNo, sanitizeGpName(x.type), x.unit, x.department, x.procNo, x.process, x.darbibasJoma].forEach(v=>tr.appendChild(makeCell(v)));
           const td=document.createElement("td");
           const b=document.createElement("button");
           b.type="button"; b.className="secondary"; b.textContent="Atvērt kartiņu";
@@ -1301,32 +1274,27 @@
           tbody.appendChild(tr);
           return tr;
         };
-        if(!catalogFullViewMode){
-          uniqueRows.forEach((x)=>appendCatalogRow(x, { isDetail: false }));
-        }else{
-          detailRowsFlat
-            .slice()
-            .sort((a,b)=>{
-              const nc = compareTypeNoAsc(a && (a.typeNo || ""), b && (b.typeNo || ""));
-              if(nc !== 0) return nc;
-              const ga = String((a && a.type) || "");
-              const gb = String((b && b.type) || "");
-              const gc = ga.localeCompare(gb, "lv", { sensitivity: "base" });
-              if(gc !== 0) return gc;
-              const ua = String((a && a.unit) || "");
-              const ub = String((b && b.unit) || "");
-              const uc = ua.localeCompare(ub, "lv", { sensitivity: "base" });
-              if(uc !== 0) return uc;
-              return String((a && a.procNo) || "").localeCompare(String((b && b.procNo) || ""), "lv", { sensitivity: "base" });
-            })
-            .forEach((x)=>appendCatalogRow(x, { isDetail: true }));
-        }
+        detailRowsFlat
+          .slice()
+          .sort((a,b)=>{
+            const nc = compareTypeNoAsc(a && (a.typeNo || ""), b && (b.typeNo || ""));
+            if(nc !== 0) return nc;
+            const ga = String((a && a.type) || "");
+            const gb = String((b && b.type) || "");
+            const gc = ga.localeCompare(gb, "lv", { sensitivity: "base" });
+            if(gc !== 0) return gc;
+            const ua = String((a && a.unit) || "");
+            const ub = String((b && b.unit) || "");
+            const uc = ua.localeCompare(ub, "lv", { sensitivity: "base" });
+            if(uc !== 0) return uc;
+            return String((a && a.procNo) || "").localeCompare(String((b && b.procNo) || ""), "lv", { sensitivity: "base" });
+          })
+          .forEach((x)=>appendCatalogRow(x));
         if (typeof window.__afterTableRenderFilters === "function") {
           window.__afterTableRenderFilters();
         }
         if (typeof window.refreshHelpIcons === "function") window.refreshHelpIcons();
         if (typeof window.applyGpCatalogView === "function") window.applyGpCatalogView();
-        refreshCatalogFullToggleLabel();
         syncProcessProductTypesFromCatalog();
         refreshCatalogLiveCount();
         renderTable();
@@ -1473,62 +1441,23 @@
         });
         return out;
       }
-      function buildCatalogDetailRowsByGp(){
-        const byGp = new Map();
-        const src = (Array.isArray(catalogRowsView) && catalogRowsView.length) ? catalogRowsView : (Array.isArray(csvRows) ? csvRows : []);
-        src.forEach((r)=>{
-          const gp = sanitizeGpName(String((r && r.type) || "").trim());
-          const gpKey = normTextKey(gp);
-          if(!gpKey || !gp) return;
-          if(!byGp.has(gpKey)) byGp.set(gpKey, []);
-          const base = {
-            typeNo: String((r && (r.typeNo || r.id)) || "").trim(),
-            type: gp,
-            unit: String((r && r.unit) || "").trim(),
-            department: String((r && r.department) || "").trim(),
-            procNo: String((r && r.procNo) || "").trim(),
-            process: String((r && r.process) || "").trim(),
-            group: String((r && r.group) || "").trim(),
-            darbibasJoma: String((r && r.darbibasJoma) || "").trim(),
-            __catalogSourceRow: r,
-          };
-          byGp.get(gpKey).push(base);
-        });
-        return byGp;
-      }
-      function renderCatalogTableHead(fullMode){
+      function renderCatalogTableHead(){
         const table = $("catalogTable");
         if(!table) return;
         const thead = table.querySelector("thead");
         if(!thead) return;
-        if(!fullMode){
-          thead.innerHTML = `<tr>
-            <th data-filter-label="Procesa galaprodukta Nr.">Procesa galaprodukta Nr.</th>
-            <th data-filter-label="Procesa galaprodukts">Procesa galaprodukts</th>
-            <th data-filter-label="GP kartiņa">GP kartiņa</th>
-          </tr>`;
-        }else{
-          thead.innerHTML = `<tr>
+        thead.innerHTML = `<tr>
             <th data-filter-label="Procesa galaprodukta Nr.">Procesa galaprodukta Nr.</th>
             <th data-filter-label="Procesa galaprodukts">Procesa galaprodukts</th>
             <th data-filter-label="Procesa izpildītājs, pārvalde">Procesa izpildītājs, pārvalde</th>
             <th data-filter-label="Daļas nosaukums">Daļas nosaukums<br><strong class="th-db-col">Strukturvieniba_dala</strong></th>
             <th data-filter-label="Procesa Nr.">Procesa Nr.</th>
             <th data-filter-label="Process">Process</th>
-            <th data-filter-label="Procesa grupa">Procesa grupa</th>
             <th data-filter-label="Galaprodukta joma">Galaprodukta joma</th>
             <th data-filter-label="GP kartiņa">GP kartiņa</th>
           </tr>`;
-        }
         const hr = thead.querySelector("tr");
         if(hr) hr.dataset.filtersReady = "";
-      }
-      function refreshCatalogFullToggleLabel(){
-        const b = $("toggleCatalogFullBtn");
-        if(!b) return;
-        b.textContent = catalogFullViewMode ? "Aizvērt detalizēto skatu" : "Atvērt detalizēto skatu";
-        const card = $("catalogListCard");
-        if(card) card.classList.toggle("catalog-detail-open", !!catalogFullViewMode);
       }
       function compareTypeNoAsc(a, b){
         const av = String(a || "").trim();
@@ -4345,11 +4274,6 @@
           }
         }
         refreshProcessFooterVisibility();
-      };
-      if($("toggleCatalogFullBtn")) $("toggleCatalogFullBtn").onclick=async()=>{
-        catalogFullViewMode = !catalogFullViewMode;
-        refreshCatalogFullToggleLabel();
-        await loadCatalog();
       };
       refreshProcessDetailToggleLabel();
       if($("exportProcessExcelBtn")) $("exportProcessExcelBtn").onclick=()=>exportTableToExcel("processTable","procesu_registrs");

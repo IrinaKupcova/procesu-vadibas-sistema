@@ -56,9 +56,11 @@
   window.applyGpCatalogView = function () {
     const table = document.getElementById("catalogTable");
     if (!table) return;
-    // Vienots kataloga skats: vienmēr redzams pilnais skats.
+    // Vienots kataloga skats: vienmēr redzams pilnais skats (bez «Procesa grupa»).
     table.classList.add("catalog-view--expanded");
     table.classList.remove("catalog-view--compact");
+    const card = document.getElementById("catalogListCard");
+    if (card) card.classList.add("catalog-detail-open");
   };
 
   function ensureToolbar() {
