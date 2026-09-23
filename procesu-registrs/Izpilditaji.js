@@ -1,9 +1,6 @@
 /**
- * Izpildītāji: tabula/skats, kas agregē datus no
- * - Procesu reģistra blokiem (processRows via window.getProcessRows)
- * - GP kataloga blokiem (catalog rows via window.getCatalogRows)
- *
- * Renderē tabulu `executorsCard` iekšpusē.
+ * Izpildītāji: uzskaite pēc struktūrvienības → galaprodukts → process.
+ * Avots: GP katalogs (primārais) + procesu reģistrs (GP bez kataloga ieraksta).
  */
 (function () {
   "use strict";
@@ -11,25 +8,82 @@
   const TABLE_ID = "executorsTable";
   const ROWS_ID = "executorsTableBody";
   let inlineEditMode = false;
-  const executorProcessExpanded = new Set();
-  const executorProcessSectionExpanded = new Set();
-  const executorGpSectionExpanded = new Set();
+  const executorDeptExpanded = new Set();
   const BULK_BTN_ID = "executorsBulkAccordionToggleBtn";
+  const SUMMARY_ID = "executorsViewSummary";
+  const DEPT_EMPTY_LABEL = "Nav norādīta struktūrvienība";
+
+  const COL_DEFS = [
+    { label: "Pārvalde", filter: "Pārvalde" },
+    {
+      label: "Struktūrvienība/ amats, kas atbild par galaprodukta radīšanu",
+      filter: "Struktūrvienība/ amats",
+    },
+    { label: "Galaprodukts", filter: "Galaprodukts" },
+    { label: "Process", filter: "Process" },
+  ];
+
+  function escHtml(s) {
+    return String(s || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function syncExecutorsTableColumns(table) {
+    if (!table) return;
+    let tr = table.querySelector("thead tr");
+    if (!tr) {
+      const thead = document.createElement("thead");
+      tr = document.createElement("tr");
+      thead.appendChild(tr);
+      const tb = table.querySelector("tbody");
+      if (tb) table.insertBefore(thead, tb);
+      else table.appendChild(thead);
+    }
+    const thHtml = COL_DEFS.map(
+      (c) => `<th data-filter-label="${escHtml(c.filter)}">${escHtml(c.label)}</th>`
+    ).join("");
+    const colOrderKey = "parvalde-dept-gp-proc";
+    if (tr.children.length !== COL_DEFS.length || tr.dataset.colOrder !== colOrderKey) {
+      tr.innerHTML = thHtml;
+      tr.dataset.colOrder = colOrderKey;
+      tr.dataset.filtersReady = "";
+      if (table.dataset) table.dataset.exFiltersInit = "";
+    } else {
+      COL_DEFS.forEach((c, i) => {
+        if (!tr.children[i]) return;
+        tr.children[i].setAttribute("data-filter-label", c.filter);
+        if (!tr.children[i].querySelector(".th-filter-wrap")) {
+          tr.children[i].textContent = c.label;
+        }
+      });
+    }
+  }
 
   function ensureControls(card) {
     if (!card) return;
+    if (!document.getElementById(SUMMARY_ID)) {
+      const summary = document.createElement("p");
+      summary.id = SUMMARY_ID;
+      summary.className = "ex-view-summary";
+      summary.setAttribute("aria-live", "polite");
+      const toolbar = card.querySelector(".toolbar");
+      if (toolbar) toolbar.insertAdjacentElement("afterend", summary);
+      else card.insertBefore(summary, card.firstChild);
+    }
     if (document.getElementById(BULK_BTN_ID)) return;
     const controls = document.createElement("div");
-    controls.style.cssText = "display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:6px 0 10px;";
+    controls.className = "ex-view-controls";
     const bulk = document.createElement("button");
     bulk.type = "button";
     bulk.id = BULK_BTN_ID;
     bulk.className = "secondary";
     bulk.textContent = "Atvērt visus akordeonus";
     controls.appendChild(bulk);
-    // Ieliekam pēc virsraksta (ja ir), pirms tabulas.
-    const h2or3 = card.querySelector("h2,h3");
-    if (h2or3 && h2or3.parentElement === card) h2or3.insertAdjacentElement("afterend", controls);
+    const summary = document.getElementById(SUMMARY_ID);
+    if (summary) summary.insertAdjacentElement("afterend", controls);
     else card.insertBefore(controls, card.firstChild);
   }
 
@@ -55,26 +109,22 @@
     if (!table) {
       table = document.createElement("table");
       table.id = TABLE_ID;
-      table.style.width = "100%";
-      table.style.minWidth = "980px";
-      table.style.borderCollapse = "collapse";
+      table.className = "ex-table";
       table.innerHTML = `
-        <colgroup class="ex-cols"><col><col><col></colgroup>
+        <colgroup class="ex-cols"><col><col><col><col></colgroup>
         <thead>
           <tr>
-            <th>Procesa izpildītājs, pārvalde</th>
-            <th>Process</th>
-            <th>Galaprodukts</th>
+            ${COL_DEFS.map(
+              (c) => `<th data-filter-label="${escHtml(c.filter)}">${escHtml(c.label)}</th>`
+            ).join("")}
           </tr>
         </thead>
         <tbody id="${ROWS_ID}"></tbody>
       `;
-      // Neizdzēšam visu karti (tur ir toolbar); tikai noņemam esošo hint tekstu.
       const hint = card.querySelector("p.hint");
       if (hint) hint.remove();
       const wrap = document.createElement("div");
-      wrap.style.overflowX = "auto";
-      wrap.style.width = "100%";
+      wrap.className = "ex-table-scroll";
       wrap.appendChild(table);
       card.appendChild(wrap);
     } else {
@@ -86,6 +136,7 @@
       }
     }
 
+    syncExecutorsTableColumns(table);
     lockExecutorsTableLayout(table);
     return table;
   }
@@ -97,51 +148,68 @@
     if (!cg) {
       cg = document.createElement("colgroup");
       cg.className = "ex-cols";
-      cg.innerHTML = "<col><col><col>";
+      cg.innerHTML = "<col><col><col><col>";
       table.insertBefore(cg, table.firstChild);
+    } else if (cg.children.length !== 4) {
+      cg.innerHTML = "<col><col><col><col>";
     }
   }
 
   function ensureStyles() {
-    if (document.getElementById("executorsAccordionCss")) return;
-    const s = document.createElement("style");
-    s.id = "executorsAccordionCss";
+    let s = document.getElementById("executorsAccordionCss");
+    if (!s) {
+      s = document.createElement("style");
+      s.id = "executorsAccordionCss";
+      document.head.appendChild(s);
+    }
+    if (s.dataset.layout === "dept-gp-proc-v3") return;
+    s.dataset.layout = "dept-gp-proc-v3";
     s.textContent = `
-      #${TABLE_ID}.ex-table-fixed,
-      #${TABLE_ID}.ex-table-fixed.data-col-sized{table-layout:fixed!important;width:100%}
-      #${TABLE_ID}.ex-table-fixed th:nth-child(1),
-      #${TABLE_ID}.ex-table-fixed td:nth-child(1){width:24%!important;min-width:0}
-      #${TABLE_ID}.ex-table-fixed th:nth-child(2),
-      #${TABLE_ID}.ex-table-fixed td:nth-child(2){width:38%!important;min-width:0}
-      #${TABLE_ID}.ex-table-fixed th:nth-child(3),
-      #${TABLE_ID}.ex-table-fixed td:nth-child(3){width:38%!important;min-width:0}
-      #${TABLE_ID}.ex-table-fixed th.col-narrow,
-      #${TABLE_ID}.ex-table-fixed td.col-narrow,
-      #${TABLE_ID}.ex-table-fixed th.col-wide,
-      #${TABLE_ID}.ex-table-fixed td.col-wide{white-space:normal}
-      #${TABLE_ID}.ex-table-fixed td{overflow-wrap:anywhere;word-break:break-word;vertical-align:top}
-      #${TABLE_ID} .ex-unit-hdr td{font-weight:700;background:#e2e8f0;color:#0f172a;border-top:2px solid #94a3b8}
-      #${TABLE_ID} .ex-proc-hdr td{background:#f8fafc;color:#1f2937}
-      #${TABLE_ID} .ex-gp-row td{background:#ffffff}
-      #${TABLE_ID} .ex-toggle{cursor:pointer;text-decoration:none;color:inherit;user-select:none}
-      #${TABLE_ID} .ex-chip{display:inline-flex;align-items:center;justify-content:center;min-width:22px;height:22px;padding:0 8px;border-radius:999px;background:#334155;color:#fff;font-size:12px;font-weight:700;line-height:1;white-space:nowrap}
-      #${TABLE_ID} .ex-chip-btn{cursor:pointer}
-      #${TABLE_ID} .ex-muted-chip{background:#94a3b8}
-      #${TABLE_ID} .ex-link{color:#0f172a;text-decoration:none;cursor:pointer}
-      #${TABLE_ID} .ex-link:hover{color:#111827}
-      #${TABLE_ID} .ex-gp-wrap{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-      #${TABLE_ID} td, #${TABLE_ID} th{padding:6px 8px;vertical-align:top}
-      #${TABLE_ID} .ex-pad{padding-left:8px}
-      #${TABLE_ID} .ex-pad2{padding-left:8px}
+      #executorsCard .ex-view-summary{margin:8px 0 4px;font-size:13px;color:#475569;line-height:1.4}
+      #executorsCard .ex-view-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+      #executorsCard .ex-table-scroll{overflow-x:auto;width:100%;border:1px solid #e2e8f0;border-radius:10px;background:#fff}
+      #${TABLE_ID}.ex-table-fixed{table-layout:fixed!important;width:100%;min-width:920px;border-collapse:separate;border-spacing:0}
+      #${TABLE_ID} thead th{
+        position:sticky;top:0;z-index:2;
+        background:#f1f5f9;color:#0f172a;font-size:12px;font-weight:700;
+        text-align:left;padding:10px 12px;border-bottom:2px solid #cbd5e1;
+        box-shadow:0 1px 0 #e2e8f0
+      }
+      #${TABLE_ID} td{padding:8px 12px;vertical-align:middle;border-bottom:1px solid #f1f5f9;line-height:1.35}
+      #${TABLE_ID} .ex-dept-hdr td{
+        background:linear-gradient(90deg,#dbeafe 0%,#eff6ff 100%);
+        color:#0f172a;font-weight:700;font-size:14px;
+        border-bottom:1px solid #93c5fd;border-top:3px solid #3b82f6
+      }
+      #${TABLE_ID} .ex-gp-hdr td{background:#f8fafc;color:#1e293b;font-weight:600}
+      #${TABLE_ID} .ex-dept-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+      #${TABLE_ID} .ex-gp-cell{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-left:12px;border-left:3px solid #cbd5e1;margin-left:2px}
+      #${TABLE_ID} .ex-proc-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
+      #${TABLE_ID} .ex-proc-item{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap}
+      #${TABLE_ID} .ex-proc-meta{font-size:12px;color:#64748b;margin-top:2px}
+      #${TABLE_ID} .ex-toggle{
+        display:inline-flex;align-items:center;justify-content:center;
+        width:26px;height:26px;border-radius:6px;cursor:pointer;user-select:none;
+        background:#fff;border:1px solid #cbd5e1;color:#334155;font-size:12px
+      }
+      #${TABLE_ID} .ex-toggle:hover{background:#e2e8f0}
+      #${TABLE_ID} .ex-chip{
+        display:inline-flex;align-items:center;gap:4px;
+        min-height:24px;padding:2px 10px;border-radius:999px;
+        background:#1e40af;color:#fff;font-size:12px;font-weight:600;white-space:nowrap
+      }
+      #${TABLE_ID} .ex-chip-muted{background:#64748b}
+      #${TABLE_ID} .ex-link{color:#1d4ed8;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+      #${TABLE_ID} .ex-link:hover{color:#1e3a8a}
+      #${TABLE_ID} .ex-gp-label{font-weight:600;color:#0f172a}
+      #${TABLE_ID} .ex-unit-tag{font-size:12px;color:#475569}
+      #${TABLE_ID} td{overflow-wrap:anywhere;word-break:break-word}
+      #${TABLE_ID}.ex-table-fixed th:nth-child(1),#${TABLE_ID}.ex-table-fixed td:nth-child(1){width:16%}
+      #${TABLE_ID}.ex-table-fixed th:nth-child(2),#${TABLE_ID}.ex-table-fixed td:nth-child(2){width:26%}
+      #${TABLE_ID}.ex-table-fixed th:nth-child(3),#${TABLE_ID}.ex-table-fixed td:nth-child(3){width:28%}
+      #${TABLE_ID}.ex-table-fixed th:nth-child(4),#${TABLE_ID}.ex-table-fixed td:nth-child(4){width:30%}
+      body.theme-light #${TABLE_ID} .ex-dept-hdr td{background:linear-gradient(90deg,#dbeafe 0%,#eff6ff 100%)}
     `;
-    document.head.appendChild(s);
-  }
-
-  function splitValues(v) {
-    return String(v || "")
-      .split(/[;,\n]/)
-      .map((x) => String(x || "").trim())
-      .filter(Boolean);
   }
 
   function splitUnitValues(v) {
@@ -152,20 +220,32 @@
   }
 
   function splitProductValues(v) {
-    // GP nosaukumos komats var būt daļa no teksta, tāpēc NEdalām pēc komata.
     return String(v || "")
       .split(/[;\n]/)
       .map((x) => String(x || "").replace(/\s+/g, " ").trim())
       .filter(Boolean);
   }
+
+  function mergeUnits(intoSet, raw) {
+    splitUnitValues(raw).forEach((u) => intoSet.add(u));
+  }
+
+  function unitsText(set) {
+    if (!set || !set.size) return "—";
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "lv", { sensitivity: "base" })).join(", ");
+  }
+
   function resolveProcessNoFallback(processRows, procNo, procName) {
     const direct = getText(procNo);
     if (direct) return direct;
     const targetName = getText(procName).toLowerCase();
     if (!targetName) return "";
-    const hit = (processRows || []).find((r) => getText(r && r.process).toLowerCase() === targetName && getText(r && r.processNo));
+    const hit = (processRows || []).find(
+      (r) => getText(r && r.process).toLowerCase() === targetName && getText(r && r.processNo)
+    );
     return hit ? getText(hit.processNo) : "";
   }
+
   function openProcessCard(processRows, procNo, procName) {
     if (typeof window.openProcessEditorByProcNoOrName === "function") {
       window.openProcessEditorByProcNoOrName(procNo, procName);
@@ -182,50 +262,34 @@
   function canEdit() {
     if (typeof window.canEdit === "function") return window.canEdit();
     const role = document.getElementById("roleSelect");
-    return !!(role && role.value === "admin_edit");
+    return !!(role && (role.value === "admin" || role.value === "admin_edit"));
   }
 
-  function processFormValsFromRow(r, overrides) {
-    const o = overrides || {};
-    return {
-      group: o.group !== undefined ? o.group : (r.group || ""),
-      taskNo: o.taskNo !== undefined ? o.taskNo : (r.taskNo || ""),
-      task: o.task !== undefined ? o.task : (r.task || ""),
-      processNo: o.processNo !== undefined ? o.processNo : (r.processNo || ""),
-      process: o.process !== undefined ? o.process : (r.process || ""),
-      darbibasJoma: o.darbibasJoma !== undefined ? o.darbibasJoma : (r.darbibasJoma || ""),
-      owner: o.owner !== undefined ? o.owner : (r.owner || ""),
-      products: o.products !== undefined ? o.products : (r.products || ""),
-      productTypes: o.productTypes !== undefined ? o.productTypes : (r.productTypes || ""),
-      input: o.input !== undefined ? o.input : (r.input || ""),
-      relatedProcesses: o.relatedProcesses !== undefined ? o.relatedProcesses : (r.relatedProcesses || ""),
-      services: o.services !== undefined ? o.services : (r.services || ""),
-      flowcharts: o.flowcharts !== undefined ? o.flowcharts : (r.flowcharts || ""),
-      itResources: o.itResources !== undefined ? o.itResources : (r.itResources || ""),
-      optimization: o.optimization !== undefined ? o.optimization : (r.optimization || ""),
-      executorPatstaviga: o.executorPatstaviga !== undefined ? o.executorPatstaviga : (r.executorPatstaviga || ""),
-      executorDala: o.executorDala !== undefined ? o.executorDala : (r.executorDala || ""),
-      otherMetrics: o.otherMetrics !== undefined ? o.otherMetrics : (r.otherMetrics || ""),
-    };
-  }
-
+  /** deptKey → { department, deptKey, gpMap } */
   function computeExecutors(processRows, catalogRows) {
-    const byUnit = new Map();
-    const getUnitEntry = (unit) => {
-      const display = getText(unit) || "—";
-      const key = normKey(display) || "—";
-      if (!byUnit.has(key)) {
-        byUnit.set(key, {
-          unit: display,
-          unitKey: key,
-          processMap: new Map(), // procKey -> { procNo, proc, gpMap }
-        });
-      } else {
-        // Saglabājam pilnāko/garāko variantiņu kā rādāmo, lai "salauzti" varianti neuzvar.
-        const prev = byUnit.get(key);
-        if (String(display).length > String(prev.unit || "").length) prev.unit = display;
+    const byDept = new Map();
+
+    const getDeptEntry = (deptRaw) => {
+      const display = getText(deptRaw) || DEPT_EMPTY_LABEL;
+      const key = normKey(display) || "__empty__";
+      if (!byDept.has(key)) {
+        byDept.set(key, { department: display, deptKey: key, gpMap: new Map() });
       }
-      return byUnit.get(key);
+      return byDept.get(key);
+    };
+
+    const getGpEntry = (deptEntry, gpNo, gpName) => {
+      const gKey = `${normKey(gpNo)}¦${normKey(gpName)}`;
+      if (!deptEntry.gpMap.has(gKey)) {
+        deptEntry.gpMap.set(gKey, {
+          gpKey: gKey,
+          no: getText(gpNo),
+          name: getText(gpName),
+          units: new Set(),
+          processMap: new Map(),
+        });
+      }
+      return deptEntry.gpMap.get(gKey);
     };
 
     const catalogByProc = new Map();
@@ -236,71 +300,119 @@
       catalogByProc.get(pn).push(c);
     });
 
+    (catalogRows || []).forEach((c) => {
+      const gpName = getText(c.type);
+      if (!gpName) return;
+      const deptEntry = getDeptEntry(c.department);
+      const gp = getGpEntry(deptEntry, c.typeNo, gpName);
+      mergeUnits(gp.units, c.unit);
+
+      const procNo = getText(c.procNo);
+      const proc = getText(c.process);
+      const pKey = `${normKey(procNo)}¦${normKey(proc)}`;
+      if (!gp.processMap.has(pKey)) {
+        gp.processMap.set(pKey, { procNo, proc, procKey: pKey, units: new Set() });
+      }
+      mergeUnits(gp.processMap.get(pKey).units, c.unit);
+    });
+
     (processRows || []).forEach((p) => {
       const procNo = getText(p.processNo);
       const proc = getText(p.process);
       if (!procNo && !proc) return;
-      const procKey = `${normKey(procNo)}¦${normKey(proc)}`;
       const linkedCatalog = catalogByProc.get(procNo) || [];
-      const units = Array.from(new Set([]
-        .concat(splitUnitValues(p.executorPatstaviga))
-        .concat(linkedCatalog.flatMap((x) => splitUnitValues(x.unit)))
-        .filter(Boolean)));
-      const finalUnits = units.length ? units : ["—"];
+      if (linkedCatalog.length) return;
 
-      finalUnits.forEach((u) => {
-        const unitEntry = getUnitEntry(u);
-        if (!unitEntry.processMap.has(procKey)) unitEntry.processMap.set(procKey, { procNo, proc, procKey, gpMap: new Map() });
-        const processEntry = unitEntry.processMap.get(procKey);
-
-        const gpFromCatalog = linkedCatalog
-          .filter((x) => {
-            const unitVals = splitUnitValues(x.unit);
-            if (!unitVals.length || u === "—") return true;
-            return unitVals.some((uv) => getText(uv).toLowerCase() === getText(u).toLowerCase());
-          })
-          .map((x) => ({
-            no: getText(x.typeNo),
-            name: getText(x.type),
-            procNo: getText(x.procNo) || procNo,
-            proc: getText(x.process) || proc,
-          }));
-        // Ja procesam ir GP kataloga ieraksti, lietojam tos kā autoritatīvo avotu.
-        // No procesa brīvteksta GP velkam tikai tad, ja katalogā nav neviena GP.
-        const gpFromProcess = gpFromCatalog.length
-          ? []
-          : splitProductValues(p.products).map((name) => ({ no: "", name, procNo, proc }));
-        gpFromProcess.concat(gpFromCatalog).forEach((g) => {
-          if (!getText(g.name)) return;
-          const gpKey = `${normKey(getText(g.no))}¦${normKey(getText(g.name))}¦${normKey(getText(g.procNo))}`;
-          if (!processEntry.gpMap.has(gpKey)) processEntry.gpMap.set(gpKey, g);
-        });
+      const gpNames = splitProductValues(p.products);
+      if (!gpNames.length) return;
+      const deptEntry = getDeptEntry(p.executorDala || "");
+      gpNames.forEach((name) => {
+        const gp = getGpEntry(deptEntry, "", name);
+        mergeUnits(gp.units, p.executorPatstaviga);
+        const pKey = `${normKey(procNo)}¦${normKey(proc)}`;
+        if (!gp.processMap.has(pKey)) {
+          gp.processMap.set(pKey, { procNo, proc, procKey: pKey, units: new Set() });
+        }
+        mergeUnits(gp.processMap.get(pKey).units, p.executorPatstaviga);
       });
     });
 
-    return Array.from(byUnit.values()).sort((a, b) => String(a.unit || "").localeCompare(String(b.unit || ""), "lv", { sensitivity: "base" }));
+    return Array.from(byDept.values()).sort((a, b) =>
+      String(a.department || "").localeCompare(String(b.department || ""), "lv", { sensitivity: "base" })
+    );
   }
 
   function hasAnyExecutorAccordionOpen() {
-    return executorProcessSectionExpanded.size > 0 || executorGpSectionExpanded.size > 0 || executorProcessExpanded.size > 0;
+    return executorDeptExpanded.size > 0;
   }
 
   function setAllExecutorAccordionsOpen(processRows, catalogRows, open) {
-    if (!open) {
-      executorProcessSectionExpanded.clear();
-      executorGpSectionExpanded.clear();
-      executorProcessExpanded.clear();
+    executorDeptExpanded.clear();
+    if (!open) return;
+    computeExecutors(processRows, catalogRows).forEach((d) => {
+      executorDeptExpanded.add(d.deptKey);
+    });
+  }
+
+  function collectDeptUnits(gpList) {
+    const all = new Set();
+    gpList.forEach((g) => {
+      if (g.units && g.units.forEach) g.units.forEach((u) => all.add(u));
+      if (!g.processMap || !g.processMap.forEach) return;
+      g.processMap.forEach((pr) => {
+        if (pr.units && pr.units.forEach) pr.units.forEach((u) => all.add(u));
+      });
+    });
+    return all;
+  }
+
+  function fillProcessCell(td, processes, processRows, fallbackUnits) {
+    td.className = "ex-proc-cell";
+    td.textContent = "";
+    if (!processes.length) {
+      td.textContent = "—";
+      td.style.color = "#94a3b8";
       return;
     }
-    const units = computeExecutors(processRows, catalogRows);
-    units.forEach((u) => {
-      const unitKey = u.unitKey || normKey(u.unit) || "—";
-      executorProcessSectionExpanded.add(unitKey);
-      executorGpSectionExpanded.add(unitKey);
-      Array.from(u.processMap.values()).forEach((pr) => {
-        const pKey = `${unitKey}¦${pr.procNo}¦${pr.proc}`;
-        executorProcessExpanded.add(pKey);
-      });
+    const ul = document.createElement("ul");
+    ul.className = "ex-proc-list";
+    processes.forEach((pr) => {
+      const li = document.createElement("li");
+      li.className = "ex-proc-item";
+      const main = document.createElement("div");
+      const procLabel = [pr.procNo, pr.proc].filter(Boolean).join(" — ") || "—";
+      const link = document.createElement("span");
+      link.className = "ex-link";
+      link.textContent = procLabel;
+      link.title = "Atvērt procesa kartiņu";
+      link.addEventListener("click", () => openProcessCard(processRows, pr.procNo, pr.proc));
+      main.appendChild(link);
+      const pBtn = document.createElement("button");
+      pBtn.type = "button";
+      pBtn.className = "secondary";
+      pBtn.style.fontSize = "12px";
+      pBtn.textContent = "Procesa kartiņa";
+      pBtn.addEventListener("click", () => openProcessCard(processRows, pr.procNo, pr.proc));
+      main.appendChild(pBtn);
+      li.appendChild(main);
+      const procUnits = unitsText(pr.units);
+      const fb = unitsText(fallbackUnits);
+      if (procUnits && procUnits !== "—" && procUnits !== fb) {
+        const meta = document.createElement("div");
+        meta.className = "ex-proc-meta";
+        meta.textContent = "Pārvalde (procesam): " + procUnits;
+        li.appendChild(meta);
+      }
+      ul.appendChild(li);
+    });
+    td.appendChild(ul);
+  }
+
+  function bindToggle(el, fn) {
+    if (!el) return;
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      fn();
     });
   }
 
@@ -317,12 +429,26 @@
 
     const p = typeof window.getProcessRows === "function" ? window.getProcessRows() : [];
     const c = typeof window.getCatalogRows === "function" ? window.getCatalogRows() : [];
-    const units = computeExecutors(p, c);
+    const departments = computeExecutors(p, c);
+
+    let totalGp = 0;
+    let totalProc = 0;
+    departments.forEach((d) => {
+      totalGp += d.gpMap.size;
+      d.gpMap.forEach((g) => {
+        totalProc += g.processMap.size;
+      });
+    });
+    const summaryEl = document.getElementById(SUMMARY_ID);
+    if (summaryEl) {
+      summaryEl.textContent =
+        `${departments.length} struktūrvienība(s) · ${totalGp} galaprodukti · ${totalProc} procesu saites. ` +
+        "Hierarhija: struktūrvienība → galaprodukts → process.";
+    }
 
     const bulkBtn = document.getElementById(BULK_BTN_ID);
     if (bulkBtn && !bulkBtn.dataset.bound) {
       bulkBtn.addEventListener("click", () => {
-        // Poga pārslēdz visus: ja kaut kas ir vaļā -> aizver visu; citādi -> atver visu.
         const wantOpen = !hasAnyExecutorAccordionOpen();
         const pp = typeof window.getProcessRows === "function" ? window.getProcessRows() : [];
         const cc = typeof window.getCatalogRows === "function" ? window.getCatalogRows() : [];
@@ -331,177 +457,146 @@
       });
       bulkBtn.dataset.bound = "1";
     }
-    if (bulkBtn) bulkBtn.textContent = hasAnyExecutorAccordionOpen() ? "Aizvērt visus akordeonus" : "Atvērt visus akordeonus";
+    if (bulkBtn) {
+      bulkBtn.textContent = hasAnyExecutorAccordionOpen() ? "Aizvērt visus akordeonus" : "Atvērt visus akordeonus";
+    }
 
     tb.innerHTML = "";
-    units.forEach((u) => {
-      const unitKey = u.unitKey || normKey(u.unit) || "—";
-      const processList = Array.from(u.processMap.values()).sort((a, b) =>
-        `${a.procNo} ${a.proc}`.localeCompare(`${b.procNo} ${b.proc}`, "lv", { sensitivity: "base" })
+
+    if (!departments.length) {
+      const empty = document.createElement("tr");
+      empty.innerHTML = `<td colspan="4" style="padding:16px;color:#64748b">Nav datu GP katalogā un procesu reģistrā.</td>`;
+      tb.appendChild(empty);
+      afterExecutorsRender(table);
+      return;
+    }
+
+    departments.forEach((d) => {
+      const deptOpen = executorDeptExpanded.has(d.deptKey);
+      const gpList = Array.from(d.gpMap.values()).sort((a, b) =>
+        `${a.no} ${a.name}`.localeCompare(`${b.no} ${b.name}`, "lv", { sensitivity: "base" })
       );
-      const unitGpCount = processList.reduce((acc, pr) => acc + Array.from(pr.gpMap.values()).length, 0);
-      const processSectionOpen = executorProcessSectionExpanded.has(unitKey);
-      const gpSectionOpen = executorGpSectionExpanded.has(unitKey);
-      const isOpen = processSectionOpen || gpSectionOpen;
+      const procCount = gpList.reduce((acc, g) => acc + g.processMap.size, 0);
+      const deptUnits = collectDeptUnits(gpList);
 
       const hdr = document.createElement("tr");
-      hdr.className = "ex-unit-hdr";
-      hdr.innerHTML = `
-        <td>${u.unit}</td>
-        <td><span class="ex-chip ex-chip-btn" title="Atvērt/aizvērt procesus"><span class="ex-arrow">${processSectionOpen ? "▾" : "▸"}</span> ${processList.length}</span></td>
-        <td><span class="ex-chip ex-chip-btn" title="Atvērt/aizvērt galaproduktus"><span class="ex-arrow">${gpSectionOpen ? "▾" : "▸"}</span> ${unitGpCount}</span></td>
+      hdr.className = "ex-dept-hdr";
+      const toggleDept = () => {
+        if (executorDeptExpanded.has(d.deptKey)) executorDeptExpanded.delete(d.deptKey);
+        else executorDeptExpanded.add(d.deptKey);
+        renderExecutorsView();
+      };
+      const cParvalde = document.createElement("td");
+      cParvalde.className = "ex-unit-tag";
+      cParvalde.textContent = unitsText(deptUnits);
+      const cDept = document.createElement("td");
+      cDept.innerHTML = `
+        <div class="ex-dept-title">
+          <span class="ex-toggle ex-dept-toggle" title="Atvērt/aizvērt">${deptOpen ? "▾" : "▸"}</span>
+          <span>${escHtml(d.department)}</span>
+        </div>
       `;
-      const processChip = hdr.children[1] && hdr.children[1].querySelector(".ex-chip-btn");
-      if (processChip) {
-        const toggle = () => {
-          if (executorProcessSectionExpanded.has(unitKey)) {
-            // Aizverot "Procesu" kolonnas čipu, aizveram arī GP šai pārvaldei,
-            // lai rinda patiešām pilnībā aizveras.
-            executorProcessSectionExpanded.delete(unitKey);
-            executorGpSectionExpanded.delete(unitKey);
-            Array.from(executorProcessExpanded).forEach((k) => {
-              if (String(k).startsWith(`${unitKey}¦`)) executorProcessExpanded.delete(k);
-            });
-          } else {
-            executorProcessSectionExpanded.add(unitKey);
-          }
-          renderExecutorsView();
-        };
-        processChip.addEventListener("click", toggle);
-        const processArrow = processChip.querySelector(".ex-arrow");
-        if (processArrow) processArrow.addEventListener("click", (e) => { e.stopPropagation(); toggle(); });
-      }
-      const gpChip = hdr.children[2] && hdr.children[2].querySelector(".ex-chip-btn");
-      if (gpChip) {
-        const toggle = () => {
-          if (executorGpSectionExpanded.has(unitKey)) executorGpSectionExpanded.delete(unitKey);
-          else executorGpSectionExpanded.add(unitKey);
-          renderExecutorsView();
-        };
-        gpChip.addEventListener("click", toggle);
-        const gpArrow = gpChip.querySelector(".ex-arrow");
-        if (gpArrow) gpArrow.addEventListener("click", (e) => { e.stopPropagation(); toggle(); });
-      }
+      bindToggle(cDept.querySelector(".ex-dept-toggle"), toggleDept);
+      const cGp = document.createElement("td");
+      cGp.innerHTML = `<span class="ex-chip ex-chip-muted">${gpList.length} GP</span>`;
+      const cProc = document.createElement("td");
+      cProc.innerHTML = `<span class="ex-chip ex-chip-muted">${procCount} procesi</span>`;
+      hdr.appendChild(cParvalde);
+      hdr.appendChild(cDept);
+      hdr.appendChild(cGp);
+      hdr.appendChild(cProc);
       tb.appendChild(hdr);
-      if (!isOpen) return;
-      if (!processSectionOpen && !gpSectionOpen) return;
 
-      processList.forEach((pr) => {
-        const pKey = `${unitKey}¦${pr.procNo}¦${pr.proc}`;
-        const pOpen = executorProcessExpanded.has(pKey);
-        const gpList = Array.from(pr.gpMap.values()).sort((a, b) =>
-          `${a.no} ${a.name}`.localeCompare(`${b.no} ${b.name}`, "lv", { sensitivity: "base" })
+      if (!deptOpen) return;
+
+      gpList.forEach((g) => {
+        const processes = Array.from(g.processMap.values()).sort((a, b) =>
+          `${a.procNo} ${a.proc}`.localeCompare(`${b.procNo} ${b.proc}`, "lv", { sensitivity: "base" })
         );
-        const tr = document.createElement("tr");
-        tr.className = "ex-proc-hdr";
-        const c0 = document.createElement("td");
-        c0.className = "ex-pad";
-        c0.innerHTML = `<span class="ex-toggle"><span class="ex-arrow">${pOpen ? "▾" : "▸"}</span></span>`;
-        const toggleProcess = () => {
-          if (executorProcessExpanded.has(pKey)) executorProcessExpanded.delete(pKey);
-          else executorProcessExpanded.add(pKey);
-          renderExecutorsView();
-        };
-        const procToggle = c0.querySelector(".ex-toggle");
-        if (procToggle) procToggle.addEventListener("click", toggleProcess);
-        const procArrow = c0.querySelector(".ex-arrow");
-        if (procArrow) procArrow.addEventListener("click", (e) => { e.stopPropagation(); toggleProcess(); });
-        const c1 = document.createElement("td");
-        const pText = document.createElement("span");
-        pText.className = "ex-link";
-        pText.textContent = [pr.procNo, pr.proc].filter(Boolean).join(" — ");
-        pText.title = "Atvērt procesa kartiņu";
-        pText.addEventListener("click", () => {
-          openProcessCard(p, pr.procNo, pr.proc);
-        });
-        c1.appendChild(pText);
-        c1.appendChild(document.createTextNode(" "));
-        const pBtn = document.createElement("button");
-        pBtn.type = "button";
-        pBtn.className = "secondary";
-        pBtn.textContent = "Procesa kartiņa";
-        pBtn.addEventListener("click", () => {
-          openProcessCard(p, pr.procNo, pr.proc);
-        });
-        c1.appendChild(pBtn);
-        const c2 = document.createElement("td");
-        c2.innerHTML = `<span class="ex-chip ex-muted-chip ex-chip-btn" title="Atvērt/aizvērt galaproduktus"><span class="ex-arrow">${pOpen ? "▾" : "▸"}</span> ${gpList.length}</span>`;
-        const gpCountChip = c2.querySelector(".ex-chip-btn");
-        if (gpCountChip) {
-          const toggle = () => {
-            if (!executorProcessSectionExpanded.has(unitKey)) executorProcessSectionExpanded.add(unitKey);
-            if (executorProcessExpanded.has(pKey)) executorProcessExpanded.delete(pKey);
-            else executorProcessExpanded.add(pKey);
-            renderExecutorsView();
-          };
-          gpCountChip.addEventListener("click", toggle);
-          const gpArrow = gpCountChip.querySelector(".ex-arrow");
-          if (gpArrow) gpArrow.addEventListener("click", (e) => { e.stopPropagation(); toggle(); });
-        }
-        tr.appendChild(c0); tr.appendChild(c1); tr.appendChild(c2);
-        if (processSectionOpen || gpSectionOpen) tb.appendChild(tr);
 
-        if (!gpSectionOpen && !pOpen) return;
-        gpList.forEach((gp) => {
-          const gtr = document.createElement("tr");
-          gtr.className = "ex-gp-row";
-          const g0 = document.createElement("td");
-          g0.className = "ex-pad2";
-          g0.textContent = "";
-          const g1 = document.createElement("td");
-          g1.textContent = "";
-          const wrap = document.createElement("div");
-          wrap.className = "ex-gp-wrap";
-          const gpText = document.createElement("span");
-          gpText.textContent = gp.no ? `${gp.no} — ${gp.name}` : gp.name;
-          const gpBtn = document.createElement("button");
-          gpBtn.type = "button";
-          gpBtn.className = "secondary";
-          gpBtn.textContent = "Galaprodukta kartiņa";
-          gpBtn.addEventListener("click", () => {
-            if (typeof window.openCatalogByProcessGp === "function") {
-              window.openCatalogByProcessGp(gp.procNo, gp.name);
-            }
-          });
-          wrap.appendChild(gpText);
-          wrap.appendChild(gpBtn);
-          const g2 = document.createElement("td");
-          g2.appendChild(wrap);
-          gtr.appendChild(g0); gtr.appendChild(g1); gtr.appendChild(g2);
-          tb.appendChild(gtr);
+        const gtr = document.createElement("tr");
+        gtr.className = "ex-gp-hdr";
+        const gpLabel = g.no ? `${g.no} — ${g.name}` : g.name;
+
+        const tParvalde = document.createElement("td");
+        tParvalde.className = "ex-unit-tag";
+        tParvalde.textContent = "";
+
+        const tDept = document.createElement("td");
+        tDept.textContent = "";
+
+        const tGp = document.createElement("td");
+        tGp.innerHTML = `
+          <div class="ex-gp-cell">
+            <span class="ex-gp-label">${escHtml(gpLabel)}</span>
+          </div>
+        `;
+        const gpBtn = document.createElement("button");
+        gpBtn.type = "button";
+        gpBtn.className = "secondary";
+        gpBtn.style.fontSize = "12px";
+        gpBtn.textContent = "GP kartiņa";
+        gpBtn.addEventListener("click", () => {
+          const procNo = processes[0] ? processes[0].procNo : "";
+          if (typeof window.openCatalogByProcessGp === "function") {
+            window.openCatalogByProcessGp(procNo, g.name);
+          }
         });
+        tGp.querySelector(".ex-gp-cell").appendChild(gpBtn);
+
+        const tProc = document.createElement("td");
+        fillProcessCell(tProc, processes, p, g.units);
+
+        gtr.appendChild(tParvalde);
+        gtr.appendChild(tDept);
+        gtr.appendChild(tGp);
+        gtr.appendChild(tProc);
+        tb.appendChild(gtr);
       });
     });
 
-    if (typeof window.refreshExtraTableFilters === "function") {
-      window.refreshExtraTableFilters();
-    }
+    afterExecutorsRender(table);
     lockExecutorsTableLayout(table);
   }
 
-  // publiskais API
+  let executorsDbSyncTimer = null;
+  function afterExecutorsRender(table) {
+    if (typeof window.applyExecutorsFilters === "function") {
+      try {
+        window.applyExecutorsFilters();
+      } catch (_) {}
+    }
+    if (!table || table.dataset.exFiltersInit === "1") return;
+    table.dataset.exFiltersInit = "1";
+    if (typeof window.syncExecutorsColumnFilters === "function") {
+      try {
+        window.syncExecutorsColumnFilters(true);
+      } catch (_) {}
+    }
+  }
+
   window.renderExecutorsView = renderExecutorsView;
 
-  // Kad lapā dati atjaunojas
   window.addEventListener("app:db-sync", () => {
-    // nerenderējam, ja skats pašlaik nav redzams (bet neobligāti)
     try {
       const card = document.getElementById("executorsCard");
-      if (card && !card.classList.contains("hidden")) renderExecutorsView();
+      if (!card || card.classList.contains("hidden")) return;
+      if (executorsDbSyncTimer) clearTimeout(executorsDbSyncTimer);
+      executorsDbSyncTimer = setTimeout(() => {
+        executorsDbSyncTimer = null;
+        renderExecutorsView();
+      }, 800);
     } catch (_) {}
   });
 
-  // pirmreizēja renderēšana, ja skats jau ir atvērts
   document.addEventListener("DOMContentLoaded", () => {
     try {
-      // UI korekcijas (ja lapā joprojām ir veci teksti / sākotnējais stāvoklis).
       const tasksCard = document.getElementById("tasksViewCard");
       const tasksTitle = tasksCard ? tasksCard.querySelector(".section-title") : null;
       if (tasksTitle && tasksTitle.textContent && tasksTitle.textContent.trim() === "Uzdevumu skats") {
         tasksTitle.textContent = "Uzdevumi";
       }
 
-      // Iestatījumi pēc noklusējuma: aizvērts.
       const settingsInner = document.getElementById("settingsInner");
       const settingsBtn = document.getElementById("settingsToggleBtn");
       if (settingsInner && settingsBtn) {
@@ -526,17 +621,13 @@
         });
       }
 
-      const rerenderIfVisible = () => {
-        if (!card.classList.contains("hidden")) renderExecutorsView();
-      };
-
-      // Pirmais mēģinājums
-      rerenderIfVisible();
-
-      // Ja lietotājs atver/ aizver sadaļu navigācijā, renderējam pēc tam
-      const obs = new MutationObserver(() => rerenderIfVisible());
+      let executorsWasHidden = card.classList.contains("hidden");
+      const obs = new MutationObserver(() => {
+        const hidden = card.classList.contains("hidden");
+        if (executorsWasHidden && !hidden) renderExecutorsView();
+        executorsWasHidden = hidden;
+      });
       obs.observe(card, { attributes: true, attributeFilter: ["class"] });
     } catch (_) {}
   });
 })();
-

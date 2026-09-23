@@ -247,7 +247,7 @@
       if (typeof window.canEdit === "function" && window.canEdit()) return true;
     } catch (_) {}
     const rs = $("roleSelect");
-    return rs && rs.value === "admin_edit";
+    return rs && (rs.value === "admin" || rs.value === "admin_edit");
   }
 
   function wrapFormGroupsInSection(groups, sectionId, titleText) {
@@ -294,7 +294,7 @@
         section.id = "jNaEditorWrap";
         const title = document.createElement("h3");
         title.className = "editor-section-title";
-        title.textContent = "2. Procesus reglamentējoši normatīvie akti (NA)";
+        title.textContent = "2. Procesus reglamentējoši normatīvie akti";
         section.appendChild(title);
         naActions.className = "na-linked-list";
         section.appendChild(naActions);

@@ -2068,14 +2068,13 @@
       veids: String(gv(d, ["na_veids", "NA_veids", "veids"]) || "").trim(),
       numurs: String(gv(d, ["numurs", "Numurs"]) || "").trim(),
       pantsPunkts: String(gv(d, ["pants_punkts", "Pants_punkts", "pants_punkts"]) || "").trim(),
-      institucija: String(gv(d, ["atbildiga_institucija", "institucija", "Atbildiga_institucija"]) || "").trim(),
-      links: String(gv(d, ["links", "Links", "saite"]) || "").trim(),
-      statuss: String(gv(d, ["statuss", "Statuss"]) || "").trim(),
+      penemsanasDatums: String(gv(d, ["penemsanas_datums", "penemsanasDatums"]) || "").trim(),
       joma: String(gv(d, ["procesu_joma", "joma", "Procesu_joma"]) || "").trim(),
       processNo: String(gv(d, ["procesa_nr", "procesa_numurs", "process_no"]) || "").trim(),
       process: String(gv(d, ["process_nosaukums", "process", "Process_nosaukums"]) || "").trim(),
       gpTypeNo: String(gv(d, ["gp_nr", "gp_type_no", "GP_nr"]) || "").trim(),
       gp: String(gv(d, ["gp_nosaukums", "gp", "GP_nosaukums"]) || "").trim(),
+      gpRefsJson: String(gv(d, ["gp_refs_json", "gpRefsJson"]) || "").trim(),
       createdAt: String(gv(d, ["created_at", "createdAt"]) || ""),
       updatedAt: String(gv(d, ["updated_at", "updatedAt"]) || ""),
       raw: d,
@@ -2097,14 +2096,28 @@
     payload[pickNaCol(["na_veids"], "na_veids")] = String(r.veids || "").trim();
     payload[pickNaCol(["numurs"], "numurs")] = String(r.numurs || "").trim();
     payload[pickNaCol(["pants_punkts"], "pants_punkts")] = String(r.pantsPunkts || "").trim();
-    payload[pickNaCol(["atbildiga_institucija"], "atbildiga_institucija")] = String(r.institucija || "").trim();
-    payload[pickNaCol(["links"], "links")] = String(r.links || "").trim();
-    payload[pickNaCol(["statuss"], "statuss")] = String(r.statuss || "").trim();
+    const penCol = pickNaCol(["penemsanas_datums"], "penemsanas_datums");
+    const penVal = String(r.penemsanasDatums || "").trim();
+    if (penCol && (!naCols || !naCols.size || naCols.has(penCol))) {
+      payload[penCol] = penVal || null;
+    }
     payload[pickNaCol(["procesu_joma"], "procesu_joma")] = String(r.joma || "").trim();
     payload[pickNaCol(["procesa_nr"], "procesa_nr")] = String(r.processNo || "").trim();
     payload[pickNaCol(["process_nosaukums"], "process_nosaukums")] = String(r.process || "").trim();
     payload[pickNaCol(["gp_nr"], "gp_nr")] = String(r.gpTypeNo || "").trim();
     payload[pickNaCol(["gp_nosaukums"], "gp_nosaukums")] = String(r.gp || "").trim();
+    const gpRefsJson =
+      r.gpRefsJson != null
+        ? String(r.gpRefsJson || "").trim()
+        : Array.isArray(r.gpRefs)
+          ? JSON.stringify(r.gpRefs)
+          : "";
+    const gpRefsCol = pickNaCol(["gp_refs_json"], "gp_refs_json");
+    if (gpRefsCol && naCols && naCols.has(gpRefsCol)) {
+      payload[gpRefsCol] = gpRefsJson;
+    } else if (gpRefsCol === "gp_refs_json" && (!naCols || !naCols.size)) {
+      payload[gpRefsCol] = gpRefsJson;
+    }
     payload[pickNaCol(["updated_at"], "updated_at")] = new Date().toISOString();
     return payload;
   }

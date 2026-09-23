@@ -163,7 +163,7 @@ Visas lomas — navigācija pieejama visiem; admin-only sadaļas skat. SPEC-002.
 
 | ID | Prasība |
 |----|---------|
-| SPEC-003-FR-001 | Kreisajā navigācijā ir sadaļas: Procesu reģistrs, GP katalogs, Procesu grupas, Jomas, Izpildītāji, Mērījumi, Statistika, NA, Rokasgrāmata. |
+| SPEC-003-FR-001 | Kreisajā navigācijā ir sadaļas: Procesu reģistrs, GP katalogs, Procesu grupas, Jomas, Izpildītāji, Mērījumi, Statistika, normatīvie akti, Rokasgrāmata. |
 | SPEC-003-FR-002 | **Skaidrojuma ievietošana** redzama tikai `admin_edit` (`Skaidrojumi.js`). |
 | SPEC-003-FR-003 | `closeAllMainSections()` paslēpj visas kartes; atver tikai izvēlēto. |
 | SPEC-003-FR-004 | Sekundārās sadaļas (`metricsCard`, `manualCard`, `reportsCard`, `normActsCard`) — pilnekrāna režīms. |
@@ -499,7 +499,7 @@ SPEC-007, SPEC-009, SPEC-020
 
 ---
 
-# SPEC-009 — Normatīvie akti (NA)
+# SPEC-009 — Normatīvie akti
 
 ## 1. Mērķis
 Normatīvo aktu reģistrs un to saistīšana ar procesiem, GP un jomām.
@@ -519,7 +519,7 @@ Skatīšana — visas; CRUD un saistīšana — `admin_edit` (`#roleSelect`).
 | SPEC-009-FR-003 | Obligāts UI: **NA nosaukums**. |
 | SPEC-009-FR-004 | Veidi/institūcijas: noklusējuma saraksti + pielāgoti + DB klasifikatori. |
 | SPEC-009-FR-005 | Saistīšana no kartiņām: tikai **esošu** NA (checkbox picker); jauns NA tikai NA sadaļā. |
-| SPEC-009-FR-006 | Kartiņās: saistīto NA saraksts, **Pievienot NA**, **Noņemt** saiti. |
+| SPEC-009-FR-006 | Kartiņās: saistīto NA saraksts, **Pievienot normatīvo aktu**, **Noņemt** saiti. |
 | SPEC-009-FR-007 | Ja DB tabula nav — localStorage rezerve (`pv_norm_akti_v1`) + brīdinājums par migrāciju. |
 | SPEC-009-FR-008 | NA redaktora sadaļa «Ietekme — reglamentētie procesi un GP» **noņemta** no UI. |
 
@@ -1579,7 +1579,7 @@ SPEC-002, SPEC-004
 
 | | |
 |---|---|
-| **Lietotājs izdara** | Navigācijā **Procesus reglamentējoši normatīvie akti (NA)**. |
+| **Lietotājs izdara** | Navigācijā **Procesus reglamentējoši normatīvie akti**. |
 | **Sistēma izdara** | `NormAkti.render()` — tabula no DB vai localStorage. |
 | **Lietotājs redz** | NA sarakstu; kolonnas: veids, nosaukums, numurs, pants/punkts u.c. |
 
@@ -1611,7 +1611,7 @@ SPEC-002, SPEC-004
 
 | | |
 |---|---|
-| **Lietotājs izdara** | Procesa kartiņā NA sadaļā **Pievienot NA**, atzīmē esošus NA checkbox sarakstā. |
+| **Lietotājs izdara** | Procesa kartiņā NA sadaļā **Pievienot normatīvo aktu**, atzīmē esošus NA checkbox sarakstā. |
 | **Sistēma izdara** | Atjaunina NA ieraksta laukus `procesa_nr`, `process_nosaukums`; **jaunu NA šeit neveido**. |
 | **Lietotājs redz** | Saistīto NA sarakstu ar linkiem; var **Noņemt** atsevišķu saiti. |
 
@@ -1940,7 +1940,7 @@ SPEC-002, SPEC-004
 | SPEC-006 | Procesu un GP numerācija | Esošs |
 | SPEC-007 | Procesu jomas (skats un GP piesaiste) | Esošs |
 | SPEC-008 | Jomu kartiņas | Esošs |
-| SPEC-009 | Normatīvie akti (NA) | Esošs |
+| SPEC-009 | Normatīvie akti | Esošs |
 | SPEC-010 | Procesu grupas | Esošs |
 | SPEC-011 | Statistika | Esošs |
 | SPEC-012 | Filtrēšana un meklēšana | Esošs |

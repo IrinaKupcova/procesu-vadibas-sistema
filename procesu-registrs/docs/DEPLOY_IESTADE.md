@@ -92,7 +92,7 @@ Plānojiet **vienreizēju** datu ielādi pēc shēmas izveides.
 - [ ] Jauna procesa kartiņa — saglabāšana
 - [ ] GP katalogs
 - [ ] Jomas kartiņa
-- [ ] NA sadaļa (tabula `normativie_akti` eksistē)
+- [ ] Normatīvo aktu sadaļa (tabula `normativie_akti` eksistē)
 - [ ] Izpildītāji — akordeoni, kolonnu izkārtojums
 - [ ] Izmaiņu pieteikums — pielikuma augšupielāde (Storage)
 - [ ] Ctrl+F5 pēc `git pull` — jaunākā JS versija

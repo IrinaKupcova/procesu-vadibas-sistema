@@ -242,10 +242,18 @@
     const card = document.getElementById(cardId);
     if (!card || card.__jomaObserved) return;
     card.__jomaObserved = true;
+    let wasHidden = card.classList.contains("hidden");
+    let refreshTimer = null;
     const obs = new MutationObserver(() => {
-      if (card.classList.contains("hidden")) return;
-      // fillForm / fillCatalogForm pēc kartiņas atvēršanas — pagaidām, lai vērtība jau ir iestatīta.
-      setTimeout(() => refreshAll(), 0);
+      const hidden = card.classList.contains("hidden");
+      if (wasHidden && !hidden) {
+        if (refreshTimer) clearTimeout(refreshTimer);
+        refreshTimer = setTimeout(() => {
+          refreshTimer = null;
+          refreshAll();
+        }, 50);
+      }
+      wasHidden = hidden;
     });
     obs.observe(card, { attributes: true, attributeFilter: ["class"] });
   }
@@ -585,19 +593,21 @@
     });
   }
 
+  function setJomaThLabel(th, label, filterLabel) {
+    if (!th) return;
+    th.setAttribute("data-filter-label", filterLabel);
+    const span = th.querySelector(".th-filter-wrap > span");
+    if (span) span.textContent = label;
+    else if (!th.querySelector(".th-filter-wrap")) th.textContent = label;
+  }
+
   function updateJomaTableHead() {
     const table = document.getElementById(JOMA_TABLE_ID);
     if (!table) return;
     const ths = table.querySelectorAll("thead th");
     if (ths.length >= 3) {
-      if (ths[1].textContent !== "Galaprodukts") {
-        ths[1].textContent = "Galaprodukts";
-        ths[1].setAttribute("data-filter-label", "Galaprodukts");
-      }
-      if (ths[2].textContent !== "Galaprodukta kartiņa") {
-        ths[2].textContent = "Galaprodukta kartiņa";
-        ths[2].setAttribute("data-filter-label", "Galaprodukta kartiņa");
-      }
+      setJomaThLabel(ths[1], "Galaprodukts", "Galaprodukts");
+      setJomaThLabel(ths[2], "Galaprodukta kartiņa", "Galaprodukta kartiņa");
     }
   }
 

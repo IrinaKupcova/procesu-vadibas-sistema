@@ -48,7 +48,7 @@ MAPES — Vadības sistēmas arhitektūra
 
 
 
-Procesu reģistrs ir tīmekļa lietotne procesu, galaproduktu (GP), procesu jomu, normatīvo aktu (NA) un izpildītāju uzskaites un pārvaldības atbalstam. Lietotne ir statiska — HTML, CSS un JavaScript — bez build soļa un bez atsevišķa backend servera repozitorijā.
+Procesu reģistrs ir tīmekļa lietotne procesu, galaproduktu (GP), procesu jomu, normatīvo aktu un izpildītāju uzskaites un pārvaldības atbalstam. Lietotne ir statiska — HTML, CSS un JavaScript — bez build soļa un bez atsevišķa backend servera repozitorijā.
 
 
 
@@ -230,7 +230,7 @@ Liela daļa biznesa loģikas (tabulu renderēšana, kartiņu redaktori, lomu pā
 
 | Joma.js / Joma kartina.js | Procesu jomas, jomu kartiņa |
 
-| Norm_akti.js | Normatīvie akti (NA), saistīšana ar procesiem/GP/jomām |
+| Norm_akti.js | Normatīvie akti, saistīšana ar procesiem/GP/jomām |
 
 | Izpilditaji.js | Izpildītāju skats (agregēta tabula) |
 
@@ -266,7 +266,7 @@ Liela daļa biznesa loģikas (tabulu renderēšana, kartiņu redaktori, lomu pā
 
 
 
-Uzdevums → Process(es) → Galaprodukts(i) → (saistības: joma, NA, izpildītājs)
+Uzdevums → Process(es) → Galaprodukts(i) → (saistības: joma, normatīvie akti, izpildītājs)
 
 
 
@@ -286,7 +286,7 @@ Uzdevums → Process(es) → Galaprodukts(i) → (saistības: joma, NA, izpildī
 
 | Joma | procesu_jomas + Darbibas_joma | Jomu reģistrs un kartiņas |
 
-| NA | normativie_akti | Saistība ar procesu, GP, jomu |
+| Normatīvie akti | normativie_akti | Saistība ar procesu, GP, jomu |
 
 | Klasifikatori | norm_akti_klasifikatori | NA veidi, institūcijas |
 

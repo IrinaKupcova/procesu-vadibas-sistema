@@ -8,13 +8,14 @@
   function isAdminEditRole() {
     if (typeof window.canEdit === "function") return window.canEdit();
     const roleSelect = $("roleSelect");
-    if (roleSelect && roleSelect.value === "admin_edit") return true;
+    if (roleSelect && (roleSelect.value === "admin" || roleSelect.value === "admin_edit")) return true;
 
     try {
       const userSelect = $("userSelect");
       const currentUser = userSelect ? userSelect.value : "daina";
       const roleMap = JSON.parse(localStorage.getItem("roleMap") || "{}");
-      return roleMap[currentUser] === "admin_edit";
+      const r = roleMap[currentUser];
+      return r === "admin" || r === "admin_edit";
     } catch {
       return false;
     }
@@ -34,12 +35,7 @@
     const groupSelect = $("eGroup");
     if (groupSelect) groupSelect.disabled = !canEdit;
 
-    const modeHint = $("modeHint");
-    if (modeHint) {
-      modeHint.textContent = canEdit
-        ? "Labošanas režīms ieslēgts. Visi lauki ir aktīvi."
-        : "Skatīšanās režīms. Lauku rediģēšana nav pieejama.";
-    }
+    if (typeof window.refreshModeHint === "function") window.refreshModeHint();
   }
 
   function patchOpenEditor() {

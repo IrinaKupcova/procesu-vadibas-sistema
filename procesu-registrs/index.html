@@ -88,6 +88,12 @@
       .editor-frame .form-group--wide{flex:2 1 280px;min-width:220px}
       .editor-frame .form-group--full{flex:1 1 100%;min-width:100%}
       .editor-frame textarea{width:100%;box-sizing:border-box;resize:vertical}
+      #normActEditorCard .editor-section label{color:#1e1b4b;font-weight:700;font-size:12px}
+      #normActEditorCard .na-link-rows-list{display:flex;flex-direction:column;gap:12px}
+      #normActEditorCard .na-link-row{border:1px solid #a5b4fc;border-radius:8px;padding:10px 12px;background:rgba(255,255,255,.55)}
+      #normActEditorCard .na-link-row .form-row{margin-bottom:0;align-items:flex-end}
+      #normActEditorCard .na-link-row-remove{align-self:flex-end;margin-top:22px}
+      #normActEditorCard #naEditorTitle{color:#312e81;font-weight:800;font-size:1.28rem;letter-spacing:.05em;line-height:1.35}
       #editorCard .editor-gp-panel{border:1px solid #cbd5e1;border-radius:8px;background:#fff;padding:10px;min-height:80px}
       #editorCard #eGpActions{display:flex;flex-direction:column;gap:8px;margin:0}
       #editorCard .editor-gp-grid{display:grid;grid-template-columns:minmax(140px,1.2fr) minmax(140px,1.4fr) minmax(160px,1fr) auto;gap:10px;align-items:center}
@@ -336,7 +342,7 @@
           <button type="button" class="secondary side-nav-jump" data-scroll-target="metricsCard">Mērījumi</button>
           <button type="button" class="secondary side-nav-jump nav-subsection" data-scroll-target="optimizacijaCard">Optimizācija</button>
           <button type="button" class="secondary side-nav-jump" data-scroll-target="reportsCard">Statistika</button>
-          <button type="button" class="secondary side-nav-jump" data-scroll-target="normActsCard">Procesus reglamentējoši normatīvie akti (NA)</button>
+          <button type="button" class="secondary side-nav-jump" data-scroll-target="normActsCard">Procesus reglamentējoši normatīvie akti</button>
           <button type="button" class="secondary side-nav-jump" data-scroll-target="manualCard">Rokasgrāmata</button>
           <button type="button" id="helpAdminOpenBtn" class="secondary side-nav-jump hidden" data-scroll-target="skaidrojumiAdminCard">Skaidrojuma ievietošana</button>
         </div>
@@ -367,9 +373,9 @@
           <label>Lietotājs <select id="userSelect"></select></label>
           <label>Loma
             <select id="roleSelect">
-              <option value="viewer">skatītājs</option>
-              <option value="admin_view">administrators (skatīt)</option>
-              <option value="admin_edit">administrators (labot)</option>
+              <option value="admin">Administrators</option>
+              <option value="viewer">Skatītājs</option>
+              <option value="gp_responsible">Atbildīgais par galaprodukta informāciju</option>
             </select>
           </label>
           <button type="button" id="saveRoleBtn" class="secondary hidden">Saglabāt manu lomu</button>
@@ -637,6 +643,9 @@
           <button type="button" id="eAddNaBtn" class="secondary" style="margin-top:8px">Pievienot normatīvo aktu</button>
         </div>
 
+        <input type="hidden" id="eAdditionalInfo" />
+        <div id="eAttachmentsList" class="hidden" aria-hidden="true"></div>
+
         <div class="editor-section">
           <h3 class="editor-section-title">5. Procesu sasaiste un resursi</h3>
           <div class="form-row">
@@ -652,26 +661,19 @@
         </div>
 
         <div class="editor-section">
-          <h3 class="editor-section-title">6. Plūsmas shēmas un rādītāji</h3>
-          <div class="form-row">
-            <div class="form-group"><label>Plūsmas shēmas</label><input id="eKpi" /></div>
-            <div class="form-group"><label>Optimizācija</label><input id="eOpt" /></div>
-            <div class="form-group"><label>Citi rādītāji</label><input id="eOther" /></div>
+          <h3 class="editor-section-title">6. Plūsmas shēmas, mērījumi un optimizācija</h3>
+          <p class="hint" style="margin:0 0 10px">Poga atver vai aizver papildu bloku tieši zem kartiņas.</p>
+          <div class="process-card-nav-btns" style="display:flex;flex-wrap:wrap;gap:8px">
+            <button type="button" class="secondary process-card-nav-jump" data-scroll-target="plusmasShemasCard">Plūsmas shēmas</button>
+            <button type="button" class="secondary process-card-nav-jump" data-scroll-target="metricsCard">Mērījumi / procesu rādītāji</button>
+            <button type="button" class="secondary process-card-nav-jump" data-scroll-target="optimizacijaCard">Optimizācija</button>
           </div>
+          <input type="hidden" id="eKpi" />
+          <input type="hidden" id="eOpt" />
+          <input type="hidden" id="eOther" />
         </div>
 
-        <div class="editor-section">
-          <h3 class="editor-section-title">7. Papildu informācija</h3>
-          <div class="form-row">
-            <div class="form-group form-group--full">
-              <label>Papildu informācija</label>
-              <textarea id="eAdditionalInfo" rows="6" placeholder="Brīvs teksts; garums neierobežots."></textarea>
-              <div class="hint" style="margin-top:8px">Pielikumi (attēli, PDF, Office):</div>
-              <input type="file" id="eAttachmentsFile" multiple="" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf" style="margin-top:4px;font-size:13px;max-width:100%" />
-              <div id="eAttachmentsList"></div>
-            </div>
-          </div>
-        </div>
+        <div id="eCardInlineHost" class="kartina-inline-host"></div>
 
         <div class="editor-actions">
           <button type="button" id="editBtn" class="secondary">Labot</button>
@@ -790,9 +792,9 @@
           <textarea id="jFunkcijas" rows="6" placeholder="Apraksts par saiti ar iestādes funkcijām."></textarea>
         </div>
         <div class="form-group">
-          <label>Procesus reglamentējoši normatīvie akti (NA)</label>
+          <label>Procesus reglamentējoši normatīvie akti</label>
           <div id="jNaActions" class="na-linked-list"></div>
-          <button type="button" id="jAddNaBtn" class="secondary" style="margin-top:8px">Pievienot NA</button>
+          <button type="button" id="jAddNaBtn" class="secondary" style="margin-top:8px">Pievienot normatīvo aktu</button>
         </div>
         <div class="editor-actions">
           <button type="submit">Saglabāt</button>
@@ -807,8 +809,17 @@
       <form id="catalogEditorForm">
         <input id="cTypeNoOrig" type="hidden" />
 
+        <div class="editor-section" id="cGpPamatSection">
+          <h3 class="editor-section-title">1. Pamatinformācija</h3>
+          <div class="form-row gp-pamat-one-row">
+            <div class="form-group form-group--narrow"><label>Procesa galaprodukta Nr.</label><input id="cTypeNo" placeholder="piem. P-1-1" list="cTypeNoSuggestList" autocomplete="off" /><datalist id="cTypeNoSuggestList"></datalist></div>
+            <div class="form-group form-group--wide form-group--gp-name"><label>Galaprodukta nosaukums</label><input id="cType" /></div>
+            <div class="form-group form-group--wide form-group--gp-joma"><label>Galaprodukta joma</label><input id="cDarbibasJoma" /></div>
+          </div>
+        </div>
+
         <div class="editor-section">
-          <h3 class="editor-section-title">1. Saistītais process</h3>
+          <h3 class="editor-section-title">2. Saistītais process</h3>
           <div class="form-row">
             <div class="form-group form-group--narrow"><label>Procesa Nr.</label><input id="cProcNo" placeholder="Nav obligāts" list="cProcNoList" autocomplete="off" /><datalist id="cProcNoList"></datalist></div>
             <div class="form-group form-group--wide"><label>Process</label><select id="cProcessPick"><option value="">— Izvēlēties procesu —</option></select><input id="cProcess" type="hidden" /></div>
@@ -816,36 +827,24 @@
           </div>
         </div>
 
-        <div class="editor-section">
-          <h3 class="editor-section-title">2. Pamatinformācija</h3>
-          <div class="form-row">
-            <div class="form-group form-group--narrow"><label>Procesa galaprodukta Nr.</label><input id="cTypeNo" placeholder="piem. P-1-1" list="cTypeNoSuggestList" autocomplete="off" /><datalist id="cTypeNoSuggestList"></datalist></div>
-            <div class="form-group form-group--wide"><label>Galaprodukta nosaukums</label><input id="cType" /></div>
-          </div>
+        <div class="editor-section" id="cGpResponsibleSection">
+          <h3 class="editor-section-title">3. Struktūrvienība/ amats, kas atbild par galaprodukta radīšanu</h3>
+          <input type="hidden" id="cUnit" />
+          <input type="hidden" id="cDepartment" />
         </div>
 
-        <div class="editor-section">
-          <h3 class="editor-section-title">3. Joma un izpildītāji</h3>
-          <div class="form-row">
-            <div class="form-group form-group--wide"><label>Joma (piesaiste galaproduktam)</label><input id="cDarbibasJoma" /></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label>Procesa izpildītājs, pārvalde</label><input id="cUnit" /></div>
-            <div class="form-group"><label>Procesa izpildītājs, daļa</label><input id="cDepartment" /></div>
-          </div>
-        </div>
-
-        <div class="editor-section">
-          <h3 class="editor-section-title">Procesus reglamentējoši normatīvie akti (NA)</h3>
+        <div class="editor-section" id="cGpNaSection">
+          <h3 class="editor-section-title">4. Procesus/ galaproduktus reglamentējoši normatīvie akti</h3>
           <div id="cNaActions" class="na-linked-list"></div>
-          <button type="button" id="cAddNaBtn" class="secondary" style="margin-top:8px">Pievienot NA</button>
+          <button type="button" id="cAddNaBtn" class="secondary" style="margin-top:8px">Pievienot normatīvo aktu</button>
+          <div id="cNaInlineHost" class="kartina-inline-host kartina-inline-host--na"></div>
         </div>
 
         <div class="editor-section">
-          <h3 class="editor-section-title">4. Papildu informācija</h3>
+          <h3 class="editor-section-title">5. Papildu informācija (detalizēts apraksts par galaproduktu veidiem, izpildi u.t.t.)</h3>
           <div class="form-row">
             <div class="form-group form-group--full">
-              <label>Papildu informācija</label>
+              <label>Papildu informācija (detalizēts apraksts par galaproduktu veidiem, izpildi u.t.t.)</label>
               <textarea id="cAdditionalInfo" rows="6" placeholder="Ievadiet jebkuru papildu informāciju par šo galaproduktu. Garums neierobežots."></textarea>
               <div class="hint" style="margin-top:8px">Pielikumi (attēli, PDF, Office):</div>
               <input type="file" id="cAttachmentsFile" multiple="" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf" style="margin-top:4px;font-size:13px;max-width:100%" />
@@ -853,6 +852,17 @@
             </div>
           </div>
         </div>
+
+        <div class="editor-section" id="cGpToolsLinks">
+          <h3 class="editor-section-title">6. Mērījumi un optimizācija</h3>
+          <p class="hint" style="margin:0 0 10px">Poga atver vai aizver papildu bloku tieši zem kartiņas.</p>
+          <div class="process-card-nav-btns" style="display:flex;flex-wrap:wrap;gap:8px">
+            <button type="button" class="secondary process-card-nav-jump" data-scroll-target="metricsCard">Mērījumi / procesu rādītāji</button>
+            <button type="button" class="secondary process-card-nav-jump" data-scroll-target="optimizacijaCard">Optimizācija</button>
+          </div>
+        </div>
+
+        <div id="cCardInlineHost" class="kartina-inline-host"></div>
 
         <div class="editor-actions">
           <button type="submit">Saglabāt</button>
@@ -878,9 +888,9 @@
 
     <div class="card section-block hidden" id="normActsCard">
       <div class="toolbar">
-        <div class="left"><div class="section-title">Procesus reglamentējoši normatīvie akti (NA)</div></div>
+        <div class="left"><div class="section-title">Procesus reglamentējoši normatīvie akti</div></div>
         <div class="right">
-          <button type="button" id="naNewBtn" class="secondary">Pievienot jaunu NA</button>
+          <button type="button" id="naNewBtn" class="secondary">Pievienot jaunu normatīvo aktu</button>
         </div>
       </div>
       <p class="hint" style="margin-top:0">Visi normatīvie akti, kas reglamentē procesu darbību.</p>
@@ -895,17 +905,15 @@
         <table id="naTable">
           <thead>
             <tr>
-              <th>NA veids</th>
-              <th>NA nosaukums</th>
-              <th>Numurs</th>
-              <th>Pants / punkts</th>
-              <th>Atbildīgā institūcija</th>
-              <th>Statuss</th>
-              <th>Procesu joma</th>
-              <th>Process</th>
-              <th>GP</th>
-              <th>Links</th>
-              <th>Darbība</th>
+              <th data-filter-label="Normatīvā akta veids">Normatīvā akta veids</th>
+              <th data-filter-label="Normatīvā akta nosaukums">Normatīvā akta nosaukums</th>
+              <th data-filter-label="Numurs">Numurs</th>
+              <th data-filter-label="Pants / punkts">Pants / punkts</th>
+              <th data-filter-label="Pieņemšanas datums">Pieņemšanas datums</th>
+              <th data-filter-label="Procesu joma">Procesu joma</th>
+              <th data-filter-label="Process">Process</th>
+              <th data-filter-label="GP">GP</th>
+              <th data-filter-label="Darbība">Darbība</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -917,43 +925,42 @@
       <h2 id="naEditorTitle">Normatīvā akta kartiņa</h2>
       <form id="normActEditorForm">
         <div class="editor-section">
-          <h3 class="editor-section-title">1. Pamatinformācija</h3>
+          <div style="display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px">
+            <h3 class="editor-section-title" style="margin:0;border:0;padding:0">1. Pamatinformācija</h3>
+            <button type="button" id="naClearBasicsBtn" class="secondary">Notīrīt pamatinformāciju</button>
+          </div>
           <div class="form-row">
-            <div class="form-group"><label>NA veids</label><select id="naVeids"></select></div>
+            <div class="form-group"><label>Normatīvā akta veids</label><select id="naVeids"></select></div>
             <div class="form-group form-group--wide">
               <label>Normatīvā akta nosaukums (pilns)</label>
               <input id="naNosaukums" placeholder="Pilns normatīvā akta nosaukums" />
             </div>
           </div>
           <div class="form-row">
-            <div class="form-group"><label>Numurs</label><input id="naNumurs" placeholder="piem., MK noteikumi Nr.537" /></div>
-            <div class="form-group form-group--wide"><label>Pants / punkts</label><input id="naPantsPunkts" placeholder="piem., 12. pants, 3. punkts" /></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group"><label>Atbildīgā institūcija</label><select id="naInstitucija"></select></div>
-            <div class="form-group"><label>Statuss</label><select id="naStatuss"></select></div>
-          </div>
-          <div class="form-row">
-            <div class="form-group form-group--full">
-              <label>Links uz aktu</label>
-              <input id="naLinks" type="url" placeholder="https://likumi.lv/…" />
-            </div>
+            <div class="form-group form-group--wide"><label>Numurs</label><input id="naNumurs" placeholder="piem., MK noteikumi Nr.537" /></div>
+            <div class="form-group"><label>Pieņemšanas datums</label><input id="naPenemsanasDatums" type="date" /></div>
           </div>
         </div>
         <div class="editor-section">
           <h3 class="editor-section-title">2. Saistība ar procesu reģistru</h3>
-          <div class="form-row">
-            <div class="form-group form-group--wide"><label>Procesu joma</label><select id="naJoma"></select></div>
-            <div class="form-group form-group--wide"><label>Process</label><select id="naProcess"></select></div>
-            <div class="form-group form-group--wide"><label>Galaprodukts (GP)</label><select id="naGp"></select></div>
+          <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+            <button type="button" id="naLinkRowsAddBtn" class="secondary">+ Pievienot rindu</button>
           </div>
+          <div id="naLinkRowsBody" class="na-link-rows-list"></div>
         </div>
         <div class="editor-actions">
-          <button type="submit">Saglabāt</button>
+          <button type="submit" id="naSaveBtn">Saglabāt</button>
           <button type="button" id="naCloseBtn" class="secondary">Aizvērt</button>
-          <button type="button" id="naDeleteBtn" class="danger hidden">Dzēst</button>
+          <button type="button" id="naDeleteBtn" class="danger hidden">Dzēst normatīvā akta kartiņu</button>
         </div>
       </form>
+    </div>
+
+    <div class="card section-block hidden" id="plusmasShemasCard">
+      <div class="toolbar">
+        <div class="left"><div class="section-title">Plūsmas shēmas</div></div>
+      </div>
+      <p class="hint">Sadaļa tiks papildināta.</p>
     </div>
 
     <div class="card section-block hidden" id="optimizacijaCard">
@@ -998,8 +1005,9 @@
   <!-- Neobligāti: config.js no config.example.js (iestādes Supabase). Ja nav — DB.js noklusējums. -->
   <script src="config.js"></script>
   <script src="DB.js?v=20260818a"></script>
+  <script src="Lomas.js?v=20260923a"></script>
   <script src="Procesa%20kartina.js?v=20260731a"></script>
-  <script src="GP%20kataogs.js?v=20260706h"></script>
+  <script src="GP%20kataogs.js?v=20260923b"></script>
 
     <script>
       let processRows = [], csvRows = [], catalogRowsView = [], user = "daina", roles = {};
@@ -1036,9 +1044,31 @@
           "error"
         );
       }
-      const role = () => roles[user] || "admin_edit";
-      /** Pagaidām — labošana visiem lietotājiem; vēlāk precizēt (jomas, lomas u.c.). */
-      const canEdit = () => true;
+      const role = () => {
+        const rs = $("roleSelect");
+        if (rs && rs.value) {
+          const fromUi = window.PVRoles ? window.PVRoles.normalizeRole(rs.value) : String(rs.value).trim();
+          if (fromUi) return fromUi;
+        }
+        const r = window.PVRoles ? window.PVRoles.normalizeRole(roles[user]) : String(roles[user] || "");
+        return r || (window.PVRoles ? window.PVRoles.DEFAULT_ROLE : "admin");
+      };
+      const canEdit = () => (window.PVRoles ? window.PVRoles.canEditForRole(role()) : role() === "admin");
+      const canEditGp = () => (window.PVRoles ? window.PVRoles.canEditGpForRole(role()) : canEdit());
+      const canDelete = () => (window.PVRoles ? window.PVRoles.canDeleteForRole(role()) : canEdit());
+      window.canEdit = canEdit;
+      window.canEditGp = canEditGp;
+      window.canDelete = canDelete;
+      window.currentUserRole = role;
+      function refreshModeHint(){
+        const hint = $("modeHint");
+        if(!hint) return;
+        const lbl = window.PVRoles ? window.PVRoles.roleLabel(role()) : role();
+        if(canEdit()) hint.textContent = "Loma: " + lbl + " — pilna labošana.";
+        else if(canEditGp()) hint.textContent = "Loma: " + lbl + " — GP kartiņu saturs labojams; pārējais skatīšanai.";
+        else hint.textContent = "Loma: " + lbl + " — tikai skatīšana.";
+      }
+      window.refreshModeHint = refreshModeHint;
       function normalizeGroupLabel(v){
         const t = String(v||"").trim().toLowerCase();
         if(!t) return "";
@@ -3037,7 +3067,7 @@
         const name = row ? String((row && row.process) || "").trim() : "";
         if($("cProcNo")) $("cProcNo").value = no;
         if($("cProcess")) $("cProcess").value = name;
-        if($("cGroup")) $("cGroup").value = row ? formatGroupWithPrefix(row.group) : "";
+        if($("cGroup")) $("cGroup").value = row ? normalizeGroupLabel(row.group) : "";
         if(!o.skipExecutors){
           if($("cUnit")) $("cUnit").value = row ? String(row.executorPatstaviga || "").trim() : "";
           if($("cDepartment")) $("cDepartment").value = row ? String(row.executorDala || "").trim() : "";
@@ -3132,7 +3162,7 @@
           ProcesaKartina.setAttachments("catalog", r && Array.isArray(r.cardAttachments) ? r.cardAttachments : []);
         }
         if($("catalogDeleteBtn")){
-          $("catalogDeleteBtn").classList.toggle("hidden", !r || !canEdit());
+          $("catalogDeleteBtn").classList.toggle("hidden", !r || !canDelete());
           $("catalogDeleteBtn").disabled = false;
         }
         if(window.Numeracija && typeof Numeracija.afterFillCatalogForm === "function"){
@@ -3428,7 +3458,7 @@
         throw new Error("DB API nav pieejams: updateCatalog/insertCatalog.");
       }
       function getVisibleMainSection(){
-        const ids = ["tasksViewCard","processListCard","catalogListCard","processGroupsCard","processJomasCard","executorsCard","reportsCard","normActsCard","metricsCard","optimizacijaCard","manualCard","skaidrojumiAdminCard"];
+        const ids = ["tasksViewCard","processListCard","plusmasShemasCard","catalogListCard","processGroupsCard","processJomasCard","executorsCard","reportsCard","normActsCard","metricsCard","optimizacijaCard","manualCard","skaidrojumiAdminCard"];
         for (const id of ids){
           const n = $(id);
           if(n && !n.classList.contains("hidden")) return id;
@@ -3508,7 +3538,9 @@
         };
       }
       function restoreEditorReturnContext(fallbackSectionId){
-        const ctx = editorReturnContext || {};
+        // Pēc F5 hash nav saglabāta kartiņas atgriešanās konteksta — openSectionById jau ir atvēris tabulu.
+        if (!editorReturnContext) return;
+        const ctx = editorReturnContext;
         const sectionId = ctx.sectionId || fallbackSectionId || "processListCard";
         const section = $(sectionId);
         if(section) section.classList.remove("hidden");
@@ -3521,13 +3553,13 @@
         }
         const ct = $("catalogTable");
         if(ct){
-          const open = !!ctx.catalogOpen;
+          const open = ctx.catalogOpen !== false;
           ct.classList.toggle("table-body-hidden", !open);
           if($("toggleCatalogBtn")) $("toggleCatalogBtn").textContent = open ? "Aizvērt katalogu" : "Atvērt katalogu";
         }
         const tt = $("tasksSummaryTable");
         if(tt){
-          const open = !!ctx.tasksOpen;
+          const open = ctx.tasksOpen !== false;
           tt.classList.toggle("table-body-hidden", !open);
           if($("toggleTasksBtn")) $("toggleTasksBtn").textContent = open ? "Aizvērt uzdevumu skatu" : "Atvērt uzdevumu skatu";
         }
@@ -3562,9 +3594,9 @@
         // Jauns process: null (ne {}), citādi laukos parādās teksts "undefined".
         if (!src) fillForm(null);
         else fillForm(Object.assign({}, r || {}, src || {}));
-        const e=canEdit(); $("deleteBtn").classList.toggle("hidden", !(src&&e));
+        $("deleteBtn").classList.toggle("hidden", !(src && canDelete()));
         $("editorForm").querySelectorAll("input,select,textarea,button").forEach(el=>{ if(el.id==="closeBtn") return; el.disabled=!e;});
-        $("modeHint").textContent=e?"Labošanas režīms ieslēgts.":"Skatīšanās režīms.";
+        refreshModeHint();
         const sec = (editorReturnContext && editorReturnContext.sectionId) || "processListCard";
         pvHistoryPush(sec, "process");
       }
@@ -3650,21 +3682,21 @@
         if($("catalogEditorCard") && $("catalogEditorCard").scrollIntoView){
           $("catalogEditorCard").scrollIntoView({ behavior:"smooth", block:"start" });
         }
-        const gpName = String((r && r.type) || "").trim();
-        $("catalogEditorTitle").innerHTML = r
-          ? (gpName
-              ? `<span style="color:#1d4ed8;font-weight:700">${gpName}</span> — Galaprodukta kartiņa (rediģēt)`
-              : "Galaprodukta kartiņa (rediģēt)")
-          : "Galaprodukta kartiņa (jauns)";
         fillCatalogForm(editingCatalogRow);
         wireCatalogProcessPickerOnce();
-        const e = canEdit();
+        if(typeof window.refreshGpKartinaUi === "function"){
+          try{ window.refreshGpKartinaUi(); }catch(_){}
+        }
+        if(typeof window.updateGpCatalogEditorTitle === "function"){
+          try{ window.updateGpCatalogEditorTitle(); }catch(_){}
+        }
+        const egp = canEditGp();
         $("catalogEditorForm").querySelectorAll("input,select,textarea,button").forEach(el=>{
           if(el.id==="catalogCloseBtn" || el.id==="catalogDeleteBtn") return;
-          el.disabled=!e;
+          el.disabled=!egp;
         });
         if($("catalogDeleteBtn")){
-          $("catalogDeleteBtn").classList.toggle("hidden", !editingCatalogRow || !e);
+          $("catalogDeleteBtn").classList.toggle("hidden", !editingCatalogRow || !canDelete());
           $("catalogDeleteBtn").disabled = false;
         }
         const sec = catalogOpenReturnTarget === "process"
@@ -3689,7 +3721,7 @@
         $("tTask").value = (t && t.name != null) ? String(t.name) : "";
 
         const hasTask = !!originalNo;
-        $("taskDeleteBtn").classList.toggle("hidden", !(hasTask && e));
+        $("taskDeleteBtn").classList.toggle("hidden", !(hasTask && canDelete()));
         if($("taskSaveBtn")) $("taskSaveBtn").textContent = hasTask ? "Saglabāt" : "Pievienot uzdevumu";
 
         $("taskEditorForm").querySelectorAll("input,button").forEach((el)=>{
@@ -3701,30 +3733,50 @@
 
       function loadRoles(){
         try{roles=JSON.parse(localStorage.getItem("roleMap")||"{}");}catch{roles={};}
-        // Lai testēšana/rediģēšana vienmēr strādā, piespiedam daina būt admin_edit.
-        roles.daina="admin_edit";
-        if(!roles.guest) roles.guest="admin_edit";
+        if(window.PVRoles && typeof window.PVRoles.migrateRoleMap === "function"){
+          const migrated = window.PVRoles.migrateRoleMap(roles);
+          roles = migrated.map;
+          if(migrated.changed) localStorage.setItem("roleMap", JSON.stringify(roles));
+        }
+        if(!Object.keys(roles).length){
+          roles[user] = window.PVRoles ? window.PVRoles.DEFAULT_ROLE : "admin";
+        }
+        if(!roles[user]){
+          roles[user] = window.PVRoles ? window.PVRoles.DEFAULT_ROLE : "admin";
+        }
         renderRoles();
+        refreshModeHint();
+        refreshToolbarForRole();
       }
       function saveRoles(){ localStorage.setItem("roleMap",JSON.stringify(roles)); renderRoles(); }
       function refreshSaveRoleBtnVisibility(){
         const btn=$("saveRoleBtn"), rs=$("roleSelect");
         if(!btn||!rs) return;
-        const isViewer=rs.value==="viewer";
-        btn.classList.toggle("hidden", isViewer);
+        const stored = window.PVRoles ? window.PVRoles.normalizeRole(roles[user]) : String(roles[user] || "");
+        const pending = window.PVRoles ? window.PVRoles.normalizeRole(rs.value) : rs.value;
+        btn.classList.toggle("hidden", pending === stored);
+      }
+      function refreshToolbarForRole(){
+        const admin = canEdit();
+        ["newBtn","newTaskBtn","newCatalogBtn","naNewBtn","pjAddJomaBtn"].forEach((id)=>{
+          const el = $(id);
+          if(el) el.classList.toggle("hidden", !admin);
+        });
+        if($("roleSelect")) $("roleSelect").disabled = false;
       }
       function refreshOpenEditorDeleteButtons(){
         const e = canEdit();
+        const egp = canEditGp();
         if($("editorCard") && !$("editorCard").classList.contains("hidden")){
-          $("deleteBtn").classList.toggle("hidden", !(editingRow && e));
+          $("deleteBtn").classList.toggle("hidden", !(editingRow && canDelete()));
         }
         if($("catalogEditorCard") && !$("catalogEditorCard").classList.contains("hidden")){
           $("catalogEditorForm").querySelectorAll("input,select,textarea,button").forEach(el=>{
             if(el.id==="catalogCloseBtn" || el.id==="catalogDeleteBtn") return;
-            el.disabled=!e;
+            el.disabled=!egp;
           });
           if($("catalogDeleteBtn")){
-            $("catalogDeleteBtn").classList.toggle("hidden", !(editingCatalogRow && e));
+            $("catalogDeleteBtn").classList.toggle("hidden", !(editingCatalogRow && canDelete()));
             $("catalogDeleteBtn").disabled = false;
           }
         }
@@ -3738,12 +3790,12 @@
       }
       function initLeftNav(){
         const navList = document.querySelector(".side-nav-list");
-        const secondaryIds = new Set(["metricsCard","optimizacijaCard","manualCard","reportsCard","normActsCard"]);
+        const secondaryIds = new Set(["plusmasShemasCard","metricsCard","optimizacijaCard","manualCard","reportsCard","normActsCard"]);
         const mainIds = ["topToolbarCard","changeRequestCard","tasksViewCard","processListCard","catalogListCard","processGroupsCard","processJomasCard","executorsCard","editorCard","catalogEditorCard","jomaEditorCard","taskEditorCard","normActEditorCard","skaidrojumiAdminCard"];
         let activeNavId = null;
         function closeAllMainSections(){
           // “Redz TIKAI vienu sadaļu”: paslēpjam visas kartītes, pēc tam openSectionById atvērs tikai vajadzīgo.
-          ["tasksViewCard","processListCard","catalogListCard","processGroupsCard","processJomasCard","executorsCard","reportsCard","normActsCard","metricsCard","optimizacijaCard","manualCard","editorCard","catalogEditorCard","jomaEditorCard","taskEditorCard","normActEditorCard","skaidrojumiAdminCard"].forEach((id)=>{
+          ["tasksViewCard","processListCard","plusmasShemasCard","catalogListCard","processGroupsCard","processJomasCard","executorsCard","reportsCard","normActsCard","metricsCard","optimizacijaCard","manualCard","editorCard","catalogEditorCard","jomaEditorCard","taskEditorCard","normActEditorCard","skaidrojumiAdminCard"].forEach((id)=>{
             const n = $(id);
             if(n) n.classList.add("hidden");
           });
@@ -3861,6 +3913,10 @@
             clearProcessAccordionExpandedMemory();
             showNavCard("normActsCard");
             if(window.NormAkti && typeof NormAkti.render === "function") NormAkti.render();
+          }else if(id==="plusmasShemasCard"){
+            closeAllMainSections();
+            clearProcessAccordionExpandedMemory();
+            showNavCard("plusmasShemasCard");
           }else if(id==="metricsCard"){
             closeAllMainSections();
             clearProcessAccordionExpandedMemory();
@@ -3976,6 +4032,19 @@
               }
             }
           });
+        document.addEventListener("click", (ev)=>{
+          const jumpBtn = ev.target.closest(".process-card-nav-jump[data-scroll-target]");
+          if(!jumpBtn) return;
+          ev.preventDefault();
+          if(window.KartinaInline && typeof window.KartinaInline.handleNavJump === "function"){
+            if(window.KartinaInline.handleNavJump(jumpBtn)) return;
+          }
+          const targetId = jumpBtn.getAttribute("data-scroll-target");
+          const navBtn = targetId
+            ? document.querySelector(`.side-nav-jump[data-scroll-target='${targetId}']`)
+            : null;
+          if(navBtn) navBtn.click();
+        });
         function pvApplyNavHistoryState(state){
           if(!state || !state.pvApp) return;
           pvHistoryApplying = true;
@@ -4121,9 +4190,6 @@
             tr.append(tdNo, tdTask, tdCnt, tdProc, tdSvc, tdTaskCard);
             tb.appendChild(tr);
           });
-        if (typeof window.refreshExtraTableFilters === "function") {
-          window.refreshExtraTableFilters();
-        }
       }
       function renderReports(){
         const uniqueProcesses = new Map();
@@ -4196,12 +4262,20 @@
         if(!roleTable) return;
         const tb=roleTable.querySelector("tbody"); if(!tb) return;
         tb.innerHTML="";
-        us.forEach(u=>{ const tr=document.createElement("tr"); tr.innerHTML=`<td>${u}</td><td>${roles[u]}</td><td><button type="button" class="secondary" data-u="${u}">Dzēst</button></td>`; tb.appendChild(tr); });
+        us.forEach(u=>{
+          const tr=document.createElement("tr");
+          const lbl = window.PVRoles ? window.PVRoles.roleLabel(roles[u]) : roles[u];
+          tr.innerHTML=`<td>${u}</td><td>${lbl}</td><td><button type="button" class="secondary" data-u="${u}">Dzēst</button></td>`;
+          tb.appendChild(tr);
+        });
       }
 
       // events — kopējais meklētājs: lūpa vai Enter (Filtrs.js); rakstot tikai atjaunojam pogu „Noņemt filtru”.
       if($("searchInput")) $("searchInput").oninput=()=>{ processPage=1; if(typeof window.refreshClearFilterButtonActive==="function") window.refreshClearFilterButtonActive(); };
-      window.runGlobalSearch = ()=>{ renderTable(); };
+      window.runGlobalSearch = ()=>{
+        renderTable();
+        if(typeof window.applyAllFilters==="function") window.applyAllFilters();
+      };
       if($("groupFilter")) $("groupFilter").onchange=renderTable;
       if($("processPageSize")) $("processPageSize").onchange=()=>{ processPageSize = Number($("processPageSize").value || 100); processPage = 1; renderTable(); };
       if($("processPrevPageBtn")) $("processPrevPageBtn").onclick=()=>{ if(processPage>1){ processPage -= 1; renderTable(); } };
@@ -4313,6 +4387,7 @@
         refreshProcessFooterVisibility();
       };
       if($("newTaskBtn")) $("newTaskBtn").onclick=()=>{
+        if(!canEdit()){ alert("Jaunu uzdevumu var pievienot tikai administrators."); return; }
         openTaskEditor({ no: "", name: "" });
         const card = $("taskEditorCard");
         if(card && card.scrollIntoView) card.scrollIntoView({behavior:"smooth", block:"start"});
@@ -4358,14 +4433,17 @@
       initFormUndo("editorForm","processUndoBtn");
       initFormUndo("catalogEditorForm","catalogUndoBtn");
       initFormUndo("taskEditorForm","taskUndoBtn");
-      $("newBtn").onclick=()=>openEditor(null);
+      $("newBtn").onclick=()=>{ if(!canEdit()) return; openEditor(null); };
       $("closeBtn").onclick=()=>{
         if(window.pvHistoryTryBack("process")) return;
         const ec=$("editorCard"); if(ec){ ec.classList.add("hidden"); ec.classList.remove("editor-new-process"); }
         restoreEditorReturnContext("processListCard");
         editingRow=null;
       };
-      $("newCatalogBtn").onclick=()=>openCatalogEditor(null);
+      if($("newCatalogBtn")) $("newCatalogBtn").onclick=()=>{
+        if(!canEdit()){ alert("Jaunu galaproduktu var pievienot tikai administrators."); return; }
+        openCatalogEditor(null);
+      };
       $("catalogCloseBtn").onclick=()=>{
         if(window.pvHistoryTryBack("catalog")) return;
         $("catalogEditorCard").classList.add("hidden");
@@ -4384,7 +4462,7 @@
       };
       $("taskEditorForm").onsubmit=async(e)=>{
         e.preventDefault();
-        if(!canEdit()){alert("Labošana pieejama tikai admin (labot)."); return;}
+        if(!canEdit()){alert("Procesu var labot tikai administrators."); return;}
         const oldNo = String($("tOriginalTaskNo").value || "").trim();
         const newNo = String($("tTaskNo").value || "").trim();
         const newTaskName = String($("tTask").value || "").trim();
@@ -4450,7 +4528,7 @@
         }
       };
       if($("editBtn")) $("editBtn").onclick=()=>{ if(!canEdit()) return; $("editorForm").querySelectorAll("input,select,textarea").forEach(el=>el.disabled=false); };
-      $("editorForm").onsubmit=async(e)=>{ e.preventDefault(); if(!canEdit()){alert("Labošana pieejama tikai admin (labot)."); return;}
+      $("editorForm").onsubmit=async(e)=>{ e.preventDefault(); if(!canEdit()){alert("Procesu var labot tikai administrators."); return;}
         const f=formVals();
         if(!editingRow && !String(f.process || "").trim()){ status("Ievadiet jaunā procesa nosaukumu (lauks «Process»).","error"); return; }
         const processActionMsg = editingRow ? "Vai tiešām saglabāt procesa labojumus?" : "Vai tiešām pievienot jaunu procesu?";
@@ -4499,7 +4577,7 @@
           status("DB kļūda: "+msg,"error");
         }
       };
-      $("deleteBtn").onclick=async()=>{ if(!canEdit()) return; const row=editingRow; if(!row) return;
+      $("deleteBtn").onclick=async()=>{ if(!canDelete()) return; const row=editingRow; if(!row) return;
         if(!confirm("Dzēst ierakstu?")) return; try{
           const api = window.DB;
           if(!api || typeof api.remove !== "function"){
@@ -4549,7 +4627,7 @@
         }};
       $("catalogEditorForm").onsubmit=async(e)=>{
         e.preventDefault();
-        if(!canEdit()){ alert("Labošana pieejama tikai admin (labot)."); return; }
+        if(!canEditGp()){ alert("GP kartiņas saturu var labot administrators vai atbildīgais par galaprodukta informāciju."); return; }
         const api = window.DB;
         if(!api || typeof api.insertCatalog!=="function" || typeof api.updateCatalog!=="function"){
           status("Kataloga DB API nav pieejams.","error");
@@ -4560,9 +4638,13 @@
           status("Ievadiet galaprodukta nosaukumu.","error");
           return;
         }
+        const prevCatalogRow = editingCatalogRow;
+        if(!prevCatalogRow && !canEdit()){
+          alert("Jaunu galaproduktu var pievienot tikai administrators.");
+          return;
+        }
         const gpActionMsg = editingCatalogRow ? "Vai tiešām saglabāt GP labojumus?" : "Vai tiešām pievienot jaunu GP?";
         if(!confirm(gpActionMsg)) return;
-        const prevCatalogRow = editingCatalogRow;
         try{
           if(!prevCatalogRow){
             await api.insertCatalog(f);
@@ -4594,7 +4676,7 @@
         }
       };
       $("catalogDeleteBtn").onclick=async()=>{
-        if(!canEdit()) return;
+        if(!canDelete()) return;
         if(!editingCatalogRow) return;
         if(!confirm("Dzēst procesa galaproduktu?")) return;
         try{
@@ -4618,9 +4700,9 @@
       };
       $("shareBtn").onclick=async()=>{ const u=new URL(location.href); u.searchParams.set("user",user); u.searchParams.set("level",$("levelSelect").value); try{await navigator.clipboard.writeText(u.toString()); alert("Saite nokopēta.");}catch{alert("Neizdevās kopēt saiti.");}};
       $("emailBtn").onclick=()=>{ const u=new URL(location.href); u.searchParams.set("user",user); u.searchParams.set("level",$("levelSelect").value); location.href="mailto:?subject="+encodeURIComponent("Procesu vadības bloks")+"&body="+encodeURIComponent("Saite:\n"+u.toString()); };
-      if($("userSelect")) $("userSelect").onchange=()=>{ user=$("userSelect").value; if($("roleSelect")) $("roleSelect").value=role(); refreshSaveRoleBtnVisibility(); refreshOpenEditorDeleteButtons(); renderTable(); if(typeof window.refreshHelpAdminVisibility==="function")window.refreshHelpAdminVisibility(); };
-      if($("roleSelect")) $("roleSelect").addEventListener("change", ()=>{ refreshSaveRoleBtnVisibility(); refreshOpenEditorDeleteButtons(); });
-      if($("saveRoleBtn")) $("saveRoleBtn").onclick=()=>{ roles[user]=$("roleSelect").value; saveRoles(); renderTable(); refreshSaveRoleBtnVisibility(); refreshOpenEditorDeleteButtons(); if(typeof window.refreshHelpAdminVisibility==="function")window.refreshHelpAdminVisibility(); };
+      if($("userSelect")) $("userSelect").onchange=()=>{ user=$("userSelect").value; if($("roleSelect")) $("roleSelect").value=(window.PVRoles?window.PVRoles.normalizeRole(roles[user]):roles[user])||(window.PVRoles?window.PVRoles.DEFAULT_ROLE:"admin"); refreshSaveRoleBtnVisibility(); refreshOpenEditorDeleteButtons(); refreshModeHint(); refreshToolbarForRole(); renderTable(); if(typeof window.refreshHelpAdminVisibility==="function")window.refreshHelpAdminVisibility(); };
+      if($("roleSelect")) $("roleSelect").addEventListener("change", ()=>{ refreshSaveRoleBtnVisibility(); refreshOpenEditorDeleteButtons(); refreshModeHint(); refreshToolbarForRole(); renderTable(); if(typeof window.refreshHelpAdminVisibility==="function")window.refreshHelpAdminVisibility(); });
+      if($("saveRoleBtn")) $("saveRoleBtn").onclick=()=>{ roles[user]=$("roleSelect").value; saveRoles(); renderTable(); refreshSaveRoleBtnVisibility(); refreshOpenEditorDeleteButtons(); refreshModeHint(); refreshToolbarForRole(); if(typeof window.refreshHelpAdminVisibility==="function")window.refreshHelpAdminVisibility(); };
       if($("assignRoleBtn")) $("assignRoleBtn").onclick=()=>{ const u=$("newUserInput").value.trim(); if(!u) return; roles[u]=$("newRoleSelect").value; saveRoles(); $("newUserInput").value=""; };
       if($("roleTable")) $("roleTable").onclick=(e)=>{ const b=e.target.closest("button[data-u]"); if(!b) return; const u=b.getAttribute("data-u"); if(u==="daina"){alert("Primāro admin lietotāju nedzēšam.");return;} delete roles[u]; saveRoles(); };
 
@@ -4732,7 +4814,6 @@
       window.renderProcessJomasView = renderProcessJomasView;
       window.captureEditorReturnContext = captureEditorReturnContext;
       window.restoreEditorReturnContext = restoreEditorReturnContext;
-      window.canEdit = canEdit;
     </script>
     <script src="Izpilditaji.js"></script>
     <script src="Filtrs.js"></script>

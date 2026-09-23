@@ -22,7 +22,7 @@ Ja migrācija jau ir palaista, daudzas ir idempotent (droši palaist atkārtoti)
 ## Pēc migrācijām
 
 1. Pārlādējiet lietotni (Ctrl+F5).
-2. Ja NA nestrādā — pārbaudiet, vai `normativie_akti` eksistē (konsolē nebūs `PGRST205`).
+2. Ja normatīvie akti nestrādā — pārbaudiet, vai `normativie_akti` eksistē (konsolē nebūs `PGRST205`).
 3. Palīgskripts (opcionāli): `node scripts/db-fix.mjs` — lasa URL/atslēgu no `DB.js` vai `config.js`.
 
 ## Ja kaut kas neizdodas

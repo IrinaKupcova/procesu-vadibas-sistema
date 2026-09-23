@@ -8,6 +8,7 @@
   const PROCESS_SUBSECTION_IDS = [
     "catalogListCard",
     "executorsCard",
+    "plusmasShemasCard",
     "metricsCard",
     "optimizacijaCard",
     "normActsCard",
@@ -18,6 +19,7 @@
     "processListCard",
     "catalogListCard",
     "executorsCard",
+    "plusmasShemasCard",
     "metricsCard",
     "optimizacijaCard",
     "normActsCard",
@@ -51,6 +53,19 @@
       const title = metricsCard.querySelector(".toolbar .section-title") || metricsCard.querySelector(".section-title");
       if (title) title.textContent = METRICS_LABEL;
     }
+  }
+
+  function ensurePlusmasShemasNav() {
+    const existing = document.querySelector(".side-nav-jump[data-scroll-target='plusmasShemasCard']");
+    if (existing) return;
+    const anchor = document.querySelector(".side-nav-jump[data-scroll-target='executorsCard']");
+    if (!anchor || !anchor.parentElement) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "secondary side-nav-jump nav-subsection";
+    btn.setAttribute("data-scroll-target", "plusmasShemasCard");
+    btn.textContent = "Plūsmas shēmas";
+    anchor.insertAdjacentElement("afterend", btn);
   }
 
   function ensureOptimizacijaNav() {
@@ -101,6 +116,7 @@
     relabelReportsToStats();
     relabelMetrics();
     ensureProcessGroupsNav();
+    ensurePlusmasShemasNav();
     ensureOptimizacijaNav();
     reorderSideNav();
     applyProcessRegisterSubsections();

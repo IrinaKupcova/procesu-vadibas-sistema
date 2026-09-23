@@ -1,11 +1,10 @@
-/* Procesus reglamentējoši normatīvie akti (NA) — uzskaites bloks (Supabase + localStorage rezerve). */
+/* Procesus reglamentējoši normatīvie akti — uzskaites bloks (Supabase + localStorage rezerve). */
 (function () {
   "use strict";
 
-  const NA_TITLE = "Procesus reglamentējoši normatīvie akti (NA)";
+  const NA_TITLE = "Procesus reglamentējoši normatīvie akti";
   const STORAGE_ACTS = "pv_norm_akti_v1";
   const STORAGE_VEIDI = "pv_norm_akti_veidi_v1";
-  const STORAGE_INST = "pv_norm_akti_inst_v1";
   const MIGRATED_FLAG = "pv_norm_akti_db_migrated_v1";
 
   const DEFAULT_VEIDI = [
@@ -15,18 +14,16 @@
     "VID iekšējais normatīvais akts",
     "Cits",
   ];
-  const DEFAULT_INST = ["FM", "MK", "VID", "ES"];
-  const DEFAULT_STATUSI = ["aktuāls", "spēku zaudējis", "daļēji spēkā", "projekts"];
-
   const ADD_NEW = "__add_new__";
 
   let editingId = null;
   let actsCache = [];
   let customVeidiCache = [];
-  let customInstCache = [];
   let loadPromise = null;
   /** Atgriešanās konteksts pēc NA redaktora aizvēršanas: process | catalog | joma | list */
   let returnContext = null;
+  /** Joma no ieraksta/konteksta (lauks kartiņā nav redzams). */
+  let editorDraftJoma = "";
 
   const $ = (id) => document.getElementById(id);
 
@@ -64,11 +61,26 @@
     return canEditMode ? "Skatīt/Labot" : "Skatīt";
   }
 
-  function normalizeActUrl(url) {
-    const u = String(url || "").trim();
-    if (!u) return "";
-    if (/^https?:\/\//i.test(u)) return u;
-    return "https://" + u;
+  function normalizePenemsanasDatums(v) {
+    const s = String(v || "").trim();
+    if (!s) return "";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+    const m = s.match(/^(\d{1,2})[./](\d{1,2})[./](\d{4})$/);
+    if (m) {
+      const dd = m[1].padStart(2, "0");
+      const mm = m[2].padStart(2, "0");
+      return m[3] + "-" + mm + "-" + dd;
+    }
+    const d = new Date(s);
+    if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+    return s;
+  }
+
+  function formatPenemsanasDatumsDisplay(v) {
+    const iso = normalizePenemsanasDatums(v);
+    if (!iso || !/^\d{4}-\d{2}-\d{2}$/.test(iso)) return iso || "";
+    const p = iso.split("-");
+    return p[2] + "." + p[1] + "." + p[0];
   }
 
   function actsMatching(filter) {
@@ -87,11 +99,18 @@
         return false;
       }
       if (f.gpTypeNo) {
-        if (String(r.gpTypeNo || "").trim().toUpperCase() !== String(f.gpTypeNo).trim().toUpperCase()) {
-          return false;
-        }
+        const want = String(f.gpTypeNo).trim().toUpperCase();
+        const top = String(r.gpTypeNo || "").trim().toUpperCase() === want;
+        const inRefs = parseGpRefsFromRaw(r).some(
+          (ref) => String(ref.gpTypeNo || "").trim().toUpperCase() === want
+        );
+        if (!top && !inRefs) return false;
       }
-      if (f.gp && normKey(r.gp) !== normKey(f.gp)) return false;
+      if (f.gp) {
+        const top = normKey(r.gp) === normKey(f.gp);
+        const inRefs = parseGpRefsFromRaw(r).some((ref) => normKey(ref.gp) === normKey(f.gp));
+        if (!top && !inRefs) return false;
+      }
       return true;
     });
   }
@@ -99,7 +118,7 @@
   function canEdit() {
     if (typeof window.canEdit === "function") return window.canEdit();
     const rs = $("roleSelect");
-    return rs && rs.value === "admin_edit";
+    return rs && (rs.value === "admin" || rs.value === "admin_edit");
   }
 
   function statusMsg(text, kind) {
@@ -133,11 +152,6 @@
     return Array.isArray(arr) ? arr.filter(Boolean) : [];
   }
 
-  function loadCustomInstLocal() {
-    const arr = loadJson(STORAGE_INST, []);
-    return Array.isArray(arr) ? arr.filter(Boolean) : [];
-  }
-
   function allVeidi() {
     const seen = new Set();
     const out = [];
@@ -145,18 +159,6 @@
       const s = String(v || "").trim();
       if (!s || seen.has(s.toLowerCase())) return;
       seen.add(s.toLowerCase());
-      out.push(s);
-    });
-    return out.sort((a, b) => a.localeCompare(b, "lv", { sensitivity: "base" }));
-  }
-
-  function allInstitucijas() {
-    const seen = new Set();
-    const out = [];
-    DEFAULT_INST.concat(customInstCache).forEach((v) => {
-      const s = String(v || "").trim();
-      if (!s || seen.has(s.toUpperCase())) return;
-      seen.add(s.toUpperCase());
       out.push(s);
     });
     return out.sort((a, b) => a.localeCompare(b, "lv", { sensitivity: "base" }));
@@ -177,38 +179,19 @@
     }
   }
 
-  async function addCustomInst(name) {
-    const s = String(name || "").trim();
-    if (!s || allInstitucijas().some((x) => x.toUpperCase() === s.toUpperCase())) return;
-    customInstCache.push(s);
-    saveJson(STORAGE_INST, customInstCache);
-    const api = window.DB;
-    if (api && typeof api.upsertNormActKlasifikators === "function") {
-      try {
-        await api.upsertNormActKlasifikators("institucija", s);
-      } catch (e) {
-        console.warn("NormAkti institucija DB:", e);
-      }
-    }
-  }
-
   async function loadKlasifikatoriFromDb() {
     const api = window.DB;
     if (!api || typeof api.loadNormActKlasifikatori !== "function") {
       customVeidiCache = loadCustomVeidiLocal();
-      customInstCache = loadCustomInstLocal();
       return;
     }
     try {
       const k = await api.loadNormActKlasifikatori();
       customVeidiCache = Array.isArray(k.veidi) ? k.veidi.slice() : [];
-      customInstCache = Array.isArray(k.institucijas) ? k.institucijas.slice() : [];
       saveJson(STORAGE_VEIDI, customVeidiCache);
-      saveJson(STORAGE_INST, customInstCache);
     } catch (e) {
       console.warn("NormAkti klasifikatori DB:", e);
       customVeidiCache = loadCustomVeidiLocal();
-      customInstCache = loadCustomInstLocal();
     }
   }
 
@@ -245,26 +228,127 @@
     return s;
   }
 
+  function parseGpRefItem(raw) {
+    const r = raw || {};
+    return {
+      processNo: String(r.processNo || "").trim(),
+      process: String(r.process || "").trim(),
+      gpTypeNo: String(r.gpTypeNo || "").trim(),
+      gp: String(r.gp || "").trim(),
+      pantsPunkts: String(r.pantsPunkts || r.pants_punkts || "").trim(),
+    };
+  }
+
+  function parseGpRefsFromRaw(x) {
+    const src = x || {};
+    if (Array.isArray(src.gpRefs) && src.gpRefs.length) {
+      return src.gpRefs.map(parseGpRefItem).filter((r) => r.gpTypeNo || r.gp || r.processNo || r.process);
+    }
+    const json = String(src.gpRefsJson || src.gp_refs_json || "").trim();
+    if (json) {
+      try {
+        const arr = JSON.parse(json);
+        if (Array.isArray(arr)) {
+          return arr.map(parseGpRefItem).filter((r) => r.gpTypeNo || r.gp || r.processNo || r.process);
+        }
+      } catch (_) {}
+    }
+    const gpTypeNo = String(src.gpTypeNo || "").trim();
+    const gp = String(src.gp || "").trim();
+    if (gpTypeNo || gp) {
+      return [
+        parseGpRefItem({
+          processNo: src.processNo,
+          process: src.process,
+          gpTypeNo,
+          gp,
+          pantsPunkts: src.pantsPunkts || src.pants_punkts,
+        }),
+      ];
+    }
+    return [];
+  }
+
+  function gpRefMatchesCtx(ref, ctx) {
+    const procNo = String((ctx && ctx.procNo) || (ctx && ctx.processNo) || "").trim();
+    const gpTypeNo = String((ctx && ctx.gpTypeNo) || "").trim();
+    const gp = String((ctx && ctx.gp) || "").trim();
+    const r = parseGpRefItem(ref);
+    if (gpTypeNo && r.gpTypeNo.toUpperCase() === gpTypeNo.toUpperCase()) {
+      if (!procNo || processNoKey(r.processNo) === processNoKey(procNo)) return true;
+    }
+    if (gp && normKey(r.gp) === normKey(gp)) {
+      if (!procNo || processNoKey(r.processNo) === processNoKey(procNo)) return true;
+    }
+    return false;
+  }
+
+  function processRefMatches(ref, pNo, pName) {
+    const r = parseGpRefItem(ref);
+    if (pNo && processNoKey(r.processNo) === processNoKey(pNo)) return true;
+    if (pName && normKey(r.process) === normKey(pName)) return true;
+    return false;
+  }
+
+  function findGpRefForCtx(act, ctx) {
+    return parseGpRefsFromRaw(act).find((r) => gpRefMatchesCtx(r, ctx)) || null;
+  }
+
+  function gpRefsForProcess(act, pNo, pName) {
+    const refs = parseGpRefsFromRaw(act);
+    if (!pNo && !pName) return refs;
+    return refs.filter((r) => processRefMatches(r, pNo, pName));
+  }
+
+  function applyGpRefsToAct(act, refs) {
+    const clean = (refs || []).map(parseGpRefItem).filter((r) => r.gpTypeNo || r.gp || r.processNo || r.process);
+    const first = clean[0] || {};
+    const base = act || {};
+    const merged = Object.assign({}, base, {
+      processNo: first.processNo || String(base.processNo || "").trim(),
+      process: first.process || String(base.process || "").trim(),
+      gpTypeNo: first.gpTypeNo || "",
+      gp: first.gp || "",
+      gpRefs: clean,
+      gpRefsJson: clean.length ? JSON.stringify(clean) : "",
+    });
+    return normalizeActRow(merged);
+  }
+
+  function gpRefSummaryLabel(ref) {
+    const r = parseGpRefItem(ref);
+    const gpLbl = r.gpTypeNo && r.gp ? r.gpTypeNo + " — " + r.gp : r.gp || r.gpTypeNo || "";
+    if (r.pantsPunkts && gpLbl) return gpLbl + " (" + r.pantsPunkts + ")";
+    if (r.pantsPunkts) return r.pantsPunkts;
+    return gpLbl;
+  }
+
   function normalizeActRow(r) {
     const x = r || {};
     let veids = normalizeVeids(x.veids);
-    let institucija = String(x.institucija || "").trim();
     if (veids === ADD_NEW) veids = "";
-    if (institucija === ADD_NEW) institucija = "";
+    const gpRefs = parseGpRefsFromRaw(x);
+    const gpRefsJson =
+      gpRefs.length > 0
+        ? JSON.stringify(gpRefs)
+        : String(x.gpRefsJson || x.gp_refs_json || "").trim();
+    const first = gpRefs[0] || {};
     return {
       id: String(x.id || ""),
       nosaukums: String(x.nosaukums || "").trim(),
       veids: veids,
       numurs: String(x.numurs || "").trim(),
       pantsPunkts: String(x.pantsPunkts || x.pants_punkts || "").trim(),
-      institucija: institucija,
-      links: String(x.links || "").trim(),
-      statuss: String(x.statuss || "").trim(),
+      penemsanasDatums: normalizePenemsanasDatums(
+        x.penemsanasDatums || x.penemsanas_datums || ""
+      ),
       joma: String(x.joma || "").trim(),
-      processNo: String(x.processNo || "").trim(),
-      process: String(x.process || "").trim(),
-      gpTypeNo: String(x.gpTypeNo || "").trim(),
-      gp: String(x.gp || "").trim(),
+      processNo: String(first.processNo || x.processNo || "").trim(),
+      process: String(first.process || x.process || "").trim(),
+      gpTypeNo: String(first.gpTypeNo || x.gpTypeNo || "").trim(),
+      gp: String(first.gp || x.gp || "").trim(),
+      gpRefs: gpRefs,
+      gpRefsJson: gpRefsJson,
     };
   }
 
@@ -326,15 +410,8 @@
     }
     await addFn(String(name).trim());
     const prev = String(name).trim();
-    refreshEditorSelects(
-      el.id === "naVeids" ? prev : ($("naVeids") && $("naVeids").value) || "",
-      el.id === "naInstitucija" ? prev : ($("naInstitucija") && $("naInstitucija").value) || "",
-      $("naProcess") ? $("naProcess").value : "",
-      $("naGp") ? $("naGp").value : "",
-      $("naStatuss") ? $("naStatuss").value : "aktuāls"
-    );
+    refreshEditorSelects(el.id === "naVeids" ? prev : ($("naVeids") && $("naVeids").value) || "");
     if (el.id === "naVeids") $("naVeids").value = prev;
-    if (el.id === "naInstitucija") $("naInstitucija").value = prev;
     return true;
   }
 
@@ -396,54 +473,159 @@
     );
   }
 
-  function refreshEditorSelects(veids, institucija, processKey, gpKey, statuss) {
-    fillSelect($("naVeids"), allVeidi(), veids, true);
-    fillSelect($("naInstitucija"), allInstitucijas(), institucija, true);
-    fillSelect($("naStatuss"), DEFAULT_STATUSI, statuss || "aktuāls", false);
-
-    const jomaEl = $("naJoma");
-    if (jomaEl) {
-      const jomas = collectJomaOptions();
-      fillSelect(jomaEl, jomas, jomaEl.value, false);
-    }
-
-    const procEl = $("naProcess");
-    if (procEl) {
-      procEl.innerHTML = "";
-      const empty = document.createElement("option");
-      empty.value = "";
-      empty.textContent = "— Nav —";
-      procEl.appendChild(empty);
-      collectProcessOptions().forEach((p) => {
-        const o = document.createElement("option");
-        o.value = p.processNo + "\u0001" + p.process;
-        o.textContent = p.label;
-        procEl.appendChild(o);
-      });
-      if (processKey) procEl.value = processKey;
-    }
-
-    refreshGpSelect(gpKey);
+  function hideNaJomaFieldInEditor() {
+    const el = $("naJoma");
+    if (!el) return;
+    const wrap = el.closest(".form-group");
+    if (wrap) wrap.style.display = "none";
+    el.disabled = true;
+    el.tabIndex = -1;
+    el.setAttribute("aria-hidden", "true");
   }
 
-  function refreshGpSelect(gpKey) {
-    const gpEl = $("naGp");
-    const procEl = $("naProcess");
-    if (!gpEl) return;
-    const pk = procEl ? String(procEl.value || "") : "";
-    const processNo = pk.split("\u0001")[0] || "";
-    gpEl.innerHTML = "";
+  function jomaValueForSave() {
+    if (editingId) {
+      const row = findActById(editingId);
+      if (row) return String(row.joma || "").trim();
+    }
+    return String(editorDraftJoma || "").trim();
+  }
+
+  function refreshEditorSelects(veids) {
+    fillSelect($("naVeids"), allVeidi(), veids, true);
+  }
+
+  function fillProcessSelectEl(sel, selectedKey) {
+    if (!sel) return;
+    sel.innerHTML = "";
     const empty = document.createElement("option");
     empty.value = "";
     empty.textContent = "— Nav —";
-    gpEl.appendChild(empty);
+    sel.appendChild(empty);
+    collectProcessOptions().forEach((p) => {
+      const o = document.createElement("option");
+      o.value = p.processNo + "\u0001" + p.process;
+      o.textContent = p.label;
+      sel.appendChild(o);
+    });
+    if (selectedKey) sel.value = selectedKey;
+  }
+
+  function fillGpSelectEl(sel, processKey, selectedGpKey) {
+    if (!sel) return;
+    const processNo = String(processKey || "").split("\u0001")[0] || "";
+    sel.innerHTML = "";
+    const empty = document.createElement("option");
+    empty.value = "";
+    empty.textContent = "— Nav —";
+    sel.appendChild(empty);
     collectGpOptions(processNo).forEach((g) => {
       const o = document.createElement("option");
       o.value = g.typeNo + "\u0001" + g.type;
       o.textContent = g.label;
-      gpEl.appendChild(o);
+      sel.appendChild(o);
     });
-    if (gpKey) gpEl.value = gpKey;
+    if (selectedGpKey) sel.value = selectedGpKey;
+  }
+
+  function wireNaLinkRow(rowEl) {
+    const procSel = rowEl.querySelector(".na-link-row-process");
+    const gpSel = rowEl.querySelector(".na-link-row-gp");
+    if (procSel && gpSel) {
+      procSel.addEventListener("change", () => fillGpSelectEl(gpSel, procSel.value, ""));
+    }
+    const rmBtn = rowEl.querySelector(".na-link-row-remove");
+    if (rmBtn) {
+      rmBtn.addEventListener("click", () => {
+        if (!canEdit()) return;
+        rowEl.remove();
+        const body = $("naLinkRowsBody");
+        if (body && !body.querySelector(".na-link-row")) addNaLinkRow(null);
+      });
+    }
+  }
+
+  function addNaLinkRow(ref) {
+    const body = $("naLinkRowsBody");
+    if (!body) return;
+    const r = parseGpRefItem(ref);
+    const procKey = r.processNo || r.process ? (r.processNo || "") + "\u0001" + (r.process || "") : "";
+    const gpKey = r.gpTypeNo || r.gp ? (r.gpTypeNo || "") + "\u0001" + (r.gp || "") : "";
+    const rowEl = document.createElement("div");
+    rowEl.className = "na-link-row";
+    rowEl.innerHTML =
+      '<div class="form-row">' +
+      '<div class="form-group form-group--wide"><label>Process</label><select class="na-link-row-process"></select></div>' +
+      '<div class="form-group form-group--wide"><label>Galaprodukts (GP)</label><select class="na-link-row-gp"></select></div>' +
+      '<div class="form-group form-group--wide"><label>Informācija par pantu, punktu, sadaļu u.t.t.</label>' +
+      '<input class="na-link-row-pants" placeholder="piem., 12. pants, 3. punkts" /></div>' +
+      '<div class="form-group" style="flex:0 1 auto;min-width:96px">' +
+      '<label aria-hidden="true">&nbsp;</label>' +
+      '<button type="button" class="secondary na-link-row-remove">Dzēst rindu</button></div>' +
+      "</div>";
+    body.appendChild(rowEl);
+    const procSel = rowEl.querySelector(".na-link-row-process");
+    const gpSel = rowEl.querySelector(".na-link-row-gp");
+    const pantsIn = rowEl.querySelector(".na-link-row-pants");
+    fillProcessSelectEl(procSel, procKey);
+    fillGpSelectEl(gpSel, procKey, gpKey);
+    if (pantsIn) pantsIn.value = r.pantsPunkts || "";
+    wireNaLinkRow(rowEl);
+    if (!canEdit()) {
+      rowEl.querySelectorAll("input,select,button").forEach((el) => {
+        el.disabled = true;
+      });
+    }
+  }
+
+  function renderNaLinkRows(refs) {
+    const body = $("naLinkRowsBody");
+    if (!body) return;
+    body.innerHTML = "";
+    const list = (refs && refs.length ? refs : []).map(parseGpRefItem);
+    if (!list.length) {
+      addNaLinkRow(null);
+      return;
+    }
+    list.forEach((r) => addNaLinkRow(r));
+  }
+
+  function readNaLinkRowsFromTable() {
+    const body = $("naLinkRowsBody");
+    if (!body) return [];
+    const out = [];
+    body.querySelectorAll(".na-link-row").forEach((tr) => {
+      const procSel = tr.querySelector(".na-link-row-process");
+      const gpSel = tr.querySelector(".na-link-row-gp");
+      const pantsIn = tr.querySelector(".na-link-row-pants");
+      const procVal = procSel ? String(procSel.value || "") : "";
+      const gpVal = gpSel ? String(gpSel.value || "") : "";
+      const parts = procVal.split("\u0001");
+      const gpParts = gpVal.split("\u0001");
+      const pants = pantsIn ? String(pantsIn.value || "").trim() : "";
+      if (!parts[0] && !parts[1] && !gpParts[0] && !gpParts[1] && !pants) return;
+      out.push(
+        parseGpRefItem({
+          processNo: parts[0] || "",
+          process: parts[1] || "",
+          gpTypeNo: gpParts[0] || "",
+          gp: gpParts[1] || "",
+          pantsPunkts: pants,
+        })
+      );
+    });
+    return out;
+  }
+
+  function setNaLinkRowsEditorDisabled(disabled) {
+    const addBtn = $("naLinkRowsAddBtn");
+    if (addBtn) addBtn.disabled = !!disabled;
+    const body = $("naLinkRowsBody");
+    if (body) {
+      body.querySelectorAll("input,select,button").forEach((el) => {
+        el.disabled = !!disabled;
+      });
+    }
   }
 
   function escapeHtml(s) {
@@ -465,14 +647,13 @@
         r.veids,
         r.numurs,
         r.pantsPunkts,
-        r.institucija,
-        r.statuss,
+        r.penemsanasDatums,
         r.joma,
         r.process,
         r.processNo,
         r.gp,
         r.gpTypeNo,
-        r.links,
+        (r.gpRefs || []).map((ref) => [ref.gp, ref.gpTypeNo, ref.pantsPunkts, ref.process].join(" ")).join(" "),
       ]
         .join(" ")
         .toLowerCase();
@@ -490,9 +671,9 @@
     if (!rows.length) {
       const tr = document.createElement("tr");
       const td = document.createElement("td");
-      td.colSpan = 11;
+      td.colSpan = 9;
       td.className = "hint";
-      td.textContent = "Nav ierakstu. Pievienojiet jaunu NA.";
+      td.textContent = "Nav ierakstu. Pievienojiet jaunu normatīvo aktu.";
       tr.appendChild(td);
       tbody.appendChild(tr);
       return;
@@ -500,22 +681,25 @@
     const editMode = canEdit();
     rows.forEach((r) => {
       const tr = document.createElement("tr");
-      const linkCell = r.links
-        ? `<a href="${escapeHtml(normalizeActUrl(r.links))}" target="_blank" rel="noopener noreferrer">Saite</a>`
-        : "";
       const procLabel = r.processNo && r.process ? r.processNo + " — " + r.process : r.process || r.processNo || "";
-      const gpLabel = r.gpTypeNo && r.gp ? r.gpTypeNo + " — " + r.gp : r.gp || r.gpTypeNo || "";
+      const gpParts = (r.gpRefs || []).map(gpRefSummaryLabel).filter(Boolean);
+      const gpLabel =
+        gpParts.length > 0
+          ? gpParts.join("; ")
+          : r.gpTypeNo && r.gp
+            ? r.gpTypeNo + " — " + r.gp
+            : r.gp || r.gpTypeNo || "";
       tr.innerHTML =
         `<td>${escapeHtml(r.veids)}</td>` +
         `<td>${escapeHtml(r.nosaukums)}</td>` +
         `<td>${escapeHtml(r.numurs)}</td>` +
-        `<td>${escapeHtml(r.pantsPunkts)}</td>` +
-        `<td>${escapeHtml(r.institucija)}</td>` +
-        `<td>${escapeHtml(r.statuss)}</td>` +
+        `<td>${escapeHtml(
+          (r.gpRefs || []).map((x) => x.pantsPunkts).filter(Boolean).join("; ") || r.pantsPunkts
+        )}</td>` +
+        `<td>${escapeHtml(formatPenemsanasDatumsDisplay(r.penemsanasDatums))}</td>` +
         `<td>${escapeHtml(r.joma)}</td>` +
         `<td>${escapeHtml(procLabel)}</td>` +
-        `<td>${escapeHtml(gpLabel)}</td>` +
-        `<td>${linkCell}</td>`;
+        `<td>${escapeHtml(gpLabel)}</td>`;
       const tdAct = document.createElement("td");
       const btn = document.createElement("button");
       btn.type = "button";
@@ -531,48 +715,60 @@
   }
 
   function readForm() {
-    const procVal = $("naProcess") ? String($("naProcess").value || "") : "";
-    const gpVal = $("naGp") ? String($("naGp").value || "") : "";
-    const parts = procVal.split("\u0001");
-    const gpParts = gpVal.split("\u0001");
-    return normalizeActRow({
+    const gpRefs = readNaLinkRowsFromTable();
+    const base = normalizeActRow({
+      id: editingId || "",
       nosaukums: $("naNosaukums") && $("naNosaukums").value,
-      pantsPunkts: $("naPantsPunkts") && $("naPantsPunkts").value,
+      pantsPunkts: "",
       veids: $("naVeids") && $("naVeids").value,
       numurs: $("naNumurs") && $("naNumurs").value,
-      institucija: $("naInstitucija") && $("naInstitucija").value,
-      links: $("naLinks") && $("naLinks").value,
-      statuss: $("naStatuss") && $("naStatuss").value,
-      joma: $("naJoma") && $("naJoma").value,
-      processNo: parts[0] || "",
-      process: parts[1] || "",
-      gpTypeNo: gpParts[0] || "",
-      gp: gpParts[1] || "",
+      penemsanasDatums: $("naPenemsanasDatums") && $("naPenemsanasDatums").value,
+      joma: jomaValueForSave(),
     });
+    return applyGpRefsToAct(base, gpRefs);
   }
 
   function fillForm(row) {
     const r = normalizeActRow(row);
+    editorDraftJoma = String(r.joma || "").trim();
     if ($("naNosaukums")) $("naNosaukums").value = r.nosaukums || "";
-    if ($("naPantsPunkts")) $("naPantsPunkts").value = r.pantsPunkts || "";
     if ($("naNumurs")) $("naNumurs").value = r.numurs || "";
-    if ($("naLinks")) $("naLinks").value = r.links || "";
-    const procKey = r.processNo || r.process ? (r.processNo || "") + "\u0001" + (r.process || "") : "";
-    const gpKey = r.gpTypeNo || r.gp ? (r.gpTypeNo || "") + "\u0001" + (r.gp || "") : "";
-    refreshEditorSelects(r.veids || "", r.institucija || "", procKey, gpKey, r.statuss || "aktuāls");
-    if ($("naJoma")) $("naJoma").value = r.joma || "";
+    if ($("naPenemsanasDatums")) {
+      $("naPenemsanasDatums").value = normalizePenemsanasDatums(r.penemsanasDatums) || "";
+    }
+    refreshEditorSelects(r.veids || "");
+    renderNaLinkRows(r.gpRefs);
+    hideNaJomaFieldInEditor();
+  }
+
+  function clearBasicsFields() {
+    if (!canEdit()) return;
+    if ($("naVeids")) $("naVeids").value = "";
+    if ($("naNosaukums")) $("naNosaukums").value = "";
+    if ($("naNumurs")) $("naNumurs").value = "";
+    if ($("naPenemsanasDatums")) $("naPenemsanasDatums").value = "";
   }
 
   function setEditorDisabled(disabled) {
     const form = $("normActEditorForm");
     if (!form) return;
+    const keepEnabled = new Set(["naCloseBtn"]);
     form.querySelectorAll("input,select,textarea,button").forEach((el) => {
-      if (el.id === "naCloseBtn") return;
+      if (keepEnabled.has(el.id)) return;
       el.disabled = !!disabled;
     });
-    const submitBtn = form.querySelector("button[type='submit']");
+    const submitBtn = $("naSaveBtn") || form.querySelector("button[type='submit']");
     if (submitBtn) submitBtn.classList.toggle("hidden", disabled);
-    if ($("naDeleteBtn")) $("naDeleteBtn").classList.toggle("hidden", disabled || !editingId);
+    if ($("naClearBasicsBtn")) {
+      $("naClearBasicsBtn").classList.toggle("hidden", disabled);
+      $("naClearBasicsBtn").disabled = !!disabled;
+    }
+    if ($("naDeleteBtn")) {
+      const showDelete = !disabled && !!editingId && canEdit();
+      $("naDeleteBtn").classList.toggle("hidden", !showDelete);
+      $("naDeleteBtn").disabled = !showDelete;
+    }
+    setNaLinkRowsEditorDisabled(disabled);
   }
 
   function showNaEditorCard() {
@@ -580,6 +776,7 @@
     if (!card) return;
     card.classList.remove("hidden");
     card.classList.remove("nav-page-hidden");
+    hideNaJomaFieldInEditor();
   }
 
   function hideNaEditorCard() {
@@ -600,6 +797,11 @@
       return;
     }
     if ($("catalogEditorCard") && !$("catalogEditorCard").classList.contains("hidden")) {
+      if (window.KartinaInline && typeof window.KartinaInline.markCatalogNaContext === "function") {
+        window.KartinaInline.markCatalogNaContext();
+        returnContext = { type: "catalog" };
+        return;
+      }
       $("catalogEditorCard").classList.add("hidden");
       returnContext = { type: "catalog" };
       return;
@@ -631,6 +833,10 @@
       $("editorCard")?.classList.remove("hidden");
       renderProcessLinks(elVal("eProcNo"), { process: elVal("eProcess") });
     } else if (ctx.type === "catalog") {
+      if (window.KartinaInline && typeof window.KartinaInline.undockCatalogNaEditor === "function") {
+        window.KartinaInline.undockCatalogNaEditor();
+      }
+      window.__naInlineInCatalogCard = false;
       $("catalogEditorCard")?.classList.remove("hidden");
       renderCatalogLinks();
     } else if (ctx.type === "joma") {
@@ -664,22 +870,35 @@
     actsCache = acts.map(normalizeActRow);
   }
 
-  function actPickLabel(act) {
+  function actBaseTitle(act) {
     const parts = [];
     if (act.veids) parts.push(act.veids);
     if (act.nosaukums) parts.push(act.nosaukums);
     if (act.numurs) parts.push("Nr. " + act.numurs);
-    if (act.pantsPunkts) parts.push("(" + act.pantsPunkts + ")");
+    if (act.penemsanasDatums) parts.push("(" + formatPenemsanasDatumsDisplay(act.penemsanasDatums) + ")");
     return parts.length ? parts.join(" ") : "—";
+  }
+
+  function actPickLabel(act) {
+    const parts = [actBaseTitle(act)];
+    const refs = parseGpRefsFromRaw(act);
+    if (refs.length === 1 && refs[0].pantsPunkts) {
+      parts.push("(" + refs[0].pantsPunkts + ")");
+    } else if (!refs.length && act.pantsPunkts) {
+      parts.push("(" + act.pantsPunkts + ")");
+    }
+    return parts.join(" ");
   }
 
   function actLinkedToProcess(act, pNo, pName) {
     if (pNo && processNoKey(act.processNo) === processNoKey(pNo)) return true;
     if (pName && normKey(act.process) === normKey(pName)) return true;
+    if (gpRefsForProcess(act, pNo, pName).length) return true;
     return false;
   }
 
   function actLinkedToGp(act, ctx) {
+    if (parseGpRefsFromRaw(act).some((r) => gpRefMatchesCtx(r, ctx))) return true;
     const procNo = String(ctx.procNo || "").trim();
     const gpTypeNo = String(ctx.gpTypeNo || "").trim();
     const gp = String(ctx.gp || "").trim();
@@ -717,7 +936,15 @@
     if (!canEdit() || (cfg.canLink && !cfg.canLink())) return false;
     const rowData = findActById(act.id) || act;
     if (shouldLink) {
-      await persistActUpdate(act.id, normalizeActRow(Object.assign({}, rowData, cfg.getLinkPatch())));
+      const patch =
+        typeof cfg.getLinkPatch === "function" ? cfg.getLinkPatch(rowData) : cfg.getLinkPatch;
+      let data;
+      if (patch && Array.isArray(patch.gpRefs)) {
+        data = normalizeActRow(Object.assign({}, rowData, patch));
+      } else {
+        data = normalizeActRow(Object.assign({}, rowData, patch || {}));
+      }
+      await persistActUpdate(act.id, data);
     } else {
       await persistActUpdate(act.id, cfg.getUnlinkData(rowData));
     }
@@ -726,8 +953,8 @@
     } catch (_) {}
     statusMsg(
       shouldLink
-        ? cfg.linkOkMsg || "NA saistīts."
-        : cfg.unlinkOkMsg || "NA noņemts no kartiņas.",
+        ? cfg.linkOkMsg || "Normatīvais akts saistīts."
+        : cfg.unlinkOkMsg || "Normatīvais akts noņemts no kartiņas.",
       "ok"
     );
     if (pickMount) pickMount.dataset.naPickOpen = pickMount.style.display !== "none" ? "1" : "0";
@@ -749,21 +976,27 @@
     acts.forEach((act) => {
       const line = document.createElement("div");
       line.className = "na-linked-item";
-      const labelText = actPickLabel(act);
-      const actUrl = normalizeActUrl(act.links);
-      if (actUrl) {
-        const link = document.createElement("a");
-        link.href = actUrl;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        link.textContent = labelText;
-        link.style.color = "#1d4ed8";
-        link.style.textDecoration = "underline";
-        line.appendChild(link);
+      line.style.flexDirection = "column";
+      line.style.alignItems = "flex-start";
+      const head = document.createElement("div");
+      head.style.display = "flex";
+      head.style.flexWrap = "wrap";
+      head.style.alignItems = "center";
+      head.style.gap = "6px";
+      const labelText = cfg && cfg.actTitle ? cfg.actTitle(act) : actPickLabel(act);
+      const span = document.createElement("span");
+      span.textContent = labelText;
+      head.appendChild(span);
+      const detailText = cfg && cfg.actDetail ? cfg.actDetail(act) : "";
+      if (detailText) {
+        const sub = document.createElement("div");
+        sub.className = "hint";
+        sub.style.margin = "2px 0 0 0";
+        sub.textContent = detailText;
+        line.appendChild(head);
+        line.appendChild(sub);
       } else {
-        const span = document.createElement("span");
-        span.textContent = labelText;
-        line.appendChild(span);
+        line.appendChild(head);
       }
       const btn = document.createElement("button");
       btn.type = "button";
@@ -773,7 +1006,7 @@
         captureReturnFromEmbedded();
         openEditor(act.id, { skipCapture: true });
       };
-      line.appendChild(btn);
+      head.appendChild(btn);
       if (editMode && cfg) {
         const rm = document.createElement("button");
         rm.type = "button";
@@ -786,11 +1019,11 @@
             await applyNaLinkChange(act, cfg, pickMount, false);
           } catch (err) {
             console.error("NormAkti unlink:", err);
-            window.alert("Neizdevās noņemt NA: " + (err.message || err));
+            window.alert("Neizdevās noņemt normatīvo aktu: " + (err.message || err));
             rm.disabled = false;
           }
         };
-        line.appendChild(rm);
+        head.appendChild(rm);
       }
       mountEl.appendChild(line);
     });
@@ -809,7 +1042,7 @@
 
     const procCardNa = addBtn && addBtn.id === "eAddNaBtn";
     if (addBtn) {
-      addBtn.textContent = procCardNa ? "Pievienot normatīvo aktu" : "Pievienot NA";
+      addBtn.textContent = "Pievienot normatīvo aktu";
       addBtn.classList.remove("hidden");
       addBtn.style.display = editMode ? "" : "none";
       addBtn.disabled = !canLink;
@@ -821,7 +1054,7 @@
             cfg.blockedMsg ||
               (procCardNa
                 ? "Norādiet kartiņas datus, lai varētu saistīt normatīvo aktu."
-                : "Norādiet kartiņas datus, lai varētu saistīt NA.")
+                : "Norādiet kartiņas datus, lai varētu saistīt normatīvo aktu.")
           );
           return;
         }
@@ -839,16 +1072,16 @@
     hint.className = "hint";
     hint.style.marginBottom = "6px";
     hint.textContent = procCardNa
-      ? "Atzīmējiet normatīvos aktus, ko saistīt ar šo kartiņu (jaunu normatīvo aktu pievieno normatīvo aktu sadaļā):"
-      : "Atzīmējiet NA, ko saistīt ar šo kartiņu (jaunu NA pievieno NA sadaļā):";
+      ? "Atzīmējiet normatīvos aktus, ko saistīt ar šo kartiņu (jaunu pievieno sadaļā «Procesus reglamentējoši normatīvie akti»):"
+      : "Atzīmējiet normatīvos aktus, ko saistīt ar šo kartiņu (jaunu pievieno sadaļā «Procesus reglamentējoši normatīvie akti»):";
     pickMount.appendChild(hint);
 
     if (!all.length) {
       const empty = document.createElement("div");
       empty.className = "hint";
       empty.textContent = procCardNa
-        ? "Nav reģistrētu normatīvo aktu — vispirms pievienojiet normatīvo aktu sadaļā."
-        : "Nav reģistrētu NA — vispirms pievienojiet NA sadaļā.";
+        ? "Nav reģistrētu normatīvo aktu — vispirms pievienojiet sadaļā «Procesus reglamentējoši normatīvie akti»."
+        : "Nav reģistrētu normatīvo aktu — vispirms pievienojiet sadaļā «Procesus reglamentējoši normatīvie akti».";
       pickMount.appendChild(empty);
       return;
     }
@@ -860,7 +1093,7 @@
         cfg.blockedMsg ||
         (procCardNa
           ? "Norādiet kartiņas datus, lai varētu saistīt normatīvo aktu."
-          : "Norādiet kartiņas datus, lai varētu saistīt NA.");
+          : "Norādiet kartiņas datus, lai varētu saistīt normatīvo aktu.");
       pickMount.appendChild(warn);
     }
 
@@ -905,20 +1138,7 @@
 
       const text = document.createElement("span");
       text.style.flex = "1";
-      const actUrl = normalizeActUrl(act.links);
-      const labelText = actPickLabel(act);
-      if (actUrl) {
-        const a = document.createElement("a");
-        a.href = actUrl;
-        a.target = "_blank";
-        a.rel = "noopener noreferrer";
-        a.textContent = labelText;
-        a.style.color = "#1d4ed8";
-        a.onclick = (e) => e.stopPropagation();
-        text.appendChild(a);
-      } else {
-        text.textContent = labelText;
-      }
+      text.textContent = actPickLabel(act);
 
       row.appendChild(cb);
       row.appendChild(text);
@@ -980,24 +1200,10 @@
       const parts = [act.nosaukums];
       if (act.pantsPunkts) parts.push("(" + act.pantsPunkts + ")");
       if (act.numurs) parts.push("Nr. " + act.numurs);
-      if (act.statuss) parts.push("[" + act.statuss + "]");
       const labelText = parts.filter(Boolean).join(" ") || "—";
-      const actUrl = normalizeActUrl(act.links);
-      if (actUrl) {
-        const link = document.createElement("a");
-        link.href = actUrl;
-        link.target = "_blank";
-        link.rel = "noopener noreferrer";
-        link.textContent = labelText;
-        link.title = "Atvērt aktu: " + actUrl;
-        link.style.color = "#1d4ed8";
-        link.style.textDecoration = "underline";
-        line.appendChild(link);
-      } else {
-        const span = document.createElement("span");
-        span.textContent = labelText;
-        line.appendChild(span);
-      }
+      const span = document.createElement("span");
+      span.textContent = labelText;
+      line.appendChild(span);
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "secondary";
@@ -1021,11 +1227,31 @@
       blockedMsg: "Norādiet procesa nosaukumu vai Nr.",
       linkOkMsg: "Normatīvais akts saistīts.",
       unlinkOkMsg: "Normatīvais akts noņemts no kartiņas.",
+      actTitle: (act) => actBaseTitle(act),
+      actDetail: (act) => {
+        const refs = gpRefsForProcess(act, pNo, pName);
+        if (refs.length) {
+          return refs
+            .map((r) => {
+              const gpLbl = r.gpTypeNo && r.gp ? r.gpTypeNo + " — " + r.gp : r.gp || r.gpTypeNo || "GP";
+              const pp = r.pantsPunkts || act.pantsPunkts;
+              return pp ? gpLbl + ": " + pp : gpLbl;
+            })
+            .join(" · ");
+        }
+        if (act.pantsPunkts) return "Pants / punkts: " + act.pantsPunkts;
+        return "";
+      },
       getLinkPatch: () => ({ processNo: pNo, process: pName }),
-      getUnlinkData: (act) =>
-        normalizeActRow(
-          Object.assign({}, act, actLinkedToProcess(act, pNo, pName) ? { processNo: "", process: "" } : {})
-        ),
+      getUnlinkData: (act) => {
+        let refs = parseGpRefsFromRaw(act).filter((r) => !processRefMatches(r, pNo, pName));
+        let next = applyGpRefsToAct(act, refs);
+        if (processNoKey(next.processNo) === processNoKey(pNo) || normKey(next.process) === normKey(pName)) {
+          next = normalizeActRow(Object.assign({}, next, { processNo: "", process: "" }));
+          next = applyGpRefsToAct(next, refs);
+        }
+        return next;
+      },
       refresh: refreshProcessLinksFromEditor,
     });
   }
@@ -1042,16 +1268,26 @@
       isLinked: (act) => actLinkedToGp(act, ctx),
       canLink: () => !!(gpTypeNo || gp || procNo || process),
       blockedMsg: "Norādiet galaprodukta nosaukumu vai Nr.",
-      getLinkPatch: () => ({
-        processNo: procNo,
-        process,
-        gpTypeNo,
-        gp,
-        joma,
-      }),
+      actTitle: (act) => actBaseTitle(act),
+      actDetail: (act) => {
+        const ref = findGpRefForCtx(act, ctx);
+        const pp = (ref && ref.pantsPunkts) || act.pantsPunkts;
+        if (pp) return "Attiecas: " + pp;
+        return "Norādiet pantu/punktu normatīvā akta kartiņā (2. sadaļa).";
+      },
+      getLinkPatch: (act) => {
+        const merged = Object.assign({}, act, { processNo: procNo, process, joma });
+        let refs = parseGpRefsFromRaw(merged);
+        const newRef = parseGpRefItem({ processNo: procNo, process, gpTypeNo, gp, pantsPunkts: "" });
+        const idx = refs.findIndex((r) => gpRefMatchesCtx(r, ctx));
+        if (idx >= 0) refs[idx] = Object.assign({}, refs[idx], newRef);
+        else refs.push(newRef);
+        return applyGpRefsToAct(merged, refs);
+      },
       getUnlinkData: (act) => {
         if (!actLinkedToGp(act, ctx)) return normalizeActRow(act);
-        return normalizeActRow(Object.assign({}, act, { gpTypeNo: "", gp: "" }));
+        const refs = parseGpRefsFromRaw(act).filter((r) => !gpRefMatchesCtx(r, ctx));
+        return applyGpRefsToAct(act, refs);
       },
       refresh: refreshCatalogLinksFromEditor,
     });
@@ -1099,11 +1335,11 @@
       if (row) {
         $("naEditorTitle").textContent = "Normatīvā akta kartiņa — " + NA_TITLE;
       } else if (ctx && ctx.gp) {
-        $("naEditorTitle").textContent = "Jauns NA (galaprodukts)";
+        $("naEditorTitle").textContent = "Jauns normatīvais akts (galaprodukts)";
       } else if (ctx && ctx.process) {
-        $("naEditorTitle").textContent = "Jauns NA (process)";
+        $("naEditorTitle").textContent = "Jauns normatīvais akts (process)";
       } else if (ctx && ctx.joma) {
-        $("naEditorTitle").textContent = "Jauns NA (joma)";
+        $("naEditorTitle").textContent = "Jauns normatīvais akts (joma)";
       } else {
         $("naEditorTitle").textContent = "Jauns normatīvais akts";
       }
@@ -1132,7 +1368,7 @@
         ? "Normatīvā akta kartiņa — " + NA_TITLE
         : "Jauns normatīvais akts";
     }
-    fillForm(row);
+    fillForm(row || {});
     setEditorDisabled(!canEdit());
     const card = $("normActEditorCard");
     if (card && card.scrollIntoView) card.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1148,7 +1384,6 @@
     if (e) e.preventDefault();
     if (!canEdit()) return;
     if (await handleSelectAddNew($("naVeids"), addCustomVeids)) return;
-    if (await handleSelectAddNew($("naInstitucija"), addCustomInst)) return;
     const data = readForm();
     if (!data.nosaukums) {
       window.alert("Ievadiet normatīvā akta nosaukumu.");
@@ -1182,7 +1417,7 @@
         saveActsLocalFromForm(data);
         statusMsg(
           api && typeof api.insertNormAct === "function"
-            ? "Saglabāts lokāli (NA tabula DB vēl nav — palaidiet migrāciju Supabase SQL Editor)."
+            ? "Saglabāts lokāli (normatīvo aktu tabula DB vēl nav — palaidiet migrāciju Supabase SQL Editor)."
             : "Saglabāts lokāli (DB nav pieejams).",
           "info"
         );
@@ -1197,7 +1432,7 @@
 
   async function deleteAct() {
     if (!canEdit() || !editingId) return;
-    if (!window.confirm("Vai dzēst šo normatīvā akta ierakstu?")) return;
+    if (!window.confirm("Vai dzēst šo normatīvā akta kartiņu no reģistra? Darbību nevar atsaukt.")) return;
     const api = window.DB;
     try {
       if (api && typeof api.deleteNormAct === "function") {
@@ -1219,6 +1454,7 @@
   function wireOnce() {
     if (wireOnce.done) return;
     wireOnce.done = true;
+    hideNaJomaFieldInEditor();
 
     if ($("naNewBtn")) {
       $("naNewBtn").onclick = () => {
@@ -1231,6 +1467,18 @@
     }
     if ($("naCloseBtn")) $("naCloseBtn").onclick = closeEditor;
     if ($("naDeleteBtn")) $("naDeleteBtn").onclick = () => { deleteAct(); };
+    if ($("naClearBasicsBtn")) {
+      $("naClearBasicsBtn").addEventListener("click", () => {
+        if (!canEdit()) return;
+        if (
+          window.confirm(
+            "Notīrīt 1. sadaļas laukus (veids, nosaukums, numurs, pieņemšanas datums)?"
+          )
+        ) {
+          clearBasicsFields();
+        }
+      });
+    }
     if ($("normActEditorForm")) $("normActEditorForm").onsubmit = saveForm;
     if ($("naSearchInput")) {
       $("naSearchInput").addEventListener("input", renderTable);
@@ -1238,17 +1486,12 @@
     if ($("naVeids")) {
       $("naVeids").addEventListener("change", () => { handleSelectAddNew($("naVeids"), addCustomVeids); });
     }
-    if ($("naInstitucija")) {
-      $("naInstitucija").addEventListener("change", () =>
-        handleSelectAddNew($("naInstitucija"), addCustomInst)
-      );
-    }
-    if ($("naProcess")) {
-      $("naProcess").addEventListener("change", () => {
-        refreshGpSelect("");
+    if ($("naLinkRowsAddBtn")) {
+      $("naLinkRowsAddBtn").addEventListener("click", () => {
+        if (!canEdit()) return;
+        addNaLinkRow(null);
       });
     }
-
     wireAttachBlocks();
 
     ["eProcess", "eProcNo"].forEach((id) => {

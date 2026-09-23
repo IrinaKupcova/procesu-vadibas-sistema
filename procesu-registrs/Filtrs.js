@@ -8,7 +8,8 @@
     tasksHeader: {},
     executorsHeader: {},
     processGroupsHeader: {},
-    processJomasHeader: {}
+    processJomasHeader: {},
+    naHeader: {},
   };
   let extraRefreshRunning = false;
   let filterUiWired = false;
@@ -117,9 +118,9 @@
     "processTable",
     "catalogTable",
     "tasksSummaryTable",
-    "executorsTable",
     "processGroupsTable",
     "processJomasTable",
+    "naTable",
   ];
 
   function getColumnHeaderLabel(th) {
@@ -300,6 +301,18 @@
         }
       });
     }
+    if (!searchInput.dataset.boundGlobalFilter) {
+      searchInput.dataset.boundGlobalFilter = "1";
+      let globalFilterTimer = null;
+      searchInput.addEventListener("input", () => {
+        if (globalFilterTimer) clearTimeout(globalFilterTimer);
+        globalFilterTimer = setTimeout(() => {
+          globalFilterTimer = null;
+          applyAllFilters();
+          refreshClearFilterButtonActive();
+        }, 350);
+      });
+    }
     searchInput.placeholder = "Meklē visās sadaļās...";
   }
 
@@ -363,7 +376,6 @@
   }
 
   function ensureHeaderFilters(tableId, key, skipLast) {
-    if (tableId === "processJomasTable") return; // Jomu sadaļai filtrēšana ir izslēgta.
     const table = document.getElementById(tableId);
     if (!table) return;
     const headRow = table.querySelector("thead tr");
@@ -409,6 +421,16 @@
         btn.classList.toggle("active", vals.length > 0);
         if (tableId === "executorsTable") {
           applyExecutorsFilters();
+          refreshClearFilterButtonActive();
+          return;
+        }
+        if (tableId === "naTable") {
+          applyNaFilters();
+          refreshClearFilterButtonActive();
+          return;
+        }
+        if (tableId === "processJomasTable" || tableId === "processGroupsTable") {
+          applyAccordionTableFilters(tableId, key);
           refreshClearFilterButtonActive();
           return;
         }
@@ -562,19 +584,75 @@
     });
   }
 
+  function executorsRowMatches(tr, globalTerm) {
+    const tds = Array.from(tr.children || []);
+    if (!tds.length) return false;
+    const text = tds.map((td) => td.textContent || "").join(" ");
+    if (globalTerm && !contains(text, globalTerm)) return false;
+    for (const col in state.executorsHeader) {
+      const terms = normalizeFilterValue(state.executorsHeader[col]);
+      if (!terms.length) continue;
+      const idx = Number(col);
+      if (!cellMatchesAnyTerm(tds[idx]?.textContent || "", terms)) return false;
+    }
+    return true;
+  }
+
   function applyExecutorsFilters() {
     const tbody = document.querySelector("#executorsTable tbody");
     if (!tbody) return;
     const globalTerm = norm(document.getElementById("searchInput")?.value || "");
     const rows = Array.from(tbody.querySelectorAll("tr"));
+    const hasColFilters = Object.values(state.executorsHeader || {}).some((v) => isFilterActive(v));
+    if (!globalTerm && !hasColFilters) {
+      rows.forEach((tr) => {
+        tr.style.display = "";
+      });
+      return;
+    }
+
+    let i = 0;
+    while (i < rows.length) {
+      const tr = rows[i];
+      if (tr.classList.contains("ex-dept-hdr")) {
+        const gpRows = [];
+        i += 1;
+        while (i < rows.length && !rows[i].classList.contains("ex-dept-hdr")) {
+          gpRows.push(rows[i]);
+          i += 1;
+        }
+        let deptShow = executorsRowMatches(tr, globalTerm);
+        gpRows.forEach((gpTr) => {
+          const gpShow = executorsRowMatches(gpTr, globalTerm);
+          gpTr.style.display = gpShow ? "" : "none";
+          if (gpShow) deptShow = true;
+        });
+        tr.style.display = deptShow ? "" : "none";
+        continue;
+      }
+      tr.style.display = executorsRowMatches(tr, globalTerm) ? "" : "none";
+      i += 1;
+    }
+  }
+
+  function applyNaFilters() {
+    const tbody = document.querySelector("#naTable tbody");
+    if (!tbody) return;
+    const globalTerm = norm(document.getElementById("searchInput")?.value || "");
+    const naTerm = norm(document.getElementById("naSearchInput")?.value || "");
+    const rows = Array.from(tbody.querySelectorAll("tr"));
     rows.forEach((tr) => {
       const tds = Array.from(tr.children);
-      // Izpildītāju skatā pēdējā kolonna var saturēt ļoti garu GP tekstu;
-      // to neiekļaujam globālajā meklēšanā, lai nepieļautu UI uzkāršanos.
-      const quickSearchText = tds.slice(0, 4).map((td) => td.textContent || "").join(" ");
-      let show = !globalTerm || contains(quickSearchText, globalTerm);
-      for (const col in state.executorsHeader) {
-        const terms = normalizeFilterValue(state.executorsHeader[col]);
+      if (tds.length === 1 && tds[0].colSpan > 1) {
+        tr.style.display = "";
+        return;
+      }
+      const hay = tds.map((td) => td.textContent || "").join(" ");
+      let show = true;
+      if (globalTerm && !contains(hay, globalTerm)) show = false;
+      if (naTerm && !contains(hay, naTerm)) show = false;
+      for (const col in state.naHeader) {
+        const terms = normalizeFilterValue(state.naHeader[col]);
         if (!cellMatchesAnyTerm(tds[Number(col)]?.textContent || "", terms)) {
           show = false;
           break;
@@ -652,6 +730,8 @@
     if (Object.values(state.tasksHeader || {}).some((v) => isFilterActive(v))) return true;
     if (Object.values(state.executorsHeader || {}).some((v) => isFilterActive(v))) return true;
     if (Object.values(state.processGroupsHeader || {}).some((v) => isFilterActive(v))) return true;
+    if (Object.values(state.processJomasHeader || {}).some((v) => isFilterActive(v))) return true;
+    if (Object.values(state.naHeader || {}).some((v) => isFilterActive(v))) return true;
     if (typeof window.hasActiveStatsFilters === "function" && window.hasActiveStatsFilters()) return true;
     return false;
   }
@@ -664,15 +744,26 @@
     btn.setAttribute("aria-pressed", on ? "true" : "false");
   }
 
+  let renderReportsTimer = null;
+  function scheduleRenderReports() {
+    if (renderReportsTimer) clearTimeout(renderReportsTimer);
+    renderReportsTimer = setTimeout(() => {
+      renderReportsTimer = null;
+      if (typeof window.renderReports === "function") window.renderReports();
+    }, 120);
+  }
+
   function applyAllFilters() {
     applyProcessFilters();
     applyCatalogFilters();
     applyTasksFilters();
     applyExecutorsFilters();
     applyAccordionTableFilters("processGroupsTable", "processGroupsHeader");
+    applyAccordionTableFilters("processJomasTable", "processJomasHeader");
+    applyNaFilters();
     autoOpenOnFilteredResult();
     refreshClearFilterButtonActive();
-    if (typeof window.renderReports === "function") window.renderReports();
+    scheduleRenderReports();
   }
 
   function autoOpenOnFilteredResult() {
@@ -715,7 +806,6 @@
   }
 
   function refreshHeaderFilterOptions(tableId, key) {
-    if (tableId === "processJomasTable") return; // Jomu sadaļai filtrēšana ir izslēgta.
     const table = document.getElementById(tableId);
     if (!table) return;
     const tbody = table.querySelector("tbody");
@@ -784,6 +874,7 @@
     state.executorsHeader = {};
     state.processGroupsHeader = {};
     state.processJomasHeader = {};
+    state.naHeader = {};
 
     const searchInput = document.getElementById("searchInput");
     if (searchInput) searchInput.value = "";
@@ -811,27 +902,45 @@
       // executorsTable ir dinamiska; refreshHeaderFilterOptions droši ignorēs, ja nav
       refreshHeaderFilterOptions("executorsTable", "executorsHeader");
       refreshHeaderFilterOptions("processGroupsTable", "processGroupsHeader");
+      refreshHeaderFilterOptions("processJomasTable", "processJomasHeader");
+      refreshHeaderFilterOptions("naTable", "naHeader");
       applyAllFilters();
       applyAllTableColumnSizing();
     };
+  }
+
+  function syncExecutorsColumnFilters(refreshOptions) {
+    const execTable = document.getElementById("executorsTable");
+    if (!execTable) return;
+    const execHead = execTable.querySelector("thead tr");
+    const execHasFilters = !!(execHead && execHead.querySelector(".th-filter-checklist[data-col-index]"));
+    if (execHead && !execHasFilters) execHead.dataset.filtersReady = "";
+    ensureHeaderFilters("executorsTable", "executorsHeader", false);
+    if (refreshOptions) refreshHeaderFilterOptions("executorsTable", "executorsHeader");
+    applyExecutorsFilters();
+  }
+
+  function scheduleExecutorsColumnFilters() {
+    syncExecutorsColumnFilters(true);
+    refreshClearFilterButtonActive();
   }
 
   function refreshExtraTableFilters() {
     if (extraRefreshRunning) return;
     extraRefreshRunning = true;
     try {
-    ensureHeaderFilters("tasksSummaryTable", "tasksHeader", true);
-    refreshHeaderFilterOptions("tasksSummaryTable", "tasksHeader");
-    const execTable = document.getElementById("executorsTable");
-    const execHead = execTable ? execTable.querySelector("thead tr") : null;
-    const execHasFilters = !!(execHead && execHead.querySelector(".th-filter-checklist[data-col-index]"));
-    if (execHead && !execHasFilters) execHead.dataset.filtersReady = "";
-    ensureHeaderFilters("executorsTable", "executorsHeader", true);
-    refreshHeaderFilterOptions("executorsTable", "executorsHeader");
-    applyTasksFilters();
-    applyExecutorsFilters();
-    applyAllTableColumnSizing();
-    refreshClearFilterButtonActive();
+      ensureHeaderFilters("tasksSummaryTable", "tasksHeader", true);
+      refreshHeaderFilterOptions("tasksSummaryTable", "tasksHeader");
+      syncExecutorsColumnFilters(false);
+      ensureHeaderFilters("processJomasTable", "processJomasHeader", true);
+      refreshHeaderFilterOptions("processJomasTable", "processJomasHeader");
+      ensureHeaderFilters("naTable", "naHeader", true);
+      refreshHeaderFilterOptions("naTable", "naHeader");
+      applyTasksFilters();
+      applyAccordionTableFilters("processJomasTable", "processJomasHeader");
+      applyNaFilters();
+      applyAllTableColumnSizing();
+      refreshClearFilterButtonActive();
     } finally {
       extraRefreshRunning = false;
     }
@@ -845,16 +954,24 @@
     ensureHeaderFilters("catalogTable", "catalogHeader", false);
     ensureHeaderFilters("tasksSummaryTable", "tasksHeader", true);
     ensureHeaderFilters("processGroupsTable", "processGroupsHeader", false);
+    ensureHeaderFilters("processJomasTable", "processJomasHeader", true);
+    ensureHeaderFilters("naTable", "naHeader", true);
     refreshHeaderFilterOptions("processTable", "processHeader");
     refreshHeaderFilterOptions("catalogTable", "catalogHeader");
     refreshHeaderFilterOptions("tasksSummaryTable", "tasksHeader");
     refreshHeaderFilterOptions("processGroupsTable", "processGroupsHeader");
+    refreshHeaderFilterOptions("processJomasTable", "processJomasHeader");
+    refreshHeaderFilterOptions("naTable", "naHeader");
     setupRenderHook();
     applyAllFilters();
     applyAllTableColumnSizing();
     window.removeAllFilters = clearAllFilters;
     window.refreshClearFilterButtonActive = refreshClearFilterButtonActive;
     window.refreshExtraTableFilters = refreshExtraTableFilters;
+    window.syncExecutorsColumnFilters = syncExecutorsColumnFilters;
+    window.scheduleExecutorsColumnFilters = scheduleExecutorsColumnFilters;
+    window.applyExecutorsFilters = applyExecutorsFilters;
+    window.applyAllFilters = applyAllFilters;
     window.applyTableColumnSizing = applyTableColumnSizing;
     window.applyAllTableColumnSizing = applyAllTableColumnSizing;
     const clearBtn = document.getElementById("clearFiltersBtn");
@@ -875,7 +992,7 @@
           return;
         }
       }
-      ensureHeaderFilters("executorsTable", "executorsHeader", true);
+      ensureHeaderFilters("executorsTable", "executorsHeader", false);
       refreshHeaderFilterOptions("executorsTable", "executorsHeader");
       table.dataset.filtersReady = "1";
       applyAllFilters();

@@ -289,10 +289,16 @@
     }
   }
 
+  function removeLegacyGpKartinaOptBlocks() {
+    ["cOptEditorWrap", "cMerijumiEditorWrap"].forEach((id) => {
+      const node = $(id);
+      if (node) node.remove();
+    });
+  }
+
   function ensureKartinaSections() {
     ensureKartinaStyles();
-    injectKartinaSection("editorForm", "e", "Optimizācija", "Mērījumi / procesu rādītāji");
-    injectKartinaSection("catalogEditorForm", "c", "Optimizācija", "Mērījumi / procesu rādītāji");
+    removeLegacyGpKartinaOptBlocks();
     wireKartinaButtonsOnce();
   }
 
@@ -461,27 +467,6 @@
 
   async function refreshGpKartinaBlocks() {
     ensureKartinaSections();
-    const root = $("cOptPasakumiRoot");
-    const card = $("catalogEditorCard");
-    if (!root || !card || card.classList.contains("hidden")) return;
-
-    const procNo = elTrim("cProcNo");
-    const process = elTrim("cProcess");
-    const gpNo = elTrim("cTypeNo");
-    const gpName = elTrim("cType");
-
-    if (!gpName && !gpNo) {
-      root.innerHTML = `<p class="pr-k-empty">Norādiet galaprodukta nosaukumu vai Nr., lai rādītu optimizācijas pasākumus.</p>`;
-      renderGpMetrics();
-      return;
-    }
-
-    root.innerHTML = `<p class="hint">Ielādē optimizācijas pasākumus…</p>`;
-    const dbRows = await loadOptimizacijaRows();
-    const measures = flattenMeasures(dbRows).filter((m) => matchesGpMeasure(m, procNo, process, gpNo, gpName));
-    root.innerHTML = renderOptListHtml(measures, false);
-    wireOptListButtons(root, dbRows);
-    renderGpMetrics();
   }
 
   function openOptimizacijaNav() {
@@ -526,8 +511,6 @@
     const pairs = [
       ["eOptAddBtn", openNewOptFromProcess],
       ["eOptNavBtn", openOptimizacijaNav],
-      ["cOptAddBtn", openNewOptFromGp],
-      ["cOptNavBtn", openOptimizacijaNav],
     ];
     pairs.forEach(([id, fn]) => {
       const btn = $(id);
@@ -555,42 +538,12 @@
 
   function setupKartinaExtras() {
     ensureKartinaSections();
-    observeKartinaCard("editorCard", refreshProcessKartinaBlocks);
     observeKartinaCard("catalogEditorCard", refreshGpKartinaBlocks);
-
-    ["eProcNo", "eProcess", "eOther", "eOpt"].forEach((id) => {
-      const el = $(id);
-      if (el && !el.dataset.prKartinaInput) {
-        el.dataset.prKartinaInput = "1";
-        el.addEventListener("input", () => {
-          if ($("editorCard") && !$("editorCard").classList.contains("hidden")) {
-            refreshProcessKartinaBlocks();
-          }
-        });
-      }
-    });
-    ["cProcNo", "cProcess", "cTypeNo", "cType", "cProcessPick"].forEach((id) => {
-      const el = $(id);
-      if (el && !el.dataset.prKartinaInput) {
-        el.dataset.prKartinaInput = "1";
-        const refreshGp = () => {
-          if ($("catalogEditorCard") && !$("catalogEditorCard").classList.contains("hidden")) {
-            refreshGpKartinaBlocks();
-          }
-        };
-        el.addEventListener("input", refreshGp);
-        el.addEventListener("change", refreshGp);
-      }
-    });
 
     window.addEventListener("app:db-sync", (ev) => {
       const kind = ev && ev.detail ? ev.detail.kind : "all";
       if (kind === "all" || kind === "optimizacija" || kind === "process" || kind === "catalog") {
         invalidateOptCache();
-        if ($("editorCard") && !$("editorCard").classList.contains("hidden")) refreshProcessKartinaBlocks();
-        if ($("catalogEditorCard") && !$("catalogEditorCard").classList.contains("hidden")) {
-          refreshGpKartinaBlocks();
-        }
       }
     });
   }

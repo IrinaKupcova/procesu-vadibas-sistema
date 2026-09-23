@@ -51,7 +51,7 @@
   function canEdit() {
     if (typeof window.canEdit === "function") return window.canEdit();
     const rs = $("roleSelect");
-    return rs && rs.value === "admin_edit";
+    return rs && (rs.value === "admin" || rs.value === "admin_edit");
   }
 
   function statusMsg(text, kind) {
@@ -1042,9 +1042,16 @@
     }
   }
 
+  function optimizacijaCardVisible(card) {
+    if (!card || card.classList.contains("hidden")) return false;
+    if (card.classList.contains("kartina-inline-panel")) return true;
+    if (card.classList.contains("nav-page-hidden")) return false;
+    return true;
+  }
+
   async function render() {
     const card = $(CARD_ID);
-    if (!card || card.classList.contains("hidden") || card.classList.contains("nav-page-hidden")) return;
+    if (!optimizacijaCardVisible(card)) return;
 
     ensureEditorModal();
     const { status, root } = ensureShell(card);

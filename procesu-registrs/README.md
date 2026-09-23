@@ -1,6 +1,6 @@
 # Procesu reģistrs
 
-Statiska web lietotne (HTML + JavaScript) procesu, galaproduktu (GP), jomu un normatīvo aktu (NA) pārvaldībai. Dati glabājas **Supabase** (PostgreSQL + Storage); daļa moduļu atbalsta **localStorage** rezervi, ja DB tabula vēl nav izveidota.
+Statiska web lietotne (HTML + JavaScript) procesu, galaproduktu (GP), jomu un normatīvo aktu pārvaldībai. Dati glabājas **Supabase** (PostgreSQL + Storage); daļa moduļu atbalsta **localStorage** rezervi, ja DB tabula vēl nav izveidota.
 
 ## Repozitorija struktūra
 

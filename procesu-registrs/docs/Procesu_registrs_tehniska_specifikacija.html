@@ -31,7 +31,7 @@
   <p>Šis dokuments apraksta «Procesu reģistra» informācijas sistēmas tehnisko arhitektūru, datu modeli, integrācijas un izvietošanas prasības izstrādei, uzturēšanai un pārcelšanai uz iestādes darba vidi.</p>
 
   <h2>2. Sistēmas kopsavilkums</h2>
-  <p>Procesu reģistrs ir tīmekļa lietotne procesu, galaproduktu (GP), procesu jomu, normatīvo aktu (NA) un izpildītāju uzskaites un pārvaldības atbalstam. Lietotne ir statiska — HTML, CSS un JavaScript — bez build soļa un bez atsevišķa backend servera repozitorijā.</p>
+  <p>Procesu reģistrs ir tīmekļa lietotne procesu, galaproduktu (GP), procesu jomu, normatīvo aktu un izpildītāju uzskaites un pārvaldības atbalstam. Lietotne ir statiska — HTML, CSS un JavaScript — bez build soļa un bez atsevišķa backend servera repozitorijā.</p>
   <ul>
     <li>Lietotāja saskarne: <code>index.html</code> + modulāri <code>.js</code> faili</li>
     <li>Datu glabāšana: Supabase (PostgreSQL + Storage)</li>
@@ -89,7 +89,7 @@
 
   <h2>6. Datu modelis</h2>
   <h3>6.1. Hierarhija</h3>
-  <p>Uzdevums → Process(es) → Galaprodukts(i) → saistības (joma, NA, izpildītājs)</p>
+  <p>Uzdevums → Process(es) → Galaprodukts(i) → saistības (joma, normatīvie akti, izpildītājs)</p>
   <h3>6.2. Entītijas</h3>
   <table>
     <tr><th>Entītija</th><th>Tabula / lauks</th><th>Piezīmes</th></tr>
@@ -97,7 +97,7 @@
     <tr><td>Process</td><td>procesu_registrs</td><td>Procesa_numurs, Process, Procesa_grupa</td></tr>
     <tr><td>GP</td><td>procesu_registrs + JSON</td><td>GP_kartinas_papildu_JSON</td></tr>
     <tr><td>Joma</td><td>procesu_jomas</td><td>Jomu kartiņas</td></tr>
-    <tr><td>NA</td><td>normativie_akti</td><td>Normatīvie akti</td></tr>
+    <tr><td>Normatīvie akti</td><td>normativie_akti</td><td>Normatīvie akti</td></tr>
   </table>
 
   <h2>7. SQL migrācijas (secība)</h2>

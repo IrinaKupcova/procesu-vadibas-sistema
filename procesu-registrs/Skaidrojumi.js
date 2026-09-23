@@ -24,7 +24,7 @@
   function isAdminEdit() {
     if (typeof window.canEdit === "function") return window.canEdit();
     const rs = $("roleSelect");
-    return rs && rs.value === "admin_edit";
+    return rs && (rs.value === "admin" || rs.value === "admin_edit");
   }
 
   function loadIcons() {
