@@ -17,6 +17,8 @@
   const NA_TABLE = "normativie_akti";
   const NA_KLAS_TABLE = "norm_akti_klasifikatori";
   const OPT_TABLE = "procesu_optimizacija";
+  const HELP_ICONS_TABLE = "sistema_help_icons";
+  const HELP_FAQ_TABLE = "sistema_help_faq";
   const SINGLE_TABLE_MODE = (() => {
     try {
       if (typeof window !== "undefined" && window.PV_SINGLE_TABLE_MODE != null) return !!window.PV_SINGLE_TABLE_MODE;
@@ -1795,6 +1797,16 @@
         { event: "*", schema: "public", table: OPT_TABLE },
         () => emitSync("optimizacija", "db")
       )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: HELP_ICONS_TABLE },
+        () => emitSync("skaidrojumi", "db")
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: HELP_FAQ_TABLE },
+        () => emitSync("skaidrojumi", "db")
+      )
       .subscribe((status) => {
         if (status === "SUBSCRIBED") emitSync("all", "db");
       });
@@ -1817,6 +1829,16 @@
           "postgres_changes",
           { event: "*", schema: "public", table: OPT_TABLE },
           () => emitSync("optimizacija", "db")
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: HELP_ICONS_TABLE },
+          () => emitSync("skaidrojumi", "db")
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: HELP_FAQ_TABLE },
+          () => emitSync("skaidrojumi", "db")
         )
         .subscribe((status) => {
           if (status === "SUBSCRIBED") emitSync("all", "db");
@@ -2544,6 +2566,119 @@
     return true;
   }
 
+  function mapHelpIconDbToUi(row) {
+    const r = row || {};
+    return {
+      id: String(r.id || "").trim(),
+      label: String(r.label || "").trim(),
+      selector: String(r.selector || "").trim(),
+      text: String(r.help_text != null ? r.help_text : "").trim(),
+      position: String(r.position || "append").trim() || "append",
+      enabled: r.enabled !== false,
+    };
+  }
+
+  function mapHelpIconUiToDb(item) {
+    const it = item || {};
+    return {
+      id: String(it.id || "").trim(),
+      label: String(it.label || "").trim(),
+      selector: String(it.selector || "").trim(),
+      help_text: String(it.text != null ? it.text : "").trim(),
+      position: String(it.position || "append").trim() || "append",
+      enabled: it.enabled !== false,
+      sort_order: Number(it.sort) || 0,
+      updated_at: new Date().toISOString(),
+    };
+  }
+
+  function mapHelpFaqDbToUi(row) {
+    const r = row || {};
+    return {
+      id: String(r.id || "").trim(),
+      question: String(r.question || "").trim(),
+      answer: String(r.answer != null ? r.answer : "").trim(),
+      sort: Number(r.sort_order) || 0,
+    };
+  }
+
+  function mapHelpFaqUiToDb(item) {
+    const it = item || {};
+    return {
+      id: String(it.id || "").trim(),
+      question: String(it.question || "").trim(),
+      answer: String(it.answer != null ? it.answer : "").trim(),
+      sort_order: Number(it.sort) || 0,
+      updated_at: new Date().toISOString(),
+    };
+  }
+
+  async function loadHelpIcons() {
+    const { data, error } = await supabaseClient
+      .from(HELP_ICONS_TABLE)
+      .select("*")
+      .order("sort_order", { ascending: true });
+    if (error) {
+      if (isMissingDbObjectError(error)) return [];
+      throw error;
+    }
+    return (data || []).map(mapHelpIconDbToUi).filter((x) => x.id && x.selector);
+  }
+
+  async function saveHelpIcons(items) {
+    const list = (Array.isArray(items) ? items : []).map(mapHelpIconUiToDb).filter((x) => x.id && x.selector);
+    const { data: existing, error: loadErr } = await supabaseClient.from(HELP_ICONS_TABLE).select("id");
+    if (loadErr) {
+      if (isMissingDbObjectError(loadErr)) throw new Error("Datubāzē nav tabulas sistema_help_icons. Palaidiet migrāciju 2026-09-30_sistema_skaidrojumi.sql.");
+      throw loadErr;
+    }
+    const keep = new Set(list.map((x) => x.id));
+    const toDelete = (existing || []).map((r) => r.id).filter((id) => id && !keep.has(id));
+    if (toDelete.length) {
+      const { error: delErr } = await supabaseClient.from(HELP_ICONS_TABLE).delete().in("id", toDelete);
+      if (delErr && !isMissingDbObjectError(delErr)) throw delErr;
+    }
+    if (list.length) {
+      const { error: upErr } = await supabaseClient.from(HELP_ICONS_TABLE).upsert(list, { onConflict: "id" });
+      if (upErr) throw upErr;
+    }
+    emitSync("skaidrojumi", "html");
+    return list.length;
+  }
+
+  async function loadHelpFaq() {
+    const { data, error } = await supabaseClient
+      .from(HELP_FAQ_TABLE)
+      .select("*")
+      .order("sort_order", { ascending: true });
+    if (error) {
+      if (isMissingDbObjectError(error)) return [];
+      throw error;
+    }
+    return (data || []).map(mapHelpFaqDbToUi).filter((x) => x.id);
+  }
+
+  async function saveHelpFaq(items) {
+    const list = (Array.isArray(items) ? items : []).map(mapHelpFaqUiToDb).filter((x) => x.id);
+    const { data: existing, error: loadErr } = await supabaseClient.from(HELP_FAQ_TABLE).select("id");
+    if (loadErr) {
+      if (isMissingDbObjectError(loadErr)) throw new Error("Datubāzē nav tabulas sistema_help_faq. Palaidiet migrāciju 2026-09-30_sistema_skaidrojumi.sql.");
+      throw loadErr;
+    }
+    const keep = new Set(list.map((x) => x.id));
+    const toDelete = (existing || []).map((r) => r.id).filter((id) => id && !keep.has(id));
+    if (toDelete.length) {
+      const { error: delErr } = await supabaseClient.from(HELP_FAQ_TABLE).delete().in("id", toDelete);
+      if (delErr && !isMissingDbObjectError(delErr)) throw delErr;
+    }
+    if (list.length) {
+      const { error: upErr } = await supabaseClient.from(HELP_FAQ_TABLE).upsert(list, { onConflict: "id" });
+      if (upErr) throw upErr;
+    }
+    emitSync("skaidrojumi", "html");
+    return list.length;
+  }
+
   window.DB = {
     TABLE,
     singleTableMode: SINGLE_TABLE_MODE,
@@ -2574,6 +2709,10 @@
     optimizacijaKey,
     loadNormActKlasifikatori,
     upsertNormActKlasifikators,
+    loadHelpIcons,
+    saveHelpIcons,
+    loadHelpFaq,
+    saveHelpFaq,
     startSync,
     stopSync,
     mapDbError,

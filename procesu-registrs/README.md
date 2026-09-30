@@ -57,12 +57,14 @@ copy config.example.js config.js   # Windows
 | `DB.js` | Supabase CRUD, sinhronizācija |
 | `Procesu registrs.js` | Procesu tabula, kartiņa |
 | `GP kataogs.js` | GP katalogs |
-| `Joma.js`, `Joma kartina.js` | Procesu jomas |
+| `Joma.js`, `Joma kartina.js` | Procesu jomas — jomu kartiņas, Process → GP |
 | `Norm_akti.js` | Normatīvie akti |
-| `Izpilditaji.js` | Izpildītāju skats |
+| `Izpilditaji.js` | Izpildītāji — pārvalžu kartiņas, amats → GP → joma |
 | `Filtrs.js` | Kolonnu filtri |
 | `Statistika.js` | Statistika |
 | `Izmainu_pieteikums.js` | Izmaiņu pieteikums + Storage |
+| `Optimizacija.js` | Optimizācijas pasākumi (Process → GP → pasākums, Supabase) |
+| `Lomas.js` | Lietotāju lomas (`PVRoles`, Administrators / Skatītājs / GP atbildīgais) |
 | `Skaidrojumi.js`, `Abreviaturas.js`, `Navigacija.js`, `Numeracija.js` | UI palīgi |
 
 ## Pārcelšana uz iestādes GitHub / hostu
@@ -96,6 +98,8 @@ Pēc `git pull` — pārlūkā **Ctrl+F5** (cache).
 - [PUBLICET_LASI.md](PUBLICET_LASI.md) — publiskā saite / hostēšana
 - [SUPABASE_STORAGE_izmainu_pielikumi.md](SUPABASE_STORAGE_izmainu_pielikumi.md) — pielikumu bucket
 - [docs/DEPLOY_IESTADE.md](docs/DEPLOY_IESTADE.md) — pārcelšana uz iestādi
+- [docs/CHANGELOG_UI.md](docs/CHANGELOG_UI.md) — fiksēts UI/lomu stāvoklis (2026-09-30)
+- [docs/Procesu_registrs_funkcionala_specifikacija.md](docs/Procesu_registrs_funkcionala_specifikacija.md) — funkcionālā specifikācija (SPEC-024 Optimizācija u.c.)
 - [docs/Procesu_registrs_tehniska_specifikacija.md](docs/Procesu_registrs_tehniska_specifikacija.md) — tehniskā specifikācija (**atveriet šo — Cursor, Notepad, GitHub**)
 - [docs/Procesu_registrs_tehniska_specifikacija.html](docs/Procesu_registrs_tehniska_specifikacija.html) — PDF drukāšanai pārlūkā (Ctrl+P)
 - [docs/Procesu_registrs_tehniska_specifikacija.docx](docs/Procesu_registrs_tehniska_specifikacija.docx) — Word (vajag Microsoft Word vai Word Online)

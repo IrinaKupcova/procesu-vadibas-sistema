@@ -600,6 +600,16 @@
   }
 
   function executorsRowMatches(tr, globalTerm) {
+    const fromData = String(tr.dataset.filterHay || "").trim();
+    if (fromData) {
+      if (globalTerm && !contains(fromData, globalTerm)) return false;
+      for (const col in state.executorsHeader) {
+        const terms = normalizeFilterValue(state.executorsHeader[col]);
+        if (!terms.length) continue;
+        if (!cellMatchesAnyTerm(fromData, terms)) return false;
+      }
+      return true;
+    }
     const tds = Array.from(tr.children || []);
     if (!tds.length) return false;
     const text = tds.map((td) => td.textContent || "").join(" ");
@@ -613,8 +623,12 @@
     return true;
   }
 
+  function jomasTableUsesCardLayout() {
+    return !!document.getElementById("jomasListRoot");
+  }
+
   function jomasTableUsesExecutorLayout() {
-    return !!document.querySelector("#processJomasTable tbody tr.ex-dept-hdr");
+    return jomasTableUsesCardLayout() || !!document.querySelector("#processJomasTable tbody tr.ex-dept-hdr");
   }
 
   function jomaRowFilterText(tr, col) {
@@ -651,15 +665,62 @@
   }
 
   function applyJomasFilters() {
+    const listRoot = document.getElementById("jomasListRoot");
+    const globalTerm = norm(document.getElementById("searchInput")?.value || "");
+    const hasColFilters = Object.values(state.processJomasHeader || {}).some((v) => isFilterActive(v));
+
+    if (listRoot) {
+      const blocks = Array.from(listRoot.querySelectorAll(".ex-parvalde-block"));
+      if (!globalTerm && !hasColFilters) {
+        blocks.forEach((b) => {
+          b.style.display = "";
+        });
+        return;
+      }
+      blocks.forEach((b) => {
+        const hay = b.dataset.filterHay || b.textContent || "";
+        let show = !globalTerm || contains(hay, globalTerm);
+        if (show && hasColFilters) {
+          const innerRows = b.querySelectorAll("tbody tr.ex-joma-row-card");
+          const jomaLabel = String(b.querySelector(".ex-parvalde-picker-name")?.textContent || "").trim();
+          if (innerRows.length) {
+            show = Array.from(innerRows).some((tr) => {
+              const hay = tr.dataset.filterHay || tr.textContent || "";
+              if (globalTerm && !contains(hay, globalTerm)) return false;
+              for (const col in state.processJomasHeader) {
+                const terms = normalizeFilterValue(state.processJomasHeader[col]);
+                if (!terms.length) continue;
+                const idx = Number(col);
+                let cellText = "";
+                if (idx === 0) cellText = jomaLabel;
+                else if (idx === 1) cellText = String(tr.children[0]?.textContent || "").trim();
+                else cellText = String(tr.children[tr.children.length - 1]?.textContent || "").trim();
+                if (!cellMatchesAnyTerm(cellText, terms)) return false;
+              }
+              return true;
+            });
+          } else {
+            for (const col in state.processJomasHeader) {
+              const terms = normalizeFilterValue(state.processJomasHeader[col]);
+              if (terms.length && !cellMatchesAnyTerm(hay, terms)) {
+                show = false;
+                break;
+              }
+            }
+          }
+        }
+        b.style.display = show ? "" : "none";
+      });
+      return;
+    }
+
     const tbody = document.querySelector("#processJomasTable tbody");
     if (!tbody) return;
     if (!jomasTableUsesExecutorLayout()) {
       applyAccordionTableFilters("processJomasTable", "processJomasHeader");
       return;
     }
-    const globalTerm = norm(document.getElementById("searchInput")?.value || "");
     const rows = Array.from(tbody.querySelectorAll("tr"));
-    const hasColFilters = Object.values(state.processJomasHeader || {}).some((v) => isFilterActive(v));
     if (!globalTerm && !hasColFilters) {
       rows.forEach((tr) => {
         tr.style.display = "";
@@ -692,40 +753,52 @@
   }
 
   function applyExecutorsFilters() {
+    const listRoot = document.getElementById("executorsListRoot");
+    const globalTerm = norm(document.getElementById("searchInput")?.value || "");
+    const hasColFilters = Object.values(state.executorsHeader || {}).some((v) => isFilterActive(v));
+
+    if (listRoot) {
+      const blocks = Array.from(listRoot.querySelectorAll(".ex-parvalde-block"));
+      if (!globalTerm && !hasColFilters) {
+        blocks.forEach((b) => {
+          b.style.display = "";
+        });
+        return;
+      }
+      blocks.forEach((b) => {
+        const hay = b.dataset.filterHay || b.textContent || "";
+        let show = !globalTerm || contains(hay, globalTerm);
+        if (show && hasColFilters) {
+          const innerRows = b.querySelectorAll("tbody tr.ex-exec-row-card");
+          if (innerRows.length) {
+            show = Array.from(innerRows).some((tr) => executorsRowMatches(tr, globalTerm));
+          } else {
+            for (const col in state.executorsHeader) {
+              const terms = normalizeFilterValue(state.executorsHeader[col]);
+              if (terms.length && !cellMatchesAnyTerm(hay, terms)) {
+                show = false;
+                break;
+              }
+            }
+          }
+        }
+        b.style.display = show ? "" : "none";
+      });
+      return;
+    }
+
     const tbody = document.querySelector("#executorsTable tbody");
     if (!tbody) return;
-    const globalTerm = norm(document.getElementById("searchInput")?.value || "");
     const rows = Array.from(tbody.querySelectorAll("tr"));
-    const hasColFilters = Object.values(state.executorsHeader || {}).some((v) => isFilterActive(v));
     if (!globalTerm && !hasColFilters) {
       rows.forEach((tr) => {
         tr.style.display = "";
       });
       return;
     }
-
-    let i = 0;
-    while (i < rows.length) {
-      const tr = rows[i];
-      if (tr.classList.contains("ex-dept-hdr")) {
-        const gpRows = [];
-        i += 1;
-        while (i < rows.length && !rows[i].classList.contains("ex-dept-hdr")) {
-          gpRows.push(rows[i]);
-          i += 1;
-        }
-        let deptShow = executorsRowMatches(tr, globalTerm);
-        gpRows.forEach((gpTr) => {
-          const gpShow = executorsRowMatches(gpTr, globalTerm);
-          gpTr.style.display = gpShow ? "" : "none";
-          if (gpShow) deptShow = true;
-        });
-        tr.style.display = deptShow ? "" : "none";
-        continue;
-      }
+    rows.forEach((tr) => {
       tr.style.display = executorsRowMatches(tr, globalTerm) ? "" : "none";
-      i += 1;
-    }
+    });
   }
 
   function applyNaFilters() {
@@ -1273,7 +1346,22 @@
           if (clean) uniqVals.add(clean);
         });
       } else {
-      if (tableId === "processJomasTable" && jomasTableUsesExecutorLayout()) {
+      if (tableId === "processJomasTable" && jomasTableUsesCardLayout()) {
+        if (col === 0) {
+          const root = document.getElementById("jomasListRoot");
+          if (root) {
+            root.querySelectorAll(".ex-parvalde-picker-name").forEach((el) => {
+              const raw = String(el.textContent || "").trim();
+              if (raw) uniqVals.add(raw);
+            });
+          }
+        } else {
+          Array.from(tbody.querySelectorAll("tr")).forEach((tr) => {
+            const raw = String(tr.children[col]?.textContent || "").trim();
+            if (raw) uniqVals.add(raw);
+          });
+        }
+      } else if (tableId === "processJomasTable" && jomasTableUsesExecutorLayout()) {
         if (col === 0) {
           Array.from(tbody.querySelectorAll("tr.ex-dept-hdr")).forEach((tr) => {
             const raw = String(tr.children[0]?.textContent || "")

@@ -228,11 +228,11 @@ Liela daļa biznesa loģikas (tabulu renderēšana, kartiņu redaktori, lomu pā
 
 | Pievienot jaunu procesu.js | Jauna procesa izveide |
 
-| Joma.js / Joma kartina.js | Procesu jomas, jomu kartiņa |
+| Joma.js / Joma kartina.js | Jomu kartiņu saraksts (`#jomasListRoot`), jomu kartiņa, Excel `#processJomasTable` |
 
 | Norm_akti.js | Normatīvie akti, saistīšana ar procesiem/GP/jomām |
 
-| Izpilditaji.js | Izpildītāju skats (agregēta tabula) |
+| Izpilditaji.js | Izpildītāju skats — pārvalžu kartiņas, `#executorsListRoot`, Excel `#executorsTable` |
 
 | Filtrs.js | Kolonnu filtri, globālā meklēšana |
 
@@ -398,11 +398,13 @@ Skata līmeņi (`levelSelect`): 1 — Pamatskats, 2 — Paplašinātais skats (k
 
 | --- | --- | --- |
 
-| viewer | skatītājs | Tikai skatīšana |
+| admin | Administrators | Pilna CRUD (`window.canEdit`, `window.canDelete`) |
 
-| admin_view | administrators (skatīt) | Skatīšana (redaktors bloķēts) |
+| viewer | Skatītājs | Tikai skatīšana |
 
-| admin_edit | administrators (labot) | Izveide, labošana, dzēšana |
+| gp_responsible | Atbildīgais par galaprodukta informāciju | GP kartiņu saturs |
+
+Vecie kodi (`admin_edit`, `admin_view`) normalizējas uz `admin` / `viewer` (`Lomas.js`). Lomu `roleMap` glabājas localStorage; biznesa dati — Supabase.
 
 
 
@@ -420,11 +422,11 @@ Skata līmeņi (`levelSelect`): 1 — Pamatskats, 2 — Paplašinātais skats (k
 
 - Uzdevumu skats — kopsavilkums pa uzdevumiem
 
-- Procesu jomas — reģistrs un jomu kartiņas
+- Procesu jomas — jomu kartiņu saraksts (`#jomasListRoot`), iekšā Process → GP; Excel `#processJomasTable`
 
 - Procesu grupas — grupēšana un statistika
 
-- Izpildītāji — agregēts skats pa pārvaldēm
+- Izpildītāji — pārvalžu kartiņas (`#executorsListRoot`), iekšā amats → GP → joma
 
 - Normatīvie akti — CRUD, saistīšana ar procesiem/GP/jomām
 

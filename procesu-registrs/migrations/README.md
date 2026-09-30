@@ -14,6 +14,8 @@ Ja migrācija jau ir palaista, daudzas ir idempotent (droši palaist atkārtoti)
 | 6 | `2026-07-06_gp-kartinas-meta-json.sql` | GP kartiņas meta JSON |
 | 7 | `2026-07-31_normativie_akti.sql` | Tabula `normativie_akti` + klasifikatori |
 | 8 | `2026-09-21_procesu_optimizacija.sql` | Tabula `procesu_optimizacija` (pasākumi masīvā `pasakumi_json`) |
+| 9 | `2026-09-30_sistema_skaidrojumi.sql` | Tabulas `sistema_help_icons`, `sistema_help_faq` («i» un BUJ) |
+| 10 | `2026-09-30_optimizacija_statuss.sql` | `pasakumi_json` statusu normalizācija + `atcelsanasIemesls` |
 
 ## Papildu fails (sakne)
 

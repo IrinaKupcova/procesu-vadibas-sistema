@@ -196,14 +196,24 @@
     return "nav_uzsakts";
   }
 
+  function isOptMeasureInactive(m) {
+    if (window.Optimizacija && typeof window.Optimizacija.isInactive === "function") {
+      return window.Optimizacija.isInactive(m && m.statuss);
+    }
+    const k = normStatusKey(m && m.statuss);
+    return k === "pabeigts" || k === "atcelts";
+  }
+
   function statusLabel(key) {
     if (key === "pabeigts") return "Pabeigts";
+    if (key === "atcelts") return "Atcelts";
     if (key === "izpilde") return "Izpildē";
     return "Nav uzsākts";
   }
 
   function statusClass(key) {
     if (key === "pabeigts") return "pr-k-st-done";
+    if (key === "atcelts") return "pr-k-st-cancelled";
     if (key === "izpilde") return "pr-k-st-progress";
     return "pr-k-st-new";
   }
@@ -243,6 +253,7 @@
       .pr-k-st-new { background:#e2e8f0; color:#475569; }
       .pr-k-st-progress { background:#fef3c7; color:#b45309; }
       .pr-k-st-done { background:#dcfce7; color:#15803d; }
+      .pr-k-st-cancelled { background:#fee2e2; color:#b91c1c; }
       .pr-k-opt-sub { font-size:12px; font-weight:700; color:#334155; margin:12px 0 6px; }
       .pr-k-opt-sub.inactive { color:#64748b; }
       .pr-k-empty { font-size:13px; color:#64748b; font-style:italic; margin:4px 0; }
@@ -386,17 +397,17 @@
   }
 
   function renderOptListHtml(measures, showGp) {
-    const active = sortMeasures(measures.filter((m) => normStatusKey(m.statuss) !== "pabeigts"));
-    const inactive = sortMeasures(measures.filter((m) => normStatusKey(m.statuss) === "pabeigts"));
+    const active = sortMeasures(measures.filter((m) => !isOptMeasureInactive(m)));
+    const inactive = sortMeasures(measures.filter((m) => isOptMeasureInactive(m)));
     let html = `<div class="pr-k-opt-sub">Aktuālie optimizācijas pasākumi</div>`;
     if (!active.length) {
       html += `<p class="pr-k-empty">Nav aktuālu pasākumu šim ${showGp ? "galaproduktam" : "procesam"}.</p>`;
     } else {
       html += `<ul class="pr-k-opt-list">${active.map((m) => renderMeasureItem(m, showGp)).join("")}</ul>`;
     }
-    html += `<div class="pr-k-opt-sub inactive">Neaktuālie optimizācijas pasākumi (pabeigti)</div>`;
+    html += `<div class="pr-k-opt-sub inactive">Neaktuālie optimizācijas pasākumi (pabeigti, atcelti)</div>`;
     if (!inactive.length) {
-      html += `<p class="pr-k-empty">Nav pabeigtu pasākumu.</p>`;
+      html += `<p class="pr-k-empty">Nav pabeigtu vai atceltu pasākumu.</p>`;
     } else {
       html += `<ul class="pr-k-opt-list">${inactive.map((m) => renderMeasureItem(m, showGp)).join("")}</ul>`;
     }

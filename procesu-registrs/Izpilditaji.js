@@ -1,27 +1,34 @@
 /**
- * Izpildītāji: uzskaite pēc struktūrvienības → galaprodukts → process.
- * Avots: GP katalogs (primārais) + procesu reģistrs (GP bez kataloga ieraksta).
+ * Izpildītāji: struktūrvienība/amats → galaprodukts → galaprodukta joma (deduplikācija, merge).
+ * Avots: GP katalogs + procesu reģistrs.
  */
 (function () {
   "use strict";
 
+  const ROOT_ID = "executorsListRoot";
   const TABLE_ID = "executorsTable";
   const ROWS_ID = "executorsTableBody";
-  let inlineEditMode = false;
-  const executorDeptExpanded = new Set();
   const BULK_BTN_ID = "executorsBulkAccordionToggleBtn";
-  const DEPT_EMPTY_LABEL = "Nav norādīta patstāvīgā struktūrvienība";
-  const UNIT_COL_LABEL = "Patstāvīgā struktūrvienība";
+  const UNIT_EMPTY_LABEL = "Nav norādīta patstāvīgā struktūrvienība";
+  const AMATS_EMPTY_LABEL = "Nav norādīts amats";
+
+  let inlineEditMode = false;
+  const executorUnitOpen = new Set();
 
   const COL_DEFS = [
-    { label: UNIT_COL_LABEL, filter: UNIT_COL_LABEL },
-    {
-      label: "Struktūrvienība/ amats, kas atbild par galaprodukta radīšanu",
-      filter: "Struktūrvienība/ amats",
-    },
+    { label: "Patstāvīgā struktūrvienība", filter: "Patstāvīgā struktūrvienība" },
+    { label: "Struktūrvienība/ amats", filter: "Struktūrvienība/ amats" },
     { label: "Galaprodukts", filter: "Galaprodukts" },
-    { label: "Process", filter: "Process" },
+    { label: "Galaprodukta joma", filter: "Galaprodukta joma" },
   ];
+
+  const INNER_COL_DEFS = [
+    { label: "Struktūrvienība/ amats", filter: "Struktūrvienība/ amats" },
+    { label: "Galaprodukts", filter: "Galaprodukts" },
+    { label: "Galaprodukta joma", filter: "Galaprodukta joma" },
+  ];
+
+  const JOMA_EMPTY_LABEL = "—";
 
   function escHtml(s) {
     return String(s || "")
@@ -29,55 +36,6 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
-  }
-
-  function syncExecutorsTableColumns(table) {
-    if (!table) return;
-    let tr = table.querySelector("thead tr");
-    if (!tr) {
-      const thead = document.createElement("thead");
-      tr = document.createElement("tr");
-      thead.appendChild(tr);
-      const tb = table.querySelector("tbody");
-      if (tb) table.insertBefore(thead, tb);
-      else table.appendChild(thead);
-    }
-    const thHtml = COL_DEFS.map(
-      (c) => `<th data-filter-label="${escHtml(c.filter)}">${escHtml(c.label)}</th>`
-    ).join("");
-    const colOrderKey = "parvalde-dept-gp-proc";
-    if (tr.children.length !== COL_DEFS.length || tr.dataset.colOrder !== colOrderKey) {
-      tr.innerHTML = thHtml;
-      tr.dataset.colOrder = colOrderKey;
-      tr.dataset.filtersReady = "";
-      if (table.dataset) table.dataset.exFiltersInit = "";
-    } else {
-      COL_DEFS.forEach((c, i) => {
-        if (!tr.children[i]) return;
-        tr.children[i].setAttribute("data-filter-label", c.filter);
-        if (!tr.children[i].querySelector(".th-filter-wrap")) {
-          tr.children[i].textContent = c.label;
-        }
-      });
-    }
-  }
-
-  function ensureControls(card) {
-    if (!card) return;
-    const legacySummary = document.getElementById("executorsViewSummary");
-    if (legacySummary) legacySummary.remove();
-    if (document.getElementById(BULK_BTN_ID)) return;
-    const controls = document.createElement("div");
-    controls.className = "ex-view-controls";
-    const bulk = document.createElement("button");
-    bulk.type = "button";
-    bulk.id = BULK_BTN_ID;
-    bulk.className = "secondary";
-    bulk.textContent = "Atvērt visus akordeonus";
-    controls.appendChild(bulk);
-    const toolbar = card.querySelector(".toolbar");
-    if (toolbar) toolbar.insertAdjacentElement("afterend", controls);
-    else card.insertBefore(controls, card.firstChild);
   }
 
   function getText(v) {
@@ -94,116 +52,6 @@
       .toLowerCase();
   }
 
-  function ensureTable(card) {
-    if (!card) return null;
-
-    ensureControls(card);
-    let table = document.getElementById(TABLE_ID);
-    if (!table) {
-      table = document.createElement("table");
-      table.id = TABLE_ID;
-      table.className = "ex-table";
-      table.innerHTML = `
-        <colgroup class="ex-cols"><col><col><col><col></colgroup>
-        <thead>
-          <tr>
-            ${COL_DEFS.map(
-              (c) => `<th data-filter-label="${escHtml(c.filter)}">${escHtml(c.label)}</th>`
-            ).join("")}
-          </tr>
-        </thead>
-        <tbody id="${ROWS_ID}"></tbody>
-      `;
-      const hint = card.querySelector("p.hint");
-      if (hint) hint.remove();
-      const wrap = document.createElement("div");
-      wrap.className = "ex-table-scroll";
-      wrap.appendChild(table);
-      card.appendChild(wrap);
-    } else {
-      let tb = document.getElementById(ROWS_ID);
-      if (!tb) {
-        const tbody = document.createElement("tbody");
-        tbody.id = ROWS_ID;
-        table.appendChild(tbody);
-      }
-    }
-
-    syncExecutorsTableColumns(table);
-    lockExecutorsTableLayout(table);
-    return table;
-  }
-
-  function lockExecutorsTableLayout(table) {
-    if (!table) return;
-    table.classList.add("ex-table-fixed");
-    let cg = table.querySelector("colgroup.ex-cols");
-    if (!cg) {
-      cg = document.createElement("colgroup");
-      cg.className = "ex-cols";
-      cg.innerHTML = "<col><col><col><col>";
-      table.insertBefore(cg, table.firstChild);
-    } else if (cg.children.length !== 4) {
-      cg.innerHTML = "<col><col><col><col>";
-    }
-  }
-
-  function ensureStyles() {
-    let s = document.getElementById("executorsAccordionCss");
-    if (!s) {
-      s = document.createElement("style");
-      s.id = "executorsAccordionCss";
-      document.head.appendChild(s);
-    }
-    if (s.dataset.layout === "dept-gp-proc-v5") return;
-    s.dataset.layout = "dept-gp-proc-v5";
-    s.textContent = `
-      #executorsCard .ex-view-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 12px}
-      #executorsCard .ex-table-scroll{overflow-x:auto;width:100%;border:1px solid #e2e8f0;border-radius:10px;background:#fff}
-      #${TABLE_ID}.ex-table-fixed{table-layout:fixed!important;width:100%;min-width:920px;border-collapse:separate;border-spacing:0}
-      #${TABLE_ID} thead th{
-        position:sticky;top:0;z-index:2;
-        background:#f1f5f9;color:#475569;font-size:12px;font-weight:700;
-        text-align:left;padding:10px 12px;border-bottom:2px solid #cbd5e1;
-        box-shadow:0 1px 0 #e2e8f0
-      }
-      #${TABLE_ID} td{padding:8px 12px;vertical-align:middle;border-bottom:1px solid #f1f5f9;line-height:1.35}
-      #${TABLE_ID} .ex-dept-hdr td{
-        background:linear-gradient(90deg,#dbeafe 0%,#eff6ff 100%);
-        color:#475569;font-weight:700;font-size:14px;
-        border-bottom:1px solid #93c5fd;border-top:3px solid #3b82f6
-      }
-      #${TABLE_ID} .ex-gp-hdr td{background:#f8fafc;color:#475569;font-weight:600}
-      #${TABLE_ID} .ex-dept-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-      #${TABLE_ID} .ex-gp-cell{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-left:12px;border-left:3px solid #cbd5e1;margin-left:2px}
-      #${TABLE_ID} .ex-proc-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
-      #${TABLE_ID} .ex-proc-item{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap}
-      #${TABLE_ID} .ex-proc-meta{font-size:12px;color:#64748b;margin-top:2px}
-      #${TABLE_ID} .ex-toggle{
-        display:inline-flex;align-items:center;justify-content:center;
-        width:26px;height:26px;border-radius:6px;cursor:pointer;user-select:none;
-        background:#fff;border:1px solid #cbd5e1;color:#334155;font-size:12px
-      }
-      #${TABLE_ID} .ex-toggle:hover{background:#e2e8f0}
-      #${TABLE_ID} .ex-chip{
-        display:inline-flex;align-items:center;gap:4px;
-        min-height:24px;padding:2px 10px;border-radius:999px;
-        background:#1e40af;color:#fff;font-size:12px;font-weight:600;white-space:nowrap
-      }
-      #${TABLE_ID} .ex-chip-muted{background:#64748b}
-      #${TABLE_ID} .ex-link{color:#1d4ed8;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
-      #${TABLE_ID} .ex-link:hover{color:#1e3a8a}
-      #${TABLE_ID} .ex-gp-label{font-weight:600;color:#475569}
-      #${TABLE_ID} .ex-unit-tag{font-size:12px;color:#475569}
-      #${TABLE_ID} td{overflow-wrap:anywhere;word-break:break-word}
-      #${TABLE_ID}.ex-table-fixed th:nth-child(1),#${TABLE_ID}.ex-table-fixed td:nth-child(1){width:16%}
-      #${TABLE_ID}.ex-table-fixed th:nth-child(2),#${TABLE_ID}.ex-table-fixed td:nth-child(2){width:26%}
-      #${TABLE_ID}.ex-table-fixed th:nth-child(3),#${TABLE_ID}.ex-table-fixed td:nth-child(3){width:28%}
-      #${TABLE_ID}.ex-table-fixed th:nth-child(4),#${TABLE_ID}.ex-table-fixed td:nth-child(4){width:30%}
-      body.theme-light #${TABLE_ID} .ex-dept-hdr td{background:linear-gradient(90deg,#dbeafe 0%,#eff6ff 100%)}
-    `;
-  }
-
   function splitUnitValues(v) {
     return String(v || "")
       .split(/[,;\n]/)
@@ -218,71 +66,98 @@
       .filter(Boolean);
   }
 
-  function mergeUnits(intoSet, raw) {
-    splitUnitValues(raw).forEach((u) => intoSet.add(u));
+  function gpLabelFromParts(no, name) {
+    if (typeof window.pvPairLabel === "function") {
+      return window.pvPairLabel(no, name) || name || no || "—";
+    }
+    const n = getText(no);
+    const t = getText(name);
+    return n ? `${n} ${t}`.trim() : t || "—";
   }
 
-  function unitsText(set) {
-    if (!set || !set.size) return "—";
-    return Array.from(set).sort((a, b) => a.localeCompare(b, "lv", { sensitivity: "base" })).join(", ");
+  function compareUnitLabel(a, b) {
+    const au = String(a || "");
+    const bu = String(b || "");
+    const aEmpty = au === UNIT_EMPTY_LABEL;
+    const bEmpty = bu === UNIT_EMPTY_LABEL;
+    if (aEmpty && !bEmpty) return 1;
+    if (!aEmpty && bEmpty) return -1;
+    return au.localeCompare(bu, "lv", { sensitivity: "base" });
   }
 
-  function resolveProcessNoFallback(processRows, procNo, procName) {
-    const direct = getText(procNo);
-    if (direct) return direct;
-    const targetName = getText(procName).toLowerCase();
-    if (!targetName) return "";
-    const hit = (processRows || []).find(
-      (r) => getText(r && r.process).toLowerCase() === targetName && getText(r && r.processNo)
+  function sameGpRow(a, b) {
+    return (
+      a.unit === b.unit &&
+      a.amats === b.amats &&
+      normKey(a.gpNo) === normKey(b.gpNo) &&
+      normKey(a.gpName) === normKey(b.gpName)
     );
-    return hit ? getText(hit.processNo) : "";
   }
 
-  function openProcessCard(processRows, procNo, procName) {
-    if (typeof window.openProcessEditorByProcNoOrName === "function") {
-      window.openProcessEditorByProcNoOrName(procNo, procName);
-      return;
-    }
-    const resolvedNo = resolveProcessNoFallback(processRows, procNo, procName);
-    const fallbackName = getText(procName);
-    if (!resolvedNo && !fallbackName) return;
-    if (typeof window.openProcessEditorByTaskProcNos === "function") {
-      window.openProcessEditorByTaskProcNos(fallbackName, resolvedNo);
-    }
+  function jomaLabelFromRow(row) {
+    const j = getText(row && row.gpJoma);
+    return j || JOMA_EMPTY_LABEL;
   }
 
-  function canEdit() {
-    if (typeof window.canEdit === "function") return window.canEdit();
-    const role = document.getElementById("roleSelect");
-    return !!(role && (role.value === "admin" || role.value === "admin_edit"));
+  function unitKeyFromLabel(unit) {
+    return normKey(unit) || "__empty__";
   }
 
-  /** deptKey → { department, deptKey, gpMap } */
-  function computeExecutors(processRows, catalogRows) {
-    const byDept = new Map();
+  function groupRowsByUnit(rows) {
+    const map = new Map();
+    rows.forEach((r) => {
+      const key = unitKeyFromLabel(r.unit);
+      if (!map.has(key)) map.set(key, { unit: r.unit, unitKey: key, rows: [] });
+      map.get(key).rows.push(r);
+    });
+    return Array.from(map.values()).sort((a, b) => compareUnitLabel(a.unit, b.unit));
+  }
 
-    const getDeptEntry = (deptRaw) => {
-      const display = getText(deptRaw) || DEPT_EMPTY_LABEL;
-      const key = normKey(display) || "__empty__";
-      if (!byDept.has(key)) {
-        byDept.set(key, { department: display, deptKey: key, gpMap: new Map() });
+  function ensureControls(card) {
+    if (!card || document.getElementById(BULK_BTN_ID)) return;
+    const controls = document.createElement("div");
+    controls.className = "ex-view-controls";
+    const bulk = document.createElement("button");
+    bulk.type = "button";
+    bulk.id = BULK_BTN_ID;
+    bulk.className = "secondary";
+    bulk.textContent = "Atvērt visas kartiņas";
+    controls.appendChild(bulk);
+    const stats = card.querySelector(".inline-stats");
+    if (stats) stats.insertAdjacentElement("afterend", controls);
+    else card.querySelector(".toolbar")?.insertAdjacentElement("afterend", controls);
+  }
+
+  function buildExecutorFlatRows(processRows, catalogRows) {
+    const byKey = new Map();
+
+    function pushRow(unitRaw, amatsRaw, gpNo, gpName, procNo, proc, gpJoma) {
+      const gpN = getText(gpName);
+      if (!gpN) return;
+      const unit = getText(unitRaw) || UNIT_EMPTY_LABEL;
+      const amats = getText(amatsRaw) || AMATS_EMPTY_LABEL;
+      const pn = getText(gpNo);
+      const pNo = getText(procNo);
+      const pName = getText(proc);
+      const joma = getText(gpJoma);
+      const key = [normKey(unit), normKey(amats), normKey(pn), normKey(gpN)].join("|");
+      if (byKey.has(key)) {
+        const prev = byKey.get(key);
+        if (joma && !getText(prev.gpJoma)) prev.gpJoma = joma;
+        if (pNo && !getText(prev.procNo)) prev.procNo = pNo;
+        if (pName && !getText(prev.proc)) prev.proc = pName;
+        return;
       }
-      return byDept.get(key);
-    };
-
-    const getGpEntry = (deptEntry, gpNo, gpName) => {
-      const gKey = `${normKey(gpNo)}¦${normKey(gpName)}`;
-      if (!deptEntry.gpMap.has(gKey)) {
-        deptEntry.gpMap.set(gKey, {
-          gpKey: gKey,
-          no: getText(gpNo),
-          name: getText(gpName),
-          units: new Set(),
-          processMap: new Map(),
-        });
-      }
-      return deptEntry.gpMap.get(gKey);
-    };
+      byKey.set(key, {
+        unit,
+        amats,
+        gpNo: pn,
+        gpName: gpN,
+        gpJoma: joma,
+        procNo: pNo,
+        proc: pName,
+      });
+    }
 
     const catalogByProc = new Map();
     (catalogRows || []).forEach((c) => {
@@ -293,279 +168,353 @@
     });
 
     (catalogRows || []).forEach((c) => {
-      const gpName = getText(c.type);
-      if (!gpName) return;
-      const deptEntry = getDeptEntry(c.department);
-      const gp = getGpEntry(deptEntry, c.typeNo, gpName);
-      mergeUnits(gp.units, c.unit);
-
-      const procNo = getText(c.procNo);
-      const proc = getText(c.process);
-      const pKey = `${normKey(procNo)}¦${normKey(proc)}`;
-      if (!gp.processMap.has(pKey)) {
-        gp.processMap.set(pKey, { procNo, proc, procKey: pKey, units: new Set() });
-      }
-      mergeUnits(gp.processMap.get(pKey).units, c.unit);
+      let units = splitUnitValues(c.unit);
+      if (!units.length) units = [""];
+      units.forEach((u) => {
+        pushRow(u, c.department, c.typeNo, c.type, c.procNo, c.process, c.darbibasJoma);
+      });
     });
 
     (processRows || []).forEach((p) => {
       const procNo = getText(p.processNo);
       const proc = getText(p.process);
       if (!procNo && !proc) return;
-      const linkedCatalog = catalogByProc.get(procNo) || [];
-      if (linkedCatalog.length) return;
-
+      if ((catalogByProc.get(procNo) || []).length) return;
       const gpNames = splitProductValues(p.products);
       if (!gpNames.length) return;
-      const deptEntry = getDeptEntry(p.executorDala || "");
-      gpNames.forEach((name) => {
-        const gp = getGpEntry(deptEntry, "", name);
-        mergeUnits(gp.units, p.executorPatstaviga);
-        const pKey = `${normKey(procNo)}¦${normKey(proc)}`;
-        if (!gp.processMap.has(pKey)) {
-          gp.processMap.set(pKey, { procNo, proc, procKey: pKey, units: new Set() });
-        }
-        mergeUnits(gp.processMap.get(pKey).units, p.executorPatstaviga);
+      let units = splitUnitValues(p.executorPatstaviga);
+      if (!units.length) units = [""];
+      units.forEach((u) => {
+        gpNames.forEach((name) => {
+          pushRow(u, p.executorDala, "", name, procNo, proc, p.darbibasJoma);
+        });
       });
     });
 
-    return Array.from(byDept.values()).sort((a, b) =>
-      String(a.department || "").localeCompare(String(b.department || ""), "lv", { sensitivity: "base" })
-    );
-  }
-
-  function hasAnyExecutorAccordionOpen() {
-    return executorDeptExpanded.size > 0;
-  }
-
-  function setAllExecutorAccordionsOpen(processRows, catalogRows, open) {
-    executorDeptExpanded.clear();
-    if (!open) return;
-    computeExecutors(processRows, catalogRows).forEach((d) => {
-      executorDeptExpanded.add(d.deptKey);
-    });
-  }
-
-  function collectDeptUnits(gpList) {
-    const all = new Set();
-    gpList.forEach((g) => {
-      if (g.units && g.units.forEach) g.units.forEach((u) => all.add(u));
-      if (!g.processMap || !g.processMap.forEach) return;
-      g.processMap.forEach((pr) => {
-        if (pr.units && pr.units.forEach) pr.units.forEach((u) => all.add(u));
+    const rows = Array.from(byKey.values());
+    rows.sort((a, b) => {
+      let c = compareUnitLabel(a.unit, b.unit);
+      if (c !== 0) return c;
+      c = String(a.amats).localeCompare(String(b.amats), "lv", { sensitivity: "base" });
+      if (c !== 0) return c;
+      c = gpLabelFromParts(a.gpNo, a.gpName).localeCompare(gpLabelFromParts(b.gpNo, b.gpName), "lv", {
+        sensitivity: "base",
       });
+      if (c !== 0) return c;
+      return jomaLabelFromRow(a).localeCompare(jomaLabelFromRow(b), "lv", { sensitivity: "base" });
     });
-    return all;
+
+    return rows;
   }
 
-  function fillProcessCell(td, processes, processRows, fallbackUnits) {
-    td.className = "ex-proc-cell";
-    td.textContent = "";
-    if (!processes.length) {
-      td.textContent = "—";
-      td.style.color = "#94a3b8";
-      return;
+  function rowSpanFrom(i, rows, sameFn) {
+    let n = 1;
+    while (i + n < rows.length && sameFn(rows[i], rows[i + n])) n += 1;
+    return n;
+  }
+
+  function syncExecutorsTableColumns(table) {
+    if (!table) return;
+    let tr = table.querySelector("thead tr");
+    if (!tr) return;
+    const colOrderKey = "exec-flat-merge-v3";
+    const thHtml = COL_DEFS.map(
+      (c) => `<th data-filter-label="${escHtml(c.filter)}">${escHtml(c.label)}</th>`
+    ).join("");
+    if (tr.children.length !== COL_DEFS.length || tr.dataset.colOrder !== colOrderKey) {
+      tr.innerHTML = thHtml;
+      tr.dataset.colOrder = colOrderKey;
+      tr.dataset.filtersReady = "";
+      if (table.dataset) table.dataset.exFiltersInit = "";
     }
-    const ul = document.createElement("ul");
-    ul.className = "ex-proc-list";
-    processes.forEach((pr) => {
-      const li = document.createElement("li");
-      li.className = "ex-proc-item";
-      const main = document.createElement("div");
-      const procLabel =
-        (typeof window.pvPairLabel === "function" ? window.pvPairLabel(pr.procNo, pr.proc) : [pr.procNo, pr.proc].filter(Boolean).join(" ")) ||
-        (window.pvEmptyMark || "–");
-      const link = document.createElement("span");
-      link.className = "ex-link";
-      link.textContent = procLabel;
-      link.title = "Atvērt procesa kartiņu";
-      link.addEventListener("click", () => openProcessCard(processRows, pr.procNo, pr.proc));
-      main.appendChild(link);
-      const pBtn = document.createElement("button");
-      pBtn.type = "button";
-      pBtn.className = "secondary";
-      pBtn.style.fontSize = "12px";
-      pBtn.textContent = "Procesa kartiņa";
-      pBtn.addEventListener("click", () => openProcessCard(processRows, pr.procNo, pr.proc));
-      main.appendChild(pBtn);
-      li.appendChild(main);
-      const procUnits = unitsText(pr.units);
-      const fb = unitsText(fallbackUnits);
-      if (procUnits && procUnits !== "—" && procUnits !== fb) {
-        const meta = document.createElement("div");
-        meta.className = "ex-proc-meta";
-        meta.textContent = "Patstāvīgā struktūrvienība (procesam): " + procUnits;
-        li.appendChild(meta);
-      }
-      ul.appendChild(li);
-    });
-    td.appendChild(ul);
   }
 
-  function bindToggle(el, fn) {
-    if (!el) return;
-    el.addEventListener("click", (e) => {
-      e.preventDefault();
-      fn();
+  function ensureMount(card) {
+    if (!card) return null;
+    ensureControls(card);
+    card.querySelector(".ex-table-scroll")?.remove();
+
+    let root = document.getElementById(ROOT_ID);
+    if (!root) {
+      root = document.createElement("div");
+      root.id = ROOT_ID;
+      root.className = "ex-parvalde-list";
+      card.appendChild(root);
+    }
+
+    let table = document.getElementById(TABLE_ID);
+    if (!table) {
+      table = document.createElement("table");
+      table.id = TABLE_ID;
+      table.className = "ex-export-table hidden";
+      table.setAttribute("aria-hidden", "true");
+      table.innerHTML = `<thead><tr>${COL_DEFS.map(
+        (c) => `<th>${escHtml(c.label)}</th>`
+      ).join("")}</tr></thead><tbody id="${ROWS_ID}"></tbody>`;
+      card.appendChild(table);
+    }
+    return root;
+  }
+
+  function ensureStyles() {
+    let s = document.getElementById("executorsAccordionCss");
+    if (!s) {
+      s = document.createElement("style");
+      s.id = "executorsAccordionCss";
+      document.head.appendChild(s);
+    }
+    if (s.dataset.layout === "exec-parvalde-cards-v1") return;
+    s.dataset.layout = "exec-parvalde-cards-v1";
+    s.textContent = `
+      #executorsCard .ex-view-controls{margin:8px 0 12px}
+      #executorsCard .ex-parvalde-list-heading{margin:0 0 10px;font-size:14px;font-weight:700;color:#334155}
+      #executorsCard .ex-parvalde-list{display:flex;flex-direction:column;gap:10px;width:100%}
+      #executorsCard .ex-parvalde-block{display:flex;flex-direction:column;gap:0;width:100%}
+      #executorsCard .ex-parvalde-picker{
+        display:flex;align-items:center;flex-wrap:wrap;gap:8px 12px;width:100%;text-align:left;
+        padding:14px 16px;border:2px solid #cbd5e1;border-radius:14px;background:#fff;
+        cursor:pointer;font:inherit;color:#475569;box-shadow:0 2px 6px rgba(15,23,42,.06)
+      }
+      #executorsCard .ex-parvalde-picker:hover{border-color:#93c5fd;background:#f8fafc}
+      #executorsCard .ex-parvalde-picker.ex-parvalde-picker--open{
+        border-radius:14px 14px 0 0;border-bottom:1px solid #cbd5e1;
+        border-color:#2563eb;background:linear-gradient(180deg,#eff6ff 0%,#fff 100%)
+      }
+      #executorsCard .ex-parvalde-picker-name{flex:1 1 200px;font-weight:700;font-size:14px;color:#334155}
+      #executorsCard .ex-parvalde-picker-meta{display:flex;flex-wrap:wrap;gap:6px}
+      #executorsCard .ex-unit-chip{
+        display:inline-flex;padding:2px 10px;border-radius:999px;background:#64748b;color:#fff;
+        font-size:12px;font-weight:600
+      }
+      #executorsCard .ex-parvalde-picker-hint{font-size:11px;color:#64748b}
+      #executorsCard .ex-parvalde-body{
+        border:2px solid #2563eb;border-top:0;border-radius:0 0 14px 14px;padding:14px 16px 16px;
+        background:#fff;margin:0 0 8px;box-shadow:0 4px 12px rgba(37,99,235,.1)
+      }
+      #executorsCard .ex-parvalde-body .ex-inner-scroll{overflow-x:auto}
+      #executorsCard .ex-inner-table{width:100%;min-width:720px;border-collapse:separate;border-spacing:0 6px}
+      #executorsCard .ex-inner-table thead th{
+        font-size:12px;font-weight:700;color:#475569;text-align:left;padding:8px 10px;
+        background:#f1f5f9;border-bottom:2px solid #cbd5e1
+      }
+      #executorsCard .ex-inner-table tbody tr.ex-exec-row-card td{
+        padding:10px 12px;vertical-align:top;border:1px solid #e2e8f0;background:#fff;color:#475569;line-height:1.35
+      }
+      #executorsCard .ex-inner-table tbody tr.ex-exec-row-card td:first-child{
+        border-left:4px solid #6366f1;border-radius:8px 0 0 8px
+      }
+      #executorsCard .ex-inner-table tbody tr.ex-exec-row-card td:last-child{border-radius:0 8px 8px 0}
+      #executorsCard .ex-inner-table td.ex-merged-cell{background:#f8fafc}
+      #executorsCard .ex-gp-label{font-weight:600;color:#475569}
+      #executorsCard .ex-link{color:#1d4ed8;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+      #executorsCard .ex-actions{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+      #executorsCard .ex-empty-hint{color:#94a3b8;font-size:13px;margin:0;padding:8px 0}
+      #executorsCard .ex-export-table.hidden{display:none!important}
+    `;
+  }
+
+  function canEdit() {
+    if (typeof window.canEdit === "function") return window.canEdit();
+    const role = document.getElementById("roleSelect");
+    if (window.PVRoles) return window.PVRoles.canEditFromSelectValue(role && role.value);
+    return !!(role && role.value === "admin");
+  }
+
+  function fillGpCell(td, row) {
+    td.innerHTML = `<div class="ex-gp-label">${escHtml(gpLabelFromParts(row.gpNo, row.gpName))}</div>`;
+    const actions = document.createElement("div");
+    actions.className = "ex-actions";
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "secondary";
+    btn.style.fontSize = "12px";
+    btn.textContent = "GP kartiņa";
+    btn.addEventListener("click", () => {
+      if (typeof window.openCatalogByProcessGp === "function") {
+        window.openCatalogByProcessGp(row.procNo, row.gpName);
+      }
     });
+    actions.appendChild(btn);
+    td.appendChild(actions);
+  }
+
+  function syncExportTable(rows) {
+    const tb = document.getElementById(ROWS_ID);
+    if (!tb) return;
+    tb.innerHTML = "";
+    rows.forEach((row) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML =
+        `<td>${escHtml(row.unit)}</td><td>${escHtml(row.amats)}</td>` +
+        `<td>${escHtml(gpLabelFromParts(row.gpNo, row.gpName))}</td>` +
+        `<td>${escHtml(jomaLabelFromRow(row))}</td>`;
+      tb.appendChild(tr);
+    });
+  }
+
+  function appendMergedRows(tbody, unitRows, unitLabel) {
+    unitRows.forEach((row, i) => {
+      const tr = document.createElement("tr");
+      tr.className = "ex-exec-row-card";
+      tr.dataset.filterHay = [
+        unitLabel,
+        row.amats,
+        gpLabelFromParts(row.gpNo, row.gpName),
+        jomaLabelFromRow(row),
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      const showAmats = i === 0 || unitRows[i - 1].amats !== row.amats;
+      const showGp = i === 0 || !sameGpRow(unitRows[i - 1], row);
+
+      if (showAmats) {
+        const td = document.createElement("td");
+        td.className = "ex-merged-cell";
+        td.rowSpan = rowSpanFrom(i, unitRows, (a, b) => a.amats === b.amats);
+        td.textContent = row.amats;
+        tr.appendChild(td);
+      }
+      if (showGp) {
+        const td = document.createElement("td");
+        td.className = "ex-merged-cell";
+        td.rowSpan = rowSpanFrom(i, unitRows, sameGpRow);
+        fillGpCell(td, row);
+        tr.appendChild(td);
+      }
+      const tdJoma = document.createElement("td");
+      tdJoma.textContent = jomaLabelFromRow(row);
+      tr.appendChild(tdJoma);
+      tbody.appendChild(tr);
+    });
+  }
+
+  function buildParvaldeBody(unitGroup) {
+    const body = document.createElement("div");
+    body.className = "ex-parvalde-body";
+    const unitRows = unitGroup.rows;
+    if (!unitRows.length) {
+      body.innerHTML = '<p class="ex-empty-hint">Nav saistītu ierakstu.</p>';
+      return body;
+    }
+    const scroll = document.createElement("div");
+    scroll.className = "ex-inner-scroll";
+    const table = document.createElement("table");
+    table.className = "ex-inner-table";
+    table.innerHTML = `<thead><tr>${INNER_COL_DEFS.map((c) => `<th>${escHtml(c.label)}</th>`).join("")}</tr></thead>`;
+    const tbody = document.createElement("tbody");
+    appendMergedRows(tbody, unitRows, unitGroup.unit);
+    table.appendChild(tbody);
+    scroll.appendChild(table);
+    body.appendChild(scroll);
+    return body;
   }
 
   function renderExecutorsView() {
     const card = document.getElementById("executorsCard");
     if (!card) return;
 
-    const table = ensureTable(card);
-    if (!table) return;
+    const root = ensureMount(card);
+    if (!root) return;
     ensureStyles();
 
-    const tb = document.getElementById(ROWS_ID);
-    if (!tb) return;
+    const processRows = typeof window.getProcessRows === "function" ? window.getProcessRows() : [];
+    const catalogRows = typeof window.getCatalogRows === "function" ? window.getCatalogRows() : [];
+    const rows = buildExecutorFlatRows(processRows, catalogRows);
+    const groups = groupRowsByUnit(rows);
+    syncExportTable(rows);
 
-    const p = typeof window.getProcessRows === "function" ? window.getProcessRows() : [];
-    const c = typeof window.getCatalogRows === "function" ? window.getCatalogRows() : [];
-    const departments = computeExecutors(p, c);
+    const gpSet = new Set();
+    rows.forEach((r) => gpSet.add(`${normKey(r.gpNo)}|${normKey(r.gpName)}`));
 
-    let totalGp = 0;
-    let totalProc = 0;
-    departments.forEach((d) => {
-      totalGp += d.gpMap.size;
-      d.gpMap.forEach((g) => {
-        totalProc += g.processMap.size;
-      });
-    });
     const elDept = document.getElementById("statExecutorsDeptCount");
     const elGp = document.getElementById("statExecutorsGpCount");
     const elProc = document.getElementById("statExecutorsProcLinks");
-    if (elDept) elDept.textContent = String(departments.length);
-    if (elGp) elGp.textContent = String(totalGp);
-    if (elProc) elProc.textContent = String(totalProc);
+    if (elDept) elDept.textContent = String(groups.length);
+    if (elGp) elGp.textContent = String(gpSet.size);
+    if (elProc) elProc.textContent = String(rows.length);
 
     const bulkBtn = document.getElementById(BULK_BTN_ID);
     if (bulkBtn && !bulkBtn.dataset.bound) {
       bulkBtn.addEventListener("click", () => {
-        const wantOpen = !hasAnyExecutorAccordionOpen();
-        const pp = typeof window.getProcessRows === "function" ? window.getProcessRows() : [];
-        const cc = typeof window.getCatalogRows === "function" ? window.getCatalogRows() : [];
-        setAllExecutorAccordionsOpen(pp, cc, wantOpen);
+        const openAll = executorUnitOpen.size < groups.length;
+        executorUnitOpen.clear();
+        if (openAll) groups.forEach((g) => executorUnitOpen.add(g.unitKey));
         renderExecutorsView();
       });
       bulkBtn.dataset.bound = "1";
     }
     if (bulkBtn) {
-      bulkBtn.textContent = hasAnyExecutorAccordionOpen() ? "Aizvērt visus akordeonus" : "Atvērt visus akordeonus";
+      bulkBtn.textContent =
+        executorUnitOpen.size > 0 ? "Aizvērt visas kartiņas" : "Atvērt visas kartiņas";
     }
 
-    tb.innerHTML = "";
+    root.innerHTML = "";
 
-    if (!departments.length) {
-      const empty = document.createElement("tr");
-      empty.innerHTML = `<td colspan="4" style="padding:16px;color:#64748b">Nav datu GP katalogā un procesu reģistrā.</td>`;
-      tb.appendChild(empty);
-      afterExecutorsRender(table);
+    if (!groups.length) {
+      root.innerHTML = '<p class="ex-empty-hint">Nav datu GP katalogā un procesu reģistrā.</p>';
+      afterExecutorsRender();
       return;
     }
 
-    departments.forEach((d) => {
-      const deptOpen = executorDeptExpanded.has(d.deptKey);
-      const gpList = Array.from(d.gpMap.values()).sort((a, b) =>
-        `${a.no} ${a.name}`.localeCompare(`${b.no} ${b.name}`, "lv", { sensitivity: "base" })
-      );
-      const procCount = gpList.reduce((acc, g) => acc + g.processMap.size, 0);
-      const deptUnits = collectDeptUnits(gpList);
+    const heading = document.createElement("h3");
+    heading.className = "ex-parvalde-list-heading";
+    heading.textContent = "Patstāvīgās struktūrvienības";
+    root.appendChild(heading);
 
-      const hdr = document.createElement("tr");
-      hdr.className = "ex-dept-hdr";
-      const toggleDept = () => {
-        if (executorDeptExpanded.has(d.deptKey)) executorDeptExpanded.delete(d.deptKey);
-        else executorDeptExpanded.add(d.deptKey);
+    groups.forEach((g) => {
+      const isOpen = executorUnitOpen.has(g.unitKey);
+      const gpCount = new Set(g.rows.map((r) => `${normKey(r.gpNo)}|${normKey(r.gpName)}`)).size;
+      const procCount = g.rows.length;
+
+      const block = document.createElement("div");
+      block.className = "ex-parvalde-block";
+      block.dataset.unitKey = g.unitKey;
+      block.dataset.filterHay = [
+        g.unit,
+        ...g.rows.map((r) => [r.amats, gpLabelFromParts(r.gpNo, r.gpName), jomaLabelFromRow(r)].join(" ")),
+      ]
+        .join(" ")
+        .toLowerCase();
+
+      const picker = document.createElement("button");
+      picker.type = "button";
+      picker.className = "ex-parvalde-picker" + (isOpen ? " ex-parvalde-picker--open" : "");
+      const name = document.createElement("span");
+      name.className = "ex-parvalde-picker-name";
+      name.textContent = g.unit;
+      const meta = document.createElement("span");
+      meta.className = "ex-parvalde-picker-meta";
+      meta.innerHTML =
+        `<span class="ex-unit-chip">${gpCount} GP</span><span class="ex-unit-chip">${procCount} saites</span>`;
+      const hint = document.createElement("span");
+      hint.className = "ex-parvalde-picker-hint";
+      hint.textContent = isOpen ? "Aizvērt kartiņu" : "Atvērt kartiņu";
+      picker.appendChild(name);
+      picker.appendChild(meta);
+      picker.appendChild(hint);
+      picker.addEventListener("click", () => {
+        if (executorUnitOpen.has(g.unitKey)) executorUnitOpen.delete(g.unitKey);
+        else executorUnitOpen.add(g.unitKey);
         renderExecutorsView();
-      };
-      const cParvalde = document.createElement("td");
-      cParvalde.className = "ex-unit-tag";
-      cParvalde.textContent = unitsText(deptUnits);
-      const cDept = document.createElement("td");
-      cDept.innerHTML = `
-        <div class="ex-dept-title">
-          <span class="ex-toggle ex-dept-toggle" title="Atvērt/aizvērt">${deptOpen ? "▾" : "▸"}</span>
-          <span>${escHtml(d.department)}</span>
-        </div>
-      `;
-      bindToggle(cDept.querySelector(".ex-dept-toggle"), toggleDept);
-      const cGp = document.createElement("td");
-      cGp.innerHTML = `<span class="ex-chip ex-chip-muted">${gpList.length} GP</span>`;
-      const cProc = document.createElement("td");
-      cProc.innerHTML = `<span class="ex-chip ex-chip-muted">${procCount} procesi</span>`;
-      hdr.appendChild(cParvalde);
-      hdr.appendChild(cDept);
-      hdr.appendChild(cGp);
-      hdr.appendChild(cProc);
-      tb.appendChild(hdr);
-
-      if (!deptOpen) return;
-
-      gpList.forEach((g) => {
-        const processes = Array.from(g.processMap.values()).sort((a, b) =>
-          `${a.procNo} ${a.proc}`.localeCompare(`${b.procNo} ${b.proc}`, "lv", { sensitivity: "base" })
-        );
-
-        const gtr = document.createElement("tr");
-        gtr.className = "ex-gp-hdr";
-        const gpLabel =
-          typeof window.pvPairLabel === "function" ? window.pvPairLabel(g.no, g.name) || g.name : g.no ? `${g.no} ${g.name}` : g.name;
-
-        const tParvalde = document.createElement("td");
-        tParvalde.className = "ex-unit-tag";
-        tParvalde.textContent = "";
-
-        const tDept = document.createElement("td");
-        tDept.textContent = "";
-
-        const tGp = document.createElement("td");
-        tGp.innerHTML = `
-          <div class="ex-gp-cell">
-            <span class="ex-gp-label">${escHtml(gpLabel)}</span>
-          </div>
-        `;
-        const gpBtn = document.createElement("button");
-        gpBtn.type = "button";
-        gpBtn.className = "secondary";
-        gpBtn.style.fontSize = "12px";
-        gpBtn.textContent = "GP kartiņa";
-        gpBtn.addEventListener("click", () => {
-          const procNo = processes[0] ? processes[0].procNo : "";
-          if (typeof window.openCatalogByProcessGp === "function") {
-            window.openCatalogByProcessGp(procNo, g.name);
-          }
-        });
-        tGp.querySelector(".ex-gp-cell").appendChild(gpBtn);
-
-        const tProc = document.createElement("td");
-        fillProcessCell(tProc, processes, p, g.units);
-
-        gtr.appendChild(tParvalde);
-        gtr.appendChild(tDept);
-        gtr.appendChild(tGp);
-        gtr.appendChild(tProc);
-        tb.appendChild(gtr);
       });
+      block.appendChild(picker);
+
+      if (isOpen) {
+        block.appendChild(buildParvaldeBody(g));
+      }
+
+      root.appendChild(block);
     });
 
-    afterExecutorsRender(table);
-    lockExecutorsTableLayout(table);
+    afterExecutorsRender();
   }
 
   let executorsDbSyncTimer = null;
-  function afterExecutorsRender(table) {
+  function afterExecutorsRender() {
     if (typeof window.applyExecutorsFilters === "function") {
       try {
         window.applyExecutorsFilters();
-      } catch (_) {}
-    }
-    if (!table || table.dataset.exFiltersInit === "1") return;
-    table.dataset.exFiltersInit = "1";
-    if (typeof window.syncExecutorsColumnFilters === "function") {
-      try {
-        window.syncExecutorsColumnFilters(true);
       } catch (_) {}
     }
   }
@@ -586,20 +535,6 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     try {
-      const tasksCard = document.getElementById("tasksViewCard");
-      const tasksTitle = tasksCard ? tasksCard.querySelector(".section-title") : null;
-      if (tasksTitle && tasksTitle.textContent && tasksTitle.textContent.trim() === "Uzdevumu skats") {
-        tasksTitle.textContent = "Uzdevumi";
-      }
-
-      const settingsInner = document.getElementById("settingsInner");
-      const settingsBtn = document.getElementById("settingsToggleBtn");
-      if (settingsInner && settingsBtn) {
-        settingsInner.classList.add("hidden");
-        settingsBtn.setAttribute("aria-expanded", "false");
-        settingsBtn.textContent = "Atvērt";
-      }
-
       const card = document.getElementById("executorsCard");
       if (!card) return;
       const toggleBtn = document.getElementById("executorsInlineEditToggleBtn");
@@ -626,4 +561,3 @@
     } catch (_) {}
   });
 })();
-

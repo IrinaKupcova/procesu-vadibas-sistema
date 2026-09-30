@@ -48,6 +48,11 @@
     return canEditForRole(roleKey);
   }
 
+  /** Vienota UI rezerve — ja `window.canEdit` vēl nav ielādēts. */
+  function canEditFromSelectValue(rawValue) {
+    return canEditForRole(normalizeRole(rawValue));
+  }
+
   function migrateRoleMap(map) {
     const out = {};
     let changed = false;
@@ -68,6 +73,7 @@
     canEditForRole,
     canEditGpForRole,
     canDeleteForRole,
+    canEditFromSelectValue,
     migrateRoleMap,
   };
 })();

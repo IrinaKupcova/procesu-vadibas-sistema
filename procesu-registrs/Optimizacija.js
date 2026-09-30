@@ -1,5 +1,5 @@
 /**
- * Optimizācija — pasākumu saraksts, CRUD, aktuālie / neaktuālie (pabeigtie).
+ * Optimizācija — pasākumu saraksts, CRUD, aktuālie / neaktuālie (pabeigtie, atceltie).
  */
 (function () {
   "use strict";
@@ -9,18 +9,20 @@
   const STATUS_ID = "optimizacijaStatus";
   const MODAL_ID = "optimizacijaEditorModal";
   const FORM_ID = "optimizacijaEditorForm";
-  const FORM_VERSION = "3";
-  const ATBILDIGIE_ROOT_ID = "optFormAtbildigieRoot";
+  const FORM_VERSION = "5";
+  const BULK_BTN_ID = "optimizacijaBulkCardsBtn";
 
   const STATUS = {
     nav_uzsakts: { label: "Nav uzsākts", cls: "opt-st-not-started" },
     izpilde: { label: "Izpildē", cls: "opt-st-in-progress" },
     pabeigts: { label: "Pabeigts", cls: "opt-st-done" },
+    atcelts: { label: "Atcelts", cls: "opt-st-cancelled" },
   };
 
   let dbRows = [];
   let dbWarning = "";
-  let expandedKey = null;
+  const procCardOpen = new Set();
+  const measureCardOpen = new Set();
   let cachedActiveGroups = [];
   let cachedInactiveGroups = [];
   let cachedActiveCount = 0;
@@ -51,7 +53,8 @@
   function canEdit() {
     if (typeof window.canEdit === "function") return window.canEdit();
     const rs = $("roleSelect");
-    return rs && (rs.value === "admin" || rs.value === "admin_edit");
+    if (window.PVRoles) return window.PVRoles.canEditFromSelectValue(rs && rs.value);
+    return !!(rs && rs.value === "admin");
   }
 
   function statusMsg(text, kind) {
@@ -88,6 +91,7 @@
     const k = normKey(raw).replace(/[\s-]+/g, "_");
     if (!k || k === "nav_uzsakts" || k.includes("nav_uz") || k.includes("neuzsak")) return "nav_uzsakts";
     if (k === "pabeigts" || k.includes("pabeig")) return "pabeigts";
+    if (k === "atcelts" || k.includes("atcel")) return "atcelts";
     if (k === "izpilde" || k.includes("izpild") || k.includes("procesa")) return "izpilde";
     return "nav_uzsakts";
   }
@@ -98,7 +102,8 @@
   }
 
   function isInactive(raw) {
-    return normStatus(raw) === "pabeigts";
+    const s = normStatus(raw);
+    return s === "pabeigts" || s === "atcelts";
   }
 
   function pick(obj, keys) {
@@ -143,26 +148,56 @@
     return [defaultAtbildigais()];
   }
 
+  function atbildigaisKontaktsFromRaw(p) {
+    const direct = pick(p, ["atbildigaisKontakts", "atbildigais_kontakts", "kontaktpersona", "atbildigais"]);
+    if (direct) return direct;
+    return formatAtbildigieText(normalizeAtbildigieFromRaw(p));
+  }
+
   function normalizePasakums(raw, parent, index) {
     const p = raw && typeof raw === "object" ? raw : {};
     const id = pick(p, ["id", "pasakumaId", "pasakuma_id"]) || `${parent.id || "x"}_${index}`;
+    const planLegacy = pick(p, [
+      "planotaisIeviesanasTermins",
+      "planotais_ieviesanas_termins",
+      "planotaisIzpildesDatums",
+      "planotais_izpildes_datums",
+      "plannedDate",
+      "planDatums",
+    ]);
+    const ievLegacy = pick(p, [
+      "ieviesanasTermins",
+      "ieviesanas_termins",
+      "izpildesDatums",
+      "izpildes_datums",
+      "completedDate",
+      "endDate",
+    ]);
+    const ieraksta = pick(p, ["ierakstaDatums", "ieraksta_datums", "createdAt", "created_at"]) || parent.updatedAt || "";
     return {
       id,
       nosaukums: pick(p, ["nosaukums", "name", "title", "pasakumaNosaukums"]),
-      uzsaksanasDatums: pick(p, ["uzsaksanasDatums", "uzsaksanas_datums", "startDate", "datums"]),
-      planotaisIzpildesDatums: pick(p, [
-        "planotaisIzpildesDatums",
-        "planotais_izpildes_datums",
-        "plannedDate",
-        "planDatums",
-      ]),
-      izpildesDatums: pick(p, ["izpildesDatums", "izpildes_datums", "completedDate", "endDate"]),
-      statuss: pick(p, ["statuss", "status", "Statuss"]) || "nav_uzsakts",
-      atbildigie: normalizeAtbildigieFromRaw(p),
-      pieteiktsRz: pick(p, ["pieteiktsRz", "pieteikts_rz", "pietiekosaRz", "pietiekotaRz", "pietiekota_rz", "rz", "RZ"]),
+      merkis: pick(p, ["merkis", "Mērķis", "merkisText", "target"]),
+      ierakstaDatums: ieraksta,
       apraksts: pick(p, ["apraksts", "Apraksts", "description"]),
-      izpildesGaita: pick(p, ["izpildesGaita", "izpildes_gaita", "gaita"]),
-      createdAt: pick(p, ["createdAt", "created_at"]) || parent.updatedAt || "",
+      kpi: pick(p, ["kpi", "KPI"]),
+      ieguvums: pick(p, ["ieguvums", "optimizacijasIeguvums", "optimizācijas_ieguve"]),
+      atbildigaisKontakts: atbildigaisKontaktsFromRaw(p),
+      izpildesGaita: pick(p, ["izpildesGaita", "izpildes_gaita", "gaita", "informacijaParIzpildi"]),
+      pieteiktsRz: pick(p, ["pieteiktsRz", "pieteikts_rz", "pieteiktieRz", "pietiekosaRz", "rz", "RZ"]),
+      saistitasIs: pick(p, ["saistitasIs", "saistitas_is", "saistitāsIS", "relatedIs"]),
+      planotaisIeviesanasTermins: planLegacy,
+      ieviesanasTermins: ievLegacy,
+      uzsaksanasDatums: pick(p, ["uzsaksanasDatums", "uzsaksanas_datums", "startDate", "datums"]),
+      statuss: normStatus(pick(p, ["statuss", "status", "Statuss"]) || "nav_uzsakts"),
+      atcelsanasIemesls: pick(p, [
+        "atcelsanasIemesls",
+        "atcelsanas_iemesls",
+        "atcelšanasIemesls",
+        "cancelReason",
+      ]),
+      atbildigie: normalizeAtbildigieFromRaw(p),
+      createdAt: ieraksta,
       procNo: parent.procNo,
       process: parent.process,
       gpNo: parent.gpNo,
@@ -173,9 +208,9 @@
 
   function pasakumsToRaw(p) {
     const status = normStatus(p.statuss);
-    let izpildesDatums = p.izpildesDatums || "";
-    if (status === "pabeigts" && !izpildesDatums) {
-      izpildesDatums = new Date().toISOString().slice(0, 10);
+    let ievTerm = p.ieviesanasTermins || p.izpildesDatums || "";
+    if (status === "pabeigts" && !ievTerm) {
+      ievTerm = new Date().toISOString().slice(0, 10);
     }
     const atbildigie = (Array.isArray(p.atbildigie) ? p.atbildigie : [])
       .map((a) => ({
@@ -184,31 +219,77 @@
         vardsUzvards: String(a.vardsUzvards || "").trim() || null,
       }))
       .filter((a) => a.parvalde || a.dala || a.vardsUzvards);
+    const ieraksta = p.ierakstaDatums || p.createdAt || new Date().toISOString();
     return {
       id: p.id,
       nosaukums: p.nosaukums,
-      uzsaksanasDatums: p.uzsaksanasDatums || null,
-      planotaisIzpildesDatums: p.planotaisIzpildesDatums || null,
-      izpildesDatums: izpildesDatums || null,
-      statuss: status,
-      atbildigie,
-      pieteiktsRz: String(p.pieteiktsRz || "").trim() || null,
+      merkis: String(p.merkis || "").trim() || null,
+      ierakstaDatums: ieraksta,
       apraksts: String(p.apraksts || "").trim() || null,
+      kpi: String(p.kpi || "").trim() || null,
+      ieguvums: String(p.ieguvums || "").trim() || null,
+      atbildigaisKontakts: String(p.atbildigaisKontakts || "").trim() || null,
       izpildesGaita: String(p.izpildesGaita || "").trim() || null,
-      createdAt: p.createdAt || new Date().toISOString(),
+      pieteiktsRz: String(p.pieteiktsRz || "").trim() || null,
+      saistitasIs: String(p.saistitasIs || "").trim() || null,
+      planotaisIeviesanasTermins: p.planotaisIeviesanasTermins || null,
+      ieviesanasTermins: ievTerm || null,
+      uzsaksanasDatums: p.uzsaksanasDatums || null,
+      planotaisIzpildesDatums: p.planotaisIeviesanasTermins || null,
+      izpildesDatums: ievTerm || null,
+      statuss: status,
+      atcelsanasIemesls:
+        status === "atcelts" ? String(p.atcelsanasIemesls || "").trim() || null : null,
+      atbildigie,
+      createdAt: ieraksta,
     };
   }
 
   function listDate(p) {
-    return p.uzsaksanasDatums || p.planotaisIzpildesDatums || p.createdAt || "";
+    return p.ierakstaDatums || p.planotaisIeviesanasTermins || p.createdAt || "";
   }
 
   function sortDateMs(p) {
     return (
-      parseDateMs(p.uzsaksanasDatums) ||
-      parseDateMs(p.planotaisIzpildesDatums) ||
+      parseDateMs(p.ierakstaDatums) ||
+      parseDateMs(p.planotaisIeviesanasTermins) ||
+      parseDateMs(p.ieviesanasTermins) ||
       parseDateMs(p.createdAt)
     );
+  }
+
+  function procKeyFromParts(procNo, process) {
+    return `${normKey(procNo)}|${normKey(process)}`;
+  }
+
+  function gpKeyFromParts(procNo, process, gpNo, gpName) {
+    return `${procKeyFromParts(procNo, process)}|${normKey(gpNo)}|${normKey(gpName)}`;
+  }
+
+  function pairKeyFromParts(procNo, process, gpNo, gpName) {
+    return gpKeyFromParts(procNo, process, gpNo, gpName);
+  }
+
+  function flattenProcGpPairs(groups) {
+    const pairs = [];
+    (groups || []).forEach((proc) => {
+      (proc.gps || []).forEach((gp) => {
+        const items = gp.items || [];
+        let latestMs = 0;
+        items.forEach((m) => {
+          latestMs = Math.max(latestMs, sortDateMs(m));
+        });
+        pairs.push({
+          procNo: proc.procNo,
+          process: proc.process,
+          gpNo: gp.gpNo,
+          gpName: gp.gpName,
+          items,
+          latestMs,
+        });
+      });
+    });
+    return pairs.sort((a, b) => b.latestMs - a.latestMs);
   }
 
   function measureKey(p) {
@@ -329,8 +410,15 @@
     return items.map((a) => atbildigaisLine(a)).join("; ");
   }
 
+  function displayText(v) {
+    if (v === null || v === undefined) return "";
+    const t = String(v).trim();
+    if (!t || t === "undefined" || t === "null") return "";
+    return t;
+  }
+
   function formatMultilineHtml(text) {
-    const t = String(text || "").trim();
+    const t = displayText(text);
     if (!t) return '<span class="val muted">—</span>';
     return `<div class="val opt-pre">${esc(t)}</div>`;
   }
@@ -357,10 +445,9 @@
     s.textContent = `
       #${LIST_ID} { margin-top:12px; display:flex; flex-direction:column; gap:20px; }
       .opt-section-hdr {
-        font-size:15px; font-weight:700; color:#1e293b; margin:0 0 8px;
+        font-size:17px; font-weight:700; color:#1e293b; margin:0 0 10px;
         padding-bottom:6px; border-bottom:2px solid #cbd5e1;
       }
-      .opt-section-hdr.inactive { color:#64748b; border-bottom-color:#e2e8f0; }
       .opt-proc-group { border:1px solid #cbd5e1; border-radius:10px; overflow:hidden; background:#fff; margin-bottom:12px; }
       .opt-proc-hdr {
         padding:10px 14px; background:#eef2ff; font-weight:700; color:#1e3a8a; font-size:14px;
@@ -393,6 +480,8 @@
       .opt-st-not-started { background:#e2e8f0; color:#475569; }
       .opt-st-in-progress { background:#fef3c7; color:#b45309; }
       .opt-st-done { background:#dcfce7; color:#15803d; }
+      .opt-st-cancelled { background:#fee2e2; color:#b91c1c; }
+      #optimizacijaCard .opt-atcel-row.hidden { display:none; }
       .opt-detail-row td { padding:0; border-top:none; background:#f8fafc; }
       .opt-detail-card {
         margin:0 12px 12px; padding:14px; border:1px solid #cbd5e1; border-radius:8px; background:#fff;
@@ -452,6 +541,81 @@
       }
       #${STATUS_ID}.warn { color:#b45309; }
       #${STATUS_ID}.err { color:#b91c1c; }
+      #optimizacijaCard .toolbar .right {
+        display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:8px;
+      }
+      #optimizacijaCard .ex-view-controls { margin:8px 0 12px; display:flex; flex-wrap:wrap; gap:8px; }
+      #optimizacijaCard .ex-parvalde-list-heading { margin:0 0 10px; font-size:14px; font-weight:700; color:#334155; }
+      #optimizacijaCard .ex-parvalde-list { display:flex; flex-direction:column; gap:12px; width:100%; }
+      #optimizacijaCard .opt-proc-block { display:flex; flex-direction:column; width:100%; }
+      #optimizacijaCard .opt-proc-picker {
+        display:flex; align-items:center; flex-wrap:wrap; gap:8px 12px; width:100%; text-align:left;
+        padding:14px 16px; border:2px solid #cbd5e1; border-radius:14px; background:#fff;
+        cursor:pointer; font:inherit; color:#475569; box-shadow:0 2px 6px rgba(15,23,42,.06);
+      }
+      #optimizacijaCard .opt-proc-picker:hover { border-color:#93c5fd; background:#f8fafc; }
+      #optimizacijaCard .opt-proc-picker.opt-proc-picker--open {
+        border-radius:14px 14px 0 0; border-color:#2563eb;
+        background:linear-gradient(180deg,#eff6ff 0%,#fff 100%);
+      }
+      #optimizacijaCard .opt-proc-title { flex:1 1 200px; font-weight:700; font-size:14px; color:#1e3a8a; }
+      #optimizacijaCard .opt-proc-meta { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+      #optimizacijaCard .ex-unit-chip {
+        display:inline-flex; padding:2px 10px; border-radius:999px; background:#64748b; color:#fff;
+        font-size:12px; font-weight:600;
+      }
+      #optimizacijaCard .opt-card-hint { font-size:11px; color:#64748b; }
+      #optimizacijaCard .opt-proc-body {
+        border:2px solid #2563eb; border-top:0; border-radius:0 0 14px 14px; padding:14px 16px 16px;
+        background:#fff; margin:0 0 8px; box-shadow:0 4px 12px rgba(37,99,235,.1);
+        display:flex; flex-direction:column; gap:12px;
+      }
+      #optimizacijaCard .opt-gp-row {
+        padding:12px 14px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc;
+        display:flex; flex-direction:column; gap:10px; margin-left:4px;
+      }
+      #optimizacijaCard .opt-gp-title { font-weight:600; font-size:13px; color:#334155; line-height:1.4; }
+      #optimizacijaCard .opt-gp-measure-list { display:flex; flex-direction:column; gap:8px; width:100%; }
+      #optimizacijaCard .opt-measure-open-btn {
+        display:flex; align-items:center; justify-content:space-between; gap:10px; width:100%;
+        font-size:12px; font-weight:600; text-align:left; line-height:1.35; padding:10px 14px;
+        background:#1e3a8a; color:#fff; border:1px solid #1e40af; border-radius:10px;
+      }
+      #optimizacijaCard .opt-measure-open-btn:hover {
+        background:#1d4ed8; border-color:#2563eb; color:#fff;
+      }
+      #optimizacijaCard .opt-measure-open-main { flex:1 1 auto; min-width:0; color:#fff; }
+      #optimizacijaCard .opt-measure-open-meta {
+        display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-end; gap:6px; flex-shrink:0;
+      }
+      #optimizacijaCard .opt-measure-open-btn .opt-measure-open-date {
+        font-weight:500; color:rgba(255,255,255,.88); font-size:11px; white-space:nowrap;
+      }
+      #optimizacijaCard .opt-measure-open-btn .opt-status-pill { font-size:10px; padding:2px 8px; }
+      #optimizacijaCard .inactive-block .opt-measure-open-btn {
+        background:#334155; border-color:#475569;
+      }
+      #optimizacijaCard .inactive-block .opt-measure-open-btn:hover {
+        background:#475569; border-color:#64748b;
+      }
+      #optimizacijaCard .opt-create-primary {
+        background:#2563eb; color:#fff; border:1px solid #1d4ed8; font-weight:700;
+      }
+      #optimizacijaCard .opt-create-primary:hover:not(:disabled) { background:#1d4ed8; }
+      #optimizacijaCard .opt-create-primary:disabled { opacity:.55; cursor:not-allowed; }
+      #optimizacijaCard .opt-measure-open-btn--active {
+        background:#2563eb; border-color:#93c5fd; color:#fff;
+        box-shadow:0 0 0 2px rgba(147,197,253,.65);
+      }
+      #optimizacijaCard .inactive-block .opt-measure-open-btn--active {
+        background:#475569; border-color:#94a3b8;
+        box-shadow:0 0 0 2px rgba(148,163,184,.5);
+      }
+      #optimizacijaCard .opt-measure-expanded {
+        border:2px solid #6366f1; border-radius:12px; padding:14px; background:#fff;
+      }
+      #optimizacijaCard .opt-add-measure-btn { font-size:12px; }
+      #optimizacijaCard .opt-section-hdr { margin-top:4px; }
     `;
     document.head.appendChild(s);
   }
@@ -465,15 +629,25 @@
       right.className = "right editor-actions";
       toolbar.appendChild(right);
     }
+    let controls = card.querySelector(".ex-view-controls");
+    if (!controls) {
+      controls = document.createElement("div");
+      controls.className = "ex-view-controls";
+      const statusEl = $(STATUS_ID);
+      if (statusEl) statusEl.insertAdjacentElement("afterend", controls);
+      else toolbar.insertAdjacentElement("afterend", controls);
+    }
     let btn = $("optimizacijaCreateBtn");
     if (!btn) {
       btn = document.createElement("button");
       btn.type = "button";
       btn.id = "optimizacijaCreateBtn";
-      btn.className = "secondary";
-      btn.textContent = "Izveidot jaunu optimizācijas pasākumu";
+      right.appendChild(btn);
+    } else if (btn.parentElement !== right) {
       right.appendChild(btn);
     }
+    btn.className = "opt-create-primary";
+    btn.textContent = "+ Jauns optimizācijas pasākums";
     btn.onclick = (ev) => {
       ev.preventDefault();
       ev.stopPropagation();
@@ -482,65 +656,33 @@
     const editable = canEdit();
     btn.disabled = !editable;
     btn.classList.remove("hidden");
-    btn.title = editable ? "" : "Pieejams tikai lomai «administrators (labot)»";
-  }
+    btn.title = editable ? "" : "Pieejams tikai lomai «Administrators»";
 
-  function renderAtbildigieRow(a, idx, showRemove) {
-    return `
-      <div class="opt-atb-row" data-atb-idx="${idx}">
-        <input type="text" class="opt-atb-parvalde" placeholder="Patstāvīgā struktūrvienība" value="${esc(a.parvalde || "")}" />
-        <input type="text" class="opt-atb-dala" placeholder="Daļa" value="${esc(a.dala || "")}" />
-        <input type="text" class="opt-atb-name" placeholder="Vārds, uzvārds" value="${esc(a.vardsUzvards || "")}" />
-        <button type="button" class="secondary opt-atb-rm" title="Noņemt"${showRemove ? "" : ' style="visibility:hidden"'}>×</button>
-      </div>
-    `;
-  }
-
-  function populateAtbildigieForm(list) {
-    const root = $(ATBILDIGIE_ROOT_ID);
-    if (!root) return;
-    const items = Array.isArray(list) && list.length ? list : [defaultAtbildigais()];
-    root.innerHTML = items
-      .map((a, idx) => renderAtbildigieRow(a, idx, items.length > 1))
-      .join("");
-    wireAtbildigieRows(root);
-  }
-
-  function wireAtbildigieRows(root) {
-    root.querySelectorAll(".opt-atb-rm").forEach((btn) => {
-      btn.onclick = () => {
-        const rows = root.querySelectorAll(".opt-atb-row");
-        if (rows.length <= 1) return;
-        btn.closest(".opt-atb-row")?.remove();
-        root.querySelectorAll(".opt-atb-row").forEach((row, idx) => {
-          row.setAttribute("data-atb-idx", String(idx));
-          const rm = row.querySelector(".opt-atb-rm");
-          if (rm) rm.style.visibility = root.querySelectorAll(".opt-atb-row").length > 1 ? "visible" : "hidden";
-        });
-      };
-    });
-  }
-
-  function addAtbildigaisRow() {
-    const root = $(ATBILDIGIE_ROOT_ID);
-    if (!root) return;
-    const current = collectAtbildigieFromForm();
-    current.push(defaultAtbildigais());
-    populateAtbildigieForm(current);
-  }
-
-  function collectAtbildigieFromForm() {
-    const root = $(ATBILDIGIE_ROOT_ID);
-    if (!root) return [defaultAtbildigais()];
-    const out = [];
-    root.querySelectorAll(".opt-atb-row").forEach((row) => {
-      out.push({
-        parvalde: (row.querySelector(".opt-atb-parvalde")?.value || "").trim(),
-        dala: (row.querySelector(".opt-atb-dala")?.value || "").trim(),
-        vardsUzvards: (row.querySelector(".opt-atb-name")?.value || "").trim(),
+    if (!document.getElementById(BULK_BTN_ID)) {
+      const bulk = document.createElement("button");
+      bulk.type = "button";
+      bulk.id = BULK_BTN_ID;
+      bulk.className = "secondary";
+      bulk.textContent = "Atvērt visas kartiņas";
+      controls.appendChild(bulk);
+    }
+    const bulkBtn = $(BULK_BTN_ID);
+    if (bulkBtn && !bulkBtn.dataset.bound) {
+      bulkBtn.dataset.bound = "1";
+      bulkBtn.addEventListener("click", () => {
+        const procs = (cachedActiveGroups || []).concat(cachedInactiveGroups || []);
+        const openAll = procCardOpen.size < procs.length;
+        procCardOpen.clear();
+        measureCardOpen.clear();
+        if (openAll) {
+          procs.forEach((p) => procCardOpen.add(procKeyFromParts(p.procNo, p.process)));
+        }
+        paintList($(LIST_ID));
       });
-    });
-    return out.length ? out : [defaultAtbildigais()];
+    }
+    if (bulkBtn) {
+      bulkBtn.textContent = procCardOpen.size > 0 ? "Aizvērt visas kartiņas" : "Atvērt visas kartiņas";
+    }
   }
 
   function ensureEditorModal() {
@@ -557,53 +699,73 @@
         <form id="${FORM_ID}">
           <div class="opt-form-grid">
             <div class="opt-form-span2">
-              <label for="optFormProc">Process *</label>
+              <label for="optFormProc">Procesa Nr. un process *</label>
               <select id="optFormProc" required></select>
             </div>
             <div class="opt-form-span2">
-              <label for="optFormGp">Galaprodukts (GP) *</label>
+              <label for="optFormGp">GP numurs un galaprodukts *</label>
               <select id="optFormGp" required></select>
             </div>
             <div class="opt-form-span2">
-              <label for="optFormNosaukums">Pasākuma nosaukums *</label>
-              <input id="optFormNosaukums" type="text" required />
+              <label for="optFormNosaukums">Optimizācijas pasākuma nosaukums *</label>
+              <textarea id="optFormNosaukums" rows="2" required></textarea>
+            </div>
+            <div class="opt-form-span2">
+              <label for="optFormMerits">Mērķis</label>
+              <textarea id="optFormMerits" rows="3"></textarea>
             </div>
             <div>
-              <label for="optFormUzsak">Pasākuma uzsākšanas datums</label>
-              <input id="optFormUzsak" type="date" />
+              <label for="optFormIeraksta">Ieraksta datums</label>
+              <input id="optFormIeraksta" type="date" readonly tabindex="-1" style="background:#f8fafc" />
             </div>
             <div>
-              <label for="optFormPlans">Plānotais izpildes datums</label>
-              <input id="optFormPlans" type="date" />
-            </div>
-            <div>
-              <label for="optFormIzpilde">Izpildes datums</label>
-              <input id="optFormIzpilde" type="date" />
-            </div>
-            <div>
-              <label for="optFormStatuss">Statuss *</label>
-              <select id="optFormStatuss" required>
+              <label for="optFormStatuss">Statuss</label>
+              <select id="optFormStatuss">
                 <option value="nav_uzsakts">Nav uzsākts</option>
                 <option value="izpilde">Izpildē</option>
                 <option value="pabeigts">Pabeigts</option>
+                <option value="atcelts">Atcelts</option>
               </select>
             </div>
-            <div class="opt-form-section">Atbildīgie</div>
-            <div class="opt-form-span2">
-              <div id="${ATBILDIGIE_ROOT_ID}" class="opt-atb-list"></div>
-              <button type="button" class="secondary" id="optFormAddAtbildigais">+ Pievienot atbildīgo</button>
+            <div class="opt-form-span2 opt-atcel-row hidden" id="optFormAtcelRow">
+              <label for="optFormAtcelsIemesls">Atcelšanas iemesls *</label>
+              <textarea id="optFormAtcelsIemesls" rows="3" placeholder="Obligāti, ja statuss ir «Atcelts»"></textarea>
             </div>
-            <div class="opt-form-section">Pieteikts RZ</div>
             <div class="opt-form-span2">
-              <textarea id="optFormRz" rows="4" placeholder="Informācija par pieteikto RZ" aria-label="Pieteikts RZ"></textarea>
+              <label for="optFormApraksts">Apraksts</label>
+              <textarea id="optFormApraksts" rows="4"></textarea>
             </div>
-            <div class="opt-form-section">Apraksts</div>
             <div class="opt-form-span2">
-              <textarea id="optFormApraksts" rows="5" placeholder="Detalizēts pasākuma apraksts" aria-label="Apraksts"></textarea>
+              <label for="optFormKpi">KPI</label>
+              <textarea id="optFormKpi" rows="3"></textarea>
             </div>
-            <div class="opt-form-section">Izpildes gaita</div>
             <div class="opt-form-span2">
-              <textarea id="optFormGaita" rows="5" placeholder="Pašreizējais statuss, soļi, piezīmes par izpildi" aria-label="Izpildes gaita"></textarea>
+              <label for="optFormIeguvums">Optimizācijas ieguvums</label>
+              <textarea id="optFormIeguvums" rows="3"></textarea>
+            </div>
+            <div class="opt-form-span2">
+              <label for="optFormAtbildigais">Atbildīgais / kontaktpersona</label>
+              <textarea id="optFormAtbildigais" rows="2"></textarea>
+            </div>
+            <div class="opt-form-span2">
+              <label for="optFormGaita">Informācija par izpildi</label>
+              <textarea id="optFormGaita" rows="4"></textarea>
+            </div>
+            <div class="opt-form-span2">
+              <label for="optFormRz">Pieteiktie RZ</label>
+              <textarea id="optFormRz" rows="3" placeholder="Ja ir pieteikti RZ"></textarea>
+            </div>
+            <div class="opt-form-span2">
+              <label for="optFormIs">Saistītās IS</label>
+              <textarea id="optFormIs" rows="2"></textarea>
+            </div>
+            <div>
+              <label for="optFormPlanTerm">Plānotais ieviešanas termiņš</label>
+              <input id="optFormPlanTerm" type="date" />
+            </div>
+            <div>
+              <label for="optFormIevTerm">Ieviešanas termiņš</label>
+              <input id="optFormIevTerm" type="date" />
             </div>
           </div>
           <div class="opt-modal-actions">
@@ -623,14 +785,18 @@
       saveForm();
     };
     $("optFormProc").onchange = () => populateGpSelect($("optFormProc").value);
-    $("optFormStatuss").onchange = () => {
-      const st = normStatus($("optFormStatuss").value);
-      if (st === "pabeigts" && !$("optFormIzpilde").value) {
-        $("optFormIzpilde").value = new Date().toISOString().slice(0, 10);
-      }
-    };
-    $("optFormAddAtbildigais").onclick = () => addAtbildigaisRow();
-    populateAtbildigieForm([defaultAtbildigais()]);
+    $("optFormStatuss").onchange = () => syncOptFormStatusFields();
+  }
+
+  function syncOptFormStatusFields() {
+    const st = normStatus($("optFormStatuss") ? $("optFormStatuss").value : "");
+    if (st === "pabeigts" && $("optFormIevTerm") && !$("optFormIevTerm").value) {
+      $("optFormIevTerm").value = new Date().toISOString().slice(0, 10);
+    }
+    const row = $("optFormAtcelRow");
+    const ta = $("optFormAtcelsIemesls");
+    if (row) row.classList.toggle("hidden", st !== "atcelts");
+    if (ta) ta.required = st === "atcelts";
   }
 
   function populateProcSelect(selectedProcNo) {
@@ -691,7 +857,7 @@
 
   function openForm(measure) {
     if (!canEdit()) {
-      alert("Labošana pieejama tikai administratoram (labot). Iestatījumos izvēlieties lomu «administrators (labot)».");
+      alert("Labošana pieejama tikai lomai «Administrators». Iestatījumos izvēlieties šo lomu.");
       return;
     }
     try {
@@ -701,26 +867,42 @@
         statusMsg("Neizdevās atvērt formu (modālais logs nav pieejams).", "error");
         return;
       }
-      editingMeasure = measure ? { ...measure } : null;
-      $("optimizacijaEditorTitle").textContent = measure
+      const isEdit = !!(measure && measure.id);
+      editingMeasure = isEdit ? { ...measure } : null;
+      $("optimizacijaEditorTitle").textContent = isEdit
         ? "Labot optimizācijas pasākumu"
         : "Jauns optimizācijas pasākums";
       populateProcSelect(measure ? measure.procNo : "");
-      const procVal = measure ? `${measure.procNo}|||${measure.process}` : "";
+      const procVal = measure ? `${measure.procNo || ""}|||${measure.process || ""}` : "";
       if ($("optFormProc")) $("optFormProc").value = procVal;
       populateGpSelect(procVal, measure ? measure.gpNo : "", measure ? measure.gpName : "");
       if (measure && $("optFormGp")) {
         $("optFormGp").value = `${measure.gpNo}|||${measure.gpName}`;
       }
+      const today = new Date().toISOString().slice(0, 10);
       if ($("optFormNosaukums")) $("optFormNosaukums").value = measure ? measure.nosaukums : "";
-      if ($("optFormUzsak")) $("optFormUzsak").value = measure ? toInputDate(measure.uzsaksanasDatums) : "";
-      if ($("optFormPlans")) $("optFormPlans").value = measure ? toInputDate(measure.planotaisIzpildesDatums) : "";
-      if ($("optFormIzpilde")) $("optFormIzpilde").value = measure ? toInputDate(measure.izpildesDatums) : "";
+      if ($("optFormMerits")) $("optFormMerits").value = measure ? measure.merkis : "";
+      if ($("optFormIeraksta")) {
+        $("optFormIeraksta").value = measure ? toInputDate(measure.ierakstaDatums || measure.createdAt) : today;
+      }
       if ($("optFormStatuss")) $("optFormStatuss").value = measure ? normStatus(measure.statuss) : "nav_uzsakts";
-      populateAtbildigieForm(measure ? measure.atbildigie : [defaultAtbildigais()]);
-      if ($("optFormRz")) $("optFormRz").value = measure ? measure.pieteiktsRz : "";
+      if ($("optFormAtcelsIemesls")) {
+        $("optFormAtcelsIemesls").value = measure ? measure.atcelsanasIemesls || "" : "";
+      }
+      syncOptFormStatusFields();
       if ($("optFormApraksts")) $("optFormApraksts").value = measure ? measure.apraksts : "";
+      if ($("optFormKpi")) $("optFormKpi").value = measure ? measure.kpi : "";
+      if ($("optFormIeguvums")) $("optFormIeguvums").value = measure ? measure.ieguvums : "";
+      if ($("optFormAtbildigais")) $("optFormAtbildigais").value = measure ? measure.atbildigaisKontakts : "";
       if ($("optFormGaita")) $("optFormGaita").value = measure ? measure.izpildesGaita : "";
+      if ($("optFormRz")) $("optFormRz").value = measure ? measure.pieteiktsRz : "";
+      if ($("optFormIs")) $("optFormIs").value = measure ? measure.saistitasIs : "";
+      if ($("optFormPlanTerm")) {
+        $("optFormPlanTerm").value = measure ? toInputDate(measure.planotaisIeviesanasTermins) : "";
+      }
+      if ($("optFormIevTerm")) {
+        $("optFormIevTerm").value = measure ? toInputDate(measure.ieviesanasTermins) : "";
+      }
       modal.classList.remove("hidden");
     } catch (e) {
       console.error("Optimizacija openForm:", e);
@@ -781,6 +963,12 @@
       alert("Ievadiet pasākuma nosaukumu.");
       return;
     }
+    const statusRaw = elVal("optFormStatuss");
+    const atcelIem = elVal("optFormAtcelsIemesls");
+    if (normStatus(statusRaw) === "atcelts" && !atcelIem) {
+      alert("Statusam «Atcelts» obligāti jānorāda atcelšanas iemesls.");
+      return;
+    }
 
     const saveLabel = editingMeasure
       ? `optimizācijas pasākumu «${nosaukums}»`
@@ -791,18 +979,25 @@
       return;
     }
 
+    const ierakstaRaw = elVal("optFormIeraksta") || new Date().toISOString().slice(0, 10);
     const measure = {
       id: editingMeasure ? editingMeasure.id : newPasakumsId(),
       nosaukums,
-      uzsaksanasDatums: elVal("optFormUzsak"),
-      planotaisIzpildesDatums: elVal("optFormPlans"),
-      izpildesDatums: elVal("optFormIzpilde"),
-      statuss: elVal("optFormStatuss"),
-      atbildigie: collectAtbildigieFromForm(),
-      pieteiktsRz: elVal("optFormRz"),
+      merkis: elVal("optFormMerits"),
+      ierakstaDatums: ierakstaRaw,
       apraksts: elVal("optFormApraksts"),
+      kpi: elVal("optFormKpi"),
+      ieguvums: elVal("optFormIeguvums"),
+      atbildigaisKontakts: elVal("optFormAtbildigais"),
       izpildesGaita: elVal("optFormGaita"),
-      createdAt: editingMeasure ? editingMeasure.createdAt : new Date().toISOString(),
+      pieteiktsRz: elVal("optFormRz"),
+      saistitasIs: elVal("optFormIs"),
+      planotaisIeviesanasTermins: elVal("optFormPlanTerm"),
+      ieviesanasTermins: elVal("optFormIevTerm"),
+      statuss: statusRaw,
+      atcelsanasIemesls: atcelIem,
+      atbildigie: [],
+      createdAt: editingMeasure ? editingMeasure.createdAt || ierakstaRaw : new Date().toISOString(),
     };
     const raw = pasakumsToRaw(measure);
 
@@ -841,7 +1036,8 @@
       }
       closeForm();
       statusMsg("Optimizācijas pasākums saglabāts.", "success");
-      expandedKey = `${findParentByProcGp(procNo, process, gpNo, gpName)?.id || "new"}:${measure.id}`;
+      procCardOpen.add(procKeyFromParts(procNo, process));
+      measureCardOpen.add(`${findParentByProcGp(procNo, process, gpNo, gpName)?.id || "new"}:${measure.id}`);
       await render();
     } catch (e) {
       const msg = (window.DB && window.DB.mapDbError && window.DB.mapDbError(e)) || String(e.message || e);
@@ -864,7 +1060,7 @@
     }
     try {
       await removePasakumsFromParent(parent, measure.id);
-      if (expandedKey === measureKey(measure)) expandedKey = null;
+      measureCardOpen.delete(measureKey(measure));
       statusMsg("Pasākums dzēsts.", "success");
       await render();
     } catch (e) {
@@ -892,117 +1088,133 @@
     return { status, root };
   }
 
-  function renderAtbildigieDetail(list) {
-    const items = (list || []).filter((a) => a.parvalde || a.dala || a.vardsUzvards);
-    if (!items.length) return '<span class="val muted">—</span>';
-    return items.map((a) => `<div class="opt-atb-line">${esc(atbildigaisLine(a))}</div>`).join("");
+  function renderDetailField(label, contentHtml, fullWidth) {
+    const span = fullWidth ? ' style="grid-column:1/-1"' : "";
+    return `<div class="opt-detail-field"${span}><label>${esc(label)}</label>${contentHtml}</div>`;
+  }
+
+  function renderStatusPillHtml(p) {
+    const meta = statusMeta(p.statuss);
+    return `<span class="opt-status-pill ${meta.cls}">${esc(meta.label)}</span>`;
   }
 
   function renderDetailCard(p) {
-    const st = statusMeta(p.statuss);
+    const st = normStatus(p.statuss);
+    const atcelField =
+      st === "atcelts"
+        ? renderDetailField("Atcelšanas iemesls", formatMultilineHtml(p.atcelsanasIemesls), true)
+        : "";
     return `
       <div class="opt-detail-card">
         <div class="opt-detail-grid">
-          <div class="opt-detail-field">
-            <label>Pasākuma uzsākšanas datums</label>
-            <div class="val">${esc(formatDate(p.uzsaksanasDatums))}</div>
-          </div>
-          <div class="opt-detail-field">
-            <label>Plānotais izpildes datums</label>
-            <div class="val">${esc(formatDate(p.planotaisIzpildesDatums))}</div>
-          </div>
-          <div class="opt-detail-field">
-            <label>Izpildes datums</label>
-            <div class="val">${esc(formatDate(p.izpildesDatums))}</div>
-          </div>
-          <div class="opt-detail-field">
-            <label>Statuss</label>
-            <div class="val"><span class="opt-status-pill ${st.cls}">${esc(st.label)}</span></div>
-          </div>
-          <div class="opt-detail-field" style="grid-column:1/-1">
-            <label>Atbildīgie (patstāvīgā struktūrvienība, daļa · vārds, uzvārds)</label>
-            <div class="val">${renderAtbildigieDetail(p.atbildigie)}</div>
-          </div>
-          <div class="opt-detail-field" style="grid-column:1/-1">
-            <label>Pieteikts RZ</label>
-            ${formatMultilineHtml(p.pieteiktsRz)}
-          </div>
-          <div class="opt-detail-field" style="grid-column:1/-1">
-            <label>Apraksts</label>
-            ${formatMultilineHtml(p.apraksts)}
-          </div>
-          <div class="opt-detail-field" style="grid-column:1/-1">
-            <label>Izpildes gaita</label>
-            ${formatMultilineHtml(p.izpildesGaita)}
-          </div>
+          ${renderDetailField("Optimizācijas pasākuma nosaukums", formatMultilineHtml(p.nosaukums), true)}
+          ${renderDetailField("Statuss", `<div class="val">${renderStatusPillHtml(p)}</div>`)}
+          ${renderDetailField("Mērķis", formatMultilineHtml(p.merkis), true)}
+          ${renderDetailField("Ieraksta datums", `<div class="val">${esc(formatDate(p.ierakstaDatums || p.createdAt))}</div>`)}
+          ${atcelField}
+          ${renderDetailField("Apraksts", formatMultilineHtml(p.apraksts), true)}
+          ${renderDetailField("KPI", formatMultilineHtml(p.kpi), true)}
+          ${renderDetailField("Optimizācijas ieguvums", formatMultilineHtml(p.ieguvums), true)}
+          ${renderDetailField("Atbildīgais / kontaktpersona", formatMultilineHtml(p.atbildigaisKontakts), true)}
+          ${renderDetailField("Informācija par izpildi", formatMultilineHtml(p.izpildesGaita), true)}
+          ${renderDetailField("Pieteiktie RZ", formatMultilineHtml(p.pieteiktsRz), true)}
+          ${renderDetailField("Saistītās IS", formatMultilineHtml(p.saistitasIs), true)}
+          ${renderDetailField("Plānotais ieviešanas termiņš", `<div class="val">${esc(formatDate(p.planotaisIeviesanasTermins))}</div>`)}
+          ${renderDetailField("Ieviešanas termiņš", `<div class="val">${esc(formatDate(p.ieviesanasTermins))}</div>`)}
         </div>
       </div>
     `;
   }
 
-  function renderMeasureRow(p, showActions) {
+  function measureButtonLabel(p) {
+    const title = String(p.nosaukums || "").trim() || "—";
+    return `Optimizācijas pasākums «${title}»`;
+  }
+
+  function sortMeasuresByIeraksts(items) {
+    return (items || []).slice().sort((a, b) => {
+      const da = parseDateMs(a.ierakstaDatums || a.createdAt);
+      const db = parseDateMs(b.ierakstaDatums || b.createdAt);
+      if (db !== da) return db - da;
+      return sortDateMs(b) - sortDateMs(a);
+    });
+  }
+
+  function renderMeasureOpenButton(p) {
     const key = measureKey(p);
-    const open = expandedKey === key;
-    const st = statusMeta(p.statuss);
-    const title = p.nosaukums || "—";
+    const open = measureCardOpen.has(key);
+    const dateLbl = formatDate(p.ierakstaDatums || p.createdAt);
+    const meta = statusMeta(p.statuss);
+    return `<button type="button" class="secondary opt-measure-open-btn${open ? " opt-measure-open-btn--active" : ""}" data-opt-key="${esc(key)}">
+      <span class="opt-measure-open-main">${esc(measureButtonLabel(p))}</span>
+      <span class="opt-measure-open-meta">
+        <span class="opt-status-pill ${meta.cls}">${esc(meta.label)}</span>
+        <span class="opt-measure-open-date">${esc(dateLbl)}</span>
+      </span>
+    </button>`;
+  }
+
+  function renderMeasureExpanded(p, showActions) {
+    const key = measureKey(p);
     const actions = showActions
-      ? `<div class="opt-actions">
+      ? `<div class="opt-actions" style="margin-top:12px">
           <button type="button" class="secondary opt-edit-btn" data-opt-key="${esc(key)}">Labot</button>
           <button type="button" class="secondary opt-del-btn" data-opt-key="${esc(key)}">Dzēst</button>
+          <button type="button" class="secondary opt-measure-close-btn" data-opt-key="${esc(key)}">Aizvērt kartiņu</button>
         </div>`
-      : "";
-    const colSpan = showActions ? 6 : 5;
+      : `<div class="opt-actions" style="margin-top:12px">
+          <button type="button" class="secondary opt-measure-close-btn" data-opt-key="${esc(key)}">Aizvērt kartiņu</button>
+        </div>`;
+    return `<div class="opt-measure-expanded" data-opt-measure-key="${esc(key)}">${renderDetailCard(p)}${actions}</div>`;
+  }
+
+  function renderGpBlock(gp, procGroup, inactive, showActions) {
+    const gk = gpKeyFromParts(procGroup.procNo, procGroup.process, gp.gpNo, gp.gpName);
+    const items = sortMeasuresByIeraksts(gp.items);
+    const listHtml = items.length
+      ? items.map((m) => renderMeasureOpenButton(m)).join("")
+      : `<span class="hint" style="font-size:12px">Nav pasākumu.</span>`;
+    const openItem = items.find((m) => measureCardOpen.has(measureKey(m)));
+    const expanded = openItem ? renderMeasureExpanded(openItem, showActions) : "";
     return `
-      <tr class="opt-measure-row${open ? " open" : ""}" data-opt-key="${esc(key)}">
-        <td class="opt-date">${esc(formatDate(listDate(p)))}</td>
-        <td class="opt-title">${esc(title)}</td>
-        <td class="opt-meta">${esc(processLabel(p.procNo, p.process))}</td>
-        <td class="opt-meta">${esc(gpLabel(p.gpNo, p.gpName))}</td>
-        <td><span class="opt-status-pill ${st.cls}">${esc(st.label)}</span></td>
-        ${showActions ? `<td>${actions}</td>` : ""}
-      </tr>
-      ${open ? `<tr class="opt-detail-row"><td colspan="${colSpan}">${renderDetailCard(p)}</td></tr>` : ""}
+      <div class="opt-gp-row${inactive ? " inactive-block" : ""}" data-opt-gp="${esc(gk)}">
+        <div class="opt-gp-title">Galaprodukts ${esc(gpLabel(gp.gpNo, gp.gpName))}</div>
+        <div class="opt-gp-measure-list">${listHtml}</div>
+        ${expanded}
+      </div>
     `;
   }
 
-  function renderGroupedList(groups, inactive, showActions) {
-    if (!groups.length) {
-      return `<div class="opt-empty-list">${inactive ? "Nav neaktuālu (pabeigtu) pasākumu." : "Nav aktuālu optimizācijas pasākumu."}</div>`;
-    }
-    const blockCls = inactive ? " opt-proc-group inactive-block" : " opt-proc-group";
-    return groups
-      .map(
-        (proc) => `
-      <div class="${blockCls.trim()}">
-        <div class="opt-proc-hdr">${esc(processLabel(proc.procNo, proc.process))}</div>
-        ${proc.gps
-          .map(
-            (gp) => `
-          <div class="opt-gp-block">
-            <div class="opt-gp-hdr">${esc(gpLabel(gp.gpNo, gp.gpName))}</div>
-            <table class="opt-measure-table">
-              <thead>
-                <tr>
-                  <th>Datums</th>
-                  <th>Pasākuma nosaukums</th>
-                  <th>Process</th>
-                  <th>GP</th>
-                  <th>Statuss</th>
-                  ${showActions ? "<th>Darbības</th>" : ""}
-                </tr>
-              </thead>
-              <tbody>
-                ${gp.items.map((p) => renderMeasureRow(p, showActions)).join("")}
-              </tbody>
-            </table>
-          </div>
-        `
-          )
-          .join("")}
+  function renderProcessBlock(procGroup, inactive, showActions) {
+    const pk = procKeyFromParts(procGroup.procNo, procGroup.process);
+    const procOpen = procCardOpen.has(pk);
+    const gps = procGroup.gps || [];
+    const measureCount = gps.reduce((n, g) => n + (g.items || []).length, 0);
+    const gpCount = gps.length;
+    const body = gps.length
+      ? gps.map((g) => renderGpBlock(g, procGroup, inactive, showActions)).join("")
+      : `<p class="hint" style="margin:0">Nav optimizācijas pasākumu šim procesam.</p>`;
+    return `
+      <div class="opt-proc-block${inactive ? " inactive-block" : ""}" data-opt-proc="${esc(pk)}">
+        <button type="button" class="opt-proc-picker${procOpen ? " opt-proc-picker--open" : ""}" data-opt-proc="${esc(pk)}">
+          <span class="opt-proc-title">Process ${esc(processLabel(procGroup.procNo, procGroup.process))}</span>
+          <span class="opt-proc-meta">
+            <span class="ex-unit-chip">${gpCount} GP</span>
+            <span class="ex-unit-chip">${measureCount} pasākumi</span>
+          </span>
+          <span class="opt-card-hint">${procOpen ? "Aizvērt kartiņu" : "Atvērt kartiņu"}</span>
+        </button>
+        ${procOpen ? `<div class="opt-proc-body">${body}</div>` : ""}
       </div>
-    `
-      )
-      .join("");
+    `;
+  }
+
+  function renderProcessList(groups, inactive, showActions) {
+    const list = groups || [];
+    if (!list.length) {
+      return `<div class="opt-empty-list">${inactive ? "Nav neaktuālu (pabeigtu vai atceltu) pasākumu." : "Nav aktuālu optimizācijas pasākumu. Augšā izmantojiet «+ Jauns optimizācijas pasākums»."}</div>`;
+    }
+    return list.map((p) => renderProcessBlock(p, inactive, showActions)).join("");
   }
 
   function findMeasureByKey(key) {
@@ -1011,23 +1223,64 @@
   }
 
   function paintList(root) {
+    if (!root) return;
     const showActions = canEdit();
     let html = "";
     html += `<h4 class="opt-section-hdr">Aktuālie optimizācijas pasākumi</h4>`;
-    html += renderGroupedList(cachedActiveGroups, false, showActions);
-    html += `<h4 class="opt-section-hdr inactive">Neaktuālie optimizācijas pasākumi</h4>`;
-    html += `<p class="hint" style="margin:0 0 8px;font-size:12px">Šeit tiek rādīti pasākumi ar statusu «Pabeigts».</p>`;
-    html += renderGroupedList(cachedInactiveGroups, true, showActions);
+    html += `<div class="ex-parvalde-list">${renderProcessList(cachedActiveGroups, false, showActions)}</div>`;
+    html += `<h4 class="opt-section-hdr">Neaktuālie optimizācijas pasākumi</h4>`;
+    html += `<p class="hint" style="margin:0 0 8px;font-size:12px">Pasākumi ar statusu «Pabeigts» vai «Atcelts».</p>`;
+    html += `<div class="ex-parvalde-list">${renderProcessList(cachedInactiveGroups, true, showActions)}</div>`;
     root.innerHTML = html;
-    wireRows(root);
+    wireCardList(root);
+    const bulkBtn = $(BULK_BTN_ID);
+    if (bulkBtn) {
+      bulkBtn.textContent = procCardOpen.size > 0 ? "Aizvērt visas kartiņas" : "Atvērt visas kartiņas";
+    }
   }
 
-  function wireRows(root) {
-    root.querySelectorAll(".opt-measure-row").forEach((row) => {
-      row.onclick = (ev) => {
-        if (ev.target.closest(".opt-actions")) return;
-        const key = row.getAttribute("data-opt-key") || "";
-        expandedKey = expandedKey === key ? null : key;
+  function findGpContextByKey(gk) {
+    const allGroups = (cachedActiveGroups || []).concat(cachedInactiveGroups || []);
+    for (let i = 0; i < allGroups.length; i++) {
+      const proc = allGroups[i];
+      for (let j = 0; j < (proc.gps || []).length; j++) {
+        const gp = proc.gps[j];
+        if (gpKeyFromParts(proc.procNo, proc.process, gp.gpNo, gp.gpName) === gk) {
+          return { procNo: proc.procNo, process: proc.process, gpNo: gp.gpNo, gpName: gp.gpName };
+        }
+      }
+    }
+    return null;
+  }
+
+  function wireCardList(root) {
+    root.querySelectorAll(".opt-proc-picker").forEach((btn) => {
+      btn.onclick = (ev) => {
+        ev.preventDefault();
+        const pk = btn.getAttribute("data-opt-proc") || "";
+        if (procCardOpen.has(pk)) procCardOpen.delete(pk);
+        else procCardOpen.add(pk);
+        paintList(root);
+      };
+    });
+    root.querySelectorAll(".opt-measure-open-btn").forEach((btn) => {
+      btn.onclick = (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        const key = btn.getAttribute("data-opt-key") || "";
+        if (measureCardOpen.has(key)) measureCardOpen.delete(key);
+        else {
+          measureCardOpen.clear();
+          measureCardOpen.add(key);
+        }
+        paintList(root);
+      };
+    });
+    root.querySelectorAll(".opt-measure-close-btn").forEach((btn) => {
+      btn.onclick = (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        measureCardOpen.delete(btn.getAttribute("data-opt-key") || "");
         paintList(root);
       };
     });
@@ -1089,8 +1342,8 @@
       status.textContent =
         dbWarning + " Palaidiet migrāciju migrations/2026-09-21_procesu_optimizacija.sql";
     } else {
-      status.className = "hint";
-      status.textContent = `Aktuālie: ${cachedActiveCount} · Neaktuālie (pabeigtie): ${cachedInactiveCount}. Secība: jaunākie vispirms; sadalījums pēc procesa un GP.`;
+      status.className = "hint hidden";
+      status.textContent = "";
     }
 
     paintList(root);
@@ -1124,6 +1377,7 @@
     reloadFromDb: loadFromDb,
     flattenPasakumi,
     normStatus,
+    isInactive,
     openForm,
   };
 

@@ -8,7 +8,8 @@
   function isAdminEditRole() {
     if (typeof window.canEdit === "function") return window.canEdit();
     const roleSelect = $("roleSelect");
-    if (roleSelect && (roleSelect.value === "admin" || roleSelect.value === "admin_edit")) return true;
+    if (window.PVRoles) return window.PVRoles.canEditFromSelectValue(roleSelect && roleSelect.value);
+    if (roleSelect && roleSelect.value === "admin") return true;
 
     try {
       const userSelect = $("userSelect");

@@ -26,6 +26,37 @@
     return !!(card && !card.classList.contains("hidden"));
   }
 
+  function escJomaTitleText(s) {
+    return String(s ?? "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function ensureJomaEditorTitleStyles() {
+    if (document.getElementById("jomaEditorTitleCss")) return;
+    const s = document.createElement("style");
+    s.id = "jomaEditorTitleCss";
+    s.textContent =
+      "#jomaEditorTitle .joma-editor-kind{color:#334155;font-weight:600}" +
+      "#jomaEditorTitle .joma-editor-name{color:#1d4ed8;font-weight:700}";
+    document.head.appendChild(s);
+  }
+
+  function setJomaEditorTitle(name) {
+    ensureJomaEditorTitleStyles();
+    const title = $("jomaEditorTitle");
+    if (!title) return;
+    const n = String(name || "").trim();
+    if (!n) {
+      title.innerHTML = '<span class="joma-editor-kind">Jomas kartiņa</span>';
+      return;
+    }
+    title.innerHTML =
+      '<span class="joma-editor-kind">Jomas kartiņa</span> ' +
+      `<span class="joma-editor-name">${escJomaTitleText(n)}</span>`;
+  }
+
   function loadLocalAll() {
     try {
       const raw = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
@@ -247,7 +278,8 @@
       if (typeof window.canEdit === "function" && window.canEdit()) return true;
     } catch (_) {}
     const rs = $("roleSelect");
-    return rs && (rs.value === "admin" || rs.value === "admin_edit");
+    if (window.PVRoles) return window.PVRoles.canEditFromSelectValue(rs && rs.value);
+    return !!(rs && rs.value === "admin");
   }
 
   function wrapFormGroupsInSection(groups, sectionId, titleText) {
@@ -294,7 +326,7 @@
         section.id = "jNaEditorWrap";
         const title = document.createElement("h3");
         title.className = "editor-section-title";
-        title.textContent = "2. Procesus reglamentējoši normatīvie akti";
+        title.textContent = "2. Procesus reglamentējošie normatīvie akti";
         section.appendChild(title);
         naActions.className = "na-linked-list";
         section.appendChild(naActions);
@@ -316,12 +348,7 @@
       nameInput.removeAttribute("tabindex");
       nameInput.style.background = "";
       nameInput.addEventListener("input", () => {
-        const n = String(nameInput.value || "").trim();
-        const title = $("jomaEditorTitle");
-        if (!title) return;
-        title.innerHTML = n
-          ? `<span style="color:#1d4ed8;font-weight:700">${n.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</span> Jomas kartiņa`
-          : "Jomas kartiņa";
+        setJomaEditorTitle(nameInput.value);
       });
     }
   }
@@ -364,11 +391,7 @@
     if ($("jOriginalJomaKey")) $("jOriginalJomaKey").value = editingJomaKey;
     if ($("jJomaName")) $("jJomaName").value = name;
     if ($("jSkaidrojums")) $("jSkaidrojums").value = rec.skaidrojums;
-    if ($("jomaEditorTitle")) {
-      $("jomaEditorTitle").innerHTML = name
-        ? `<span style="color:#1d4ed8;font-weight:700">${name}</span> Jomas kartiņa`
-        : "Jomas kartiņa";
-    }
+    setJomaEditorTitle(name);
     setFormDisabled(!isAdminEdit());
     refreshJomaDeleteBtnVisibility();
     if (window.NormAkti && typeof NormAkti.renderJomaLinks === "function") {

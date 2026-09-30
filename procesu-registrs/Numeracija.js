@@ -237,7 +237,8 @@
     try {
       if (typeof window.canEdit === "function") return window.canEdit();
       const roleSelect = $("roleSelect");
-      return roleSelect && (roleSelect.value === "admin" || roleSelect.value === "admin_edit");
+      if (window.PVRoles) return window.PVRoles.canEditFromSelectValue(roleSelect && roleSelect.value);
+      return !!(roleSelect && roleSelect.value === "admin");
     } catch (_) {
       return false;
     }

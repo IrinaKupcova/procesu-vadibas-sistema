@@ -91,9 +91,9 @@ Plānojiet **vienreizēju** datu ielādi pēc shēmas izveides.
 - [ ] Procesu tabula ielādējas no DB
 - [ ] Jauna procesa kartiņa — saglabāšana
 - [ ] GP katalogs
-- [ ] Jomas kartiņa
+- [ ] Jomas — kartiņu saraksts, atvēršana, Process → GP, Excel
 - [ ] Normatīvo aktu sadaļa (tabula `normativie_akti` eksistē)
-- [ ] Izpildītāji — akordeoni, kolonnu izkārtojums
+- [ ] Izpildītāji — pārvalžu kartiņas, amats → GP → joma, Excel
 - [ ] Izmaiņu pieteikums — pielikuma augšupielāde (Storage)
 - [ ] Ctrl+F5 pēc `git pull` — jaunākā JS versija
 

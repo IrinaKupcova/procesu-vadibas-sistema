@@ -96,24 +96,26 @@ Augšējā rīkjosla (`#userSelect`, `#roleSelect`, `#saveRoleBtn`); visi CRUD g
 
 | Kods | UI nosaukums | Tiesības |
 |------|--------------|----------|
-| `viewer` | skatītājs | Tikai skatīšana |
-| `admin_view` | administrators (skatīt) | Skatīšana; redaktors bloķēts |
-| `admin_edit` | administrators (labot) | Izveide, labošana, dzēšana |
+| `admin` | Administrators | Pilna CRUD: izveide, labošana, dzēšana, skaidrojumu admin, optimizācija u.c. |
+| `viewer` | Skatītājs | Tikai skatīšana |
+| `gp_responsible` | Atbildīgais par galaprodukta informāciju | GP kartiņu satura labošana; pārējais skatīšanai |
+
+Vecie kodi (`admin_edit`, `admin_view`, `administrators`) migrē uz `admin` / `viewer` (`Lomas.js` → `PVRoles.normalizeRole`).
 
 ## 4. Funkcionālās prasības
 
 | ID | Prasība |
 |----|---------|
 | SPEC-002-FR-001 | Lomas glabājas `localStorage.roleMap` (JSON: `{ username: roleCode }`). |
-| SPEC-002-FR-002 | `canEdit()` ir `true` tikai lomai `admin_edit`. |
-| SPEC-002-FR-003 | Ja lietotājs nav `roleMap`, fallback loma ir `admin_edit`. |
-| SPEC-002-FR-004 | `roles.daina` vienmēr tiek piespiests uz `admin_edit` (`loadRoles()`). |
-| SPEC-002-FR-005 | `#saveRoleBtn` paslēpts, ja `#roleSelect === "viewer"`. |
-| SPEC-002-FR-006 | Supabase Auth **nav** integrēts; lomas ir tikai klienta pusē. |
-| SPEC-002-FR-007 | `Norm_akti.js` pārbauda `#roleSelect === "admin_edit"` tieši (nevis `window.canEdit`). |
+| SPEC-002-FR-002 | `window.canEdit()` / `canDelete()` ir `true` lomai `admin` (`PVRoles.canEditForRole`). |
+| SPEC-002-FR-003 | Ja lietotājs nav `roleMap`, noklusējuma loma ir `admin`. |
+| SPEC-002-FR-004 | Aktīvā loma nāk no `#roleSelect` (sesija); maiņa automātiski atjauno `roleMap`. |
+| SPEC-002-FR-005 | `#saveRoleBtn` paslēpts, ja izvēlētā loma sakrīt ar saglabāto. |
+| SPEC-002-FR-006 | Supabase Auth **nav** integrēts; lomas klienta pusē; biznesa dati — Supabase (kopīgi visiem datoriem). |
+| SPEC-002-FR-007 | Moduļi izmanto `window.canEdit()`; rezerves fallback — `PVRoles.canEditFromSelectValue`. |
 
 ## 5. Lietotāja darbības
-- Izvēlas lietotāju un lomu, saglabā ar **«Saglabāt lomu»**.
+- Izvēlas lietotāju un lomu (**Administrators** pilnai labošanai/dzēšanai).
 - URL parametrs `?user=` pārraksta aktīvo lietotāju startā.
 
 ## 6. Sistēmas reakcija
@@ -140,7 +142,7 @@ Nav servera autentifikācijas.
 | ID | Kritērijs |
 |----|-----------|
 | SPEC-002-AC-001 | `viewer` nevar iesniegt procesa/GP/jomas formu veiksmīgi (disabled vai alert). |
-| SPEC-002-AC-002 | `admin_edit` var saglabāt un dzēst atbalstītās entītijas. |
+| SPEC-002-AC-002 | `admin` var saglabāt un dzēst atbalstītās entītijas (DB caur Supabase). |
 | SPEC-002-AC-003 | Lomu maiņa saglabājas pēc lapas pārlādes (`roleMap`). |
 
 ## 12. Saistītās specifikācijas
@@ -164,7 +166,7 @@ Visas lomas — navigācija pieejama visiem; admin-only sadaļas skat. SPEC-002.
 | ID | Prasība |
 |----|---------|
 | SPEC-003-FR-001 | Kreisajā navigācijā ir sadaļas: Procesu reģistrs, GP katalogs, Procesu grupas, Jomas, Izpildītāji, Mērījumi, Statistika, normatīvie akti, Rokasgrāmata. |
-| SPEC-003-FR-002 | **Skaidrojuma ievietošana** redzama tikai `admin_edit` (`Skaidrojumi.js`). |
+| SPEC-003-FR-002 | **Skaidrojuma ievietošana** redzama tikai lomai `admin` (`Skaidrojumi.js`). |
 | SPEC-003-FR-003 | `closeAllMainSections()` paslēpj visas kartes; atver tikai izvēlēto. |
 | SPEC-003-FR-004 | Sekundārās sadaļas (`metricsCard`, `manualCard`, `reportsCard`, `normActsCard`) — pilnekrāna režīms. |
 | SPEC-003-FR-005 | Redaktori (`editorCard`, `catalogEditorCard`, u.c.) atveras virs/par pamata sadaļām. |
@@ -403,18 +405,19 @@ Skatīšana — visas; jomas izvēle GP kartiņā — `admin_edit`.
 
 | ID | Prasība |
 |----|---------|
-| SPEC-007-FR-001 | Jomu skats rāda jomu pīrāgu, statistiku un tabulu ar GP akordeoniem. |
+| SPEC-007-FR-001 | Jomu skats rāda statistiku un **sarakstu ar jomu kartiņām** (`#jomasListRoot`): katra joma pēc noklusējuma aizvērta. |
 | SPEC-007-FR-002 | Jomas avoti: `JomaKartina.listJomaLabels()` + `pv_custom_jomas_v1`. |
-| SPEC-007-FR-003 | GP–joma saite galvenokārt caur `darbibasJoma` / `gpItems[].jomaText`. |
+| SPEC-007-FR-003 | GP–joma saite galvenokārt caur `darbibasJoma` / `gpItems[].jomaText`; datu apkopo `Joma.buildJomaGpData()`. |
 | SPEC-007-FR-004 | `#pjAddJomaBtn` atver jaunu jomu kartiņu (`Joma kartina.js`). |
-| SPEC-007-FR-005 | Jomu tabulai **nav** kolonnu filtru (`Filtrs.js` izslēgts). |
-| SPEC-007-FR-006 | Klikšķis uz jomas nosaukuma atver jomu kartiņu. |
+| SPEC-007-FR-005 | Atverot kartiņu, iekšējā tabula: **Process → Galaprodukts** (deduplikācija, apvienotas process kolonnas). Poga **Atvērt / Aizvērt visas kartiņas**. |
+| SPEC-007-FR-006 | Klikšķis uz jomas nosaukuma kartiņas virsrakstā atver jomu kartiņu (`openJomaEditor`). |
+| SPEC-007-FR-007 | Excel eksports no slēptās `#processJomasTable` (joma \| process \| GP). Globālā meklēšana un kolonnu filtri filtrē kartiņas (`Filtrs.js`). |
 
 ## 5. Lietotāja darbības
-- Skatās jomu sarakstu; atver GP no akordeona; pievieno jomu; GP kartiņā izvēlas jomu.
+- Skatās jomu sarakstu; atver jomu kartiņu; iekšā — procesi un GP; pievieno jomu; GP kartiņā izvēlas jomu.
 
 ## 6. Sistēmas reakcija
-- `renderProcessJomasView()` / `Joma.buildJomaGpData()`; GP saglabāšana atjaunina jomu skatu pēc reload.
+- `renderProcessJomasView()` + `Joma.js` `rebuildJomaGpBody()`; GP saglabāšana atjaunina jomu skatu pēc reload.
 
 ## 7. Datu avoti un glabāšana
 - `procesu_registrs.Darbibas_joma`, GP meta JSON.
@@ -434,8 +437,9 @@ SPEC-005, SPEC-008, SPEC-010.
 
 | ID | Kritērijs |
 |----|-----------|
-| SPEC-007-AC-001 | GP ar `darbibasJoma` parādās attiecīgajā jomā skatā. |
+| SPEC-007-AC-001 | GP ar `darbibasJoma` parādās attiecīgās jomas atvērtā kartiņā (Process → GP). |
 | SPEC-007-AC-002 | «Pievienot jaunu jomu» atver tukšu jomu kartiņu. |
+| SPEC-007-AC-003 | Jomu saraksts ir kartiņu veidā; noklusējumā aizvērts; bulk «Atvērt / Aizvērt visas kartiņas». |
 
 ## 12. Saistītās specifikācijas
 SPEC-005, SPEC-008, SPEC-010
@@ -451,13 +455,14 @@ Procesu jomu papildu informācijas (skaidrojums u.c.) pārvaldība atsevišķā 
 `jomaEditorCard`, `Joma kartina.js`, tabula `procesu_jomas`.
 
 ## 3. Lietotāju lomas
-Skatīšana — atkarībā no formas `disabled`; CRUD — `admin_edit`.
+Skatīšana — atkarībā no formas `disabled`; CRUD — `admin`.
 
 ## 4. Funkcionālās prasības
 
 | ID | Prasība |
 |----|---------|
 | SPEC-008-FR-001 | Jomu kartiņa glabā: nosaukums, skaidrojums (`DB` + localStorage rezerve). |
+| SPEC-008-FR-001a | Virsraksts `#jomaEditorTitle`: **«Jomas kartiņa»** (tumši pelēks) pirms jomas nosaukuma (zils). |
 | SPEC-008-FR-002 | Obligāts UI: **jomas nosaukums**. |
 | SPEC-008-FR-003 | Jomas pārdēvēšana atjauno saistītos NA (`renameJomaInNormActs`). |
 | SPEC-008-FR-004 | UI lauks `iestades_funkciju_piesaiste` **noņemts**; `funkcijas` saglabājas tukšs. |
@@ -772,10 +777,10 @@ SPEC-004, SPEC-003
 # SPEC-014 — Izpildītāju skats
 
 ## 1. Mērķis
-Agregēts skats: pārvalde → process → galaprodukts.
+Agregēts skats pa patstāvīgajām struktūrvienībām (pārvaldēm): amats → galaprodukts → galaprodukta joma.
 
 ## 2. Darbības joma
-`executorsCard`, `Izpilditaji.js`, dinamiski `#executorsTable`.
+`executorsCard`, `Izpilditaji.js`, UI `#executorsListRoot`; Excel — slēptā `#executorsTable`.
 
 ## 3. Lietotāju lomas
 Visas — lasīšana; navigācija uz kartiņām.
@@ -784,19 +789,19 @@ Visas — lasīšana; navigācija uz kartiņām.
 
 | ID | Prasība |
 |----|---------|
-| SPEC-014-FR-001 | HTML satur placeholder hint; `renderExecutorsView()` to aizstāj ar tabulu. |
-| SPEC-014-FR-002 | Trīs kolonnas: pārvalde, process, GP; fiksēts layout (24%/38%/38%). |
-| SPEC-014-FR-003 | GP avots: katalogs (autoritatīvs), citādi procesa `products`. |
-| SPEC-014-FR-004 | Akordeoni + bulk atvēršana/aizvēršana. |
-| SPEC-014-FR-005 | Excel eksports (`#exportExecutorsExcelBtn`). |
+| SPEC-014-FR-001 | `renderExecutorsView()` ģenerē sarakstu **Patstāvīgās struktūrvienības** — katrai pārvaldei aizvērta kartiņa. |
+| SPEC-014-FR-002 | Atverot pārvaldes kartiņu: iekšējā tabula **Struktūrvienība/amats → Galaprodukts → Galaprodukta joma** (deduplikācija, rowspan). |
+| SPEC-014-FR-003 | GP avots: katalogs (autoritatīvs), citādi procesa `products`; `buildExecutorFlatRows()`. |
+| SPEC-014-FR-004 | **Atvērt / Aizvērt visas kartiņas**; katra kartiņa atsevišķi. |
+| SPEC-014-FR-005 | Excel eksports (`#exportExecutorsExcelBtn`) — pilna plakanā tabula (pārvalde, amats, GP, joma). |
 | SPEC-014-FR-006 | Inline edit toggle **nemaina** render — nefunkcionāls. |
-| SPEC-014-FR-007 | Klikšķis atver procesa/GP kartiņu. |
+| SPEC-014-FR-007 | Klikšķis atver GP kartiņu (process UI nav). |
 
 ## 5. Lietotāja darbības
-- Atver Izpildītājus; izvērš akordeonus; eksportē; navigē uz kartiņām.
+- Atver Izpildītājus; atver pārvaldes kartiņas; eksportē; navigē uz kartiņām.
 
 ## 6. Sistēmas reakcija
-- `computeExecutors()` + DOM render; `refreshExtraTableFilters()`.
+- `renderExecutorsView()` + `applyExecutorsFilters()` pēc render.
 
 ## 7. Datu avoti un glabāšana
 `getProcessRows()`, `getCatalogRows()`.
@@ -814,8 +819,8 @@ SPEC-004, SPEC-005, SPEC-012.
 
 | ID | Kritērijs |
 |----|-----------|
-| SPEC-014-AC-001 | Atverot sadaļu, placeholder pazūd un parādās datu tabula. |
-| SPEC-014-AC-002 | GP no kataloga parādās pie pareizā procesa/pārvaldes. |
+| SPEC-014-AC-001 | Atverot sadaļu, parādās pārvalžu kartiņu saraksts ar statistiku. |
+| SPEC-014-AC-002 | GP no kataloga parādās pie pareizā amata/procesa/pārvaldes atvērtā kartiņā. |
 
 ## 12. Saistītās specifikācijas
 SPEC-004, SPEC-005, SPEC-012
@@ -1118,12 +1123,12 @@ Netieša — visi CRUD blokiem.
 | ID | Prasība |
 |----|---------|
 | SPEC-020-FR-001 | Galvenā tabula: `procesu_registrs`; single-table GP modelis (noklusējums). |
-| SPEC-020-FR-002 | Papildu tabulas: `procesu_jomas`, `normativie_akti`, `norm_akti_klasifikatori`. |
+| SPEC-020-FR-002 | Papildu tabulas: `procesu_jomas`, `normativie_akti`, `norm_akti_klasifikatori`, `procesu_optimizacija`, `sistema_help_*`. |
 | SPEC-020-FR-003 | Kolonnu `aliasMap` — daudzas nosaukumu variācijas. |
 | SPEC-020-FR-004 | `runWriteWithMissingColumnRetry` — adaptē pie esošām kolonnām. |
 | SPEC-020-FR-005 | Vienreizēja uzturēšana: `pv_db_maintenance_v3` (jomu/GP meta labojumi). |
 | SPEC-020-FR-006 | NA/Joma: localStorage fallback, ja tabula trūkst. |
-| SPEC-020-FR-007 | Migrāciju secība: sk. `migrations/README.md` (7 faili). |
+| SPEC-020-FR-007 | Migrāciju secība: sk. `migrations/README.md`. |
 | SPEC-020-FR-008 | `catalog_items_json` kolonna migrācijā — **neizmanto** `DB.js`. |
 
 ## 5. Lietotāja darbības
@@ -1210,6 +1215,65 @@ Supabase Auth — **NĀKOTNE** (tehniskā specifikācija §15).
 
 ## 12. Saistītās specifikācijas
 SPEC-002, SPEC-020
+
+---
+
+# SPEC-024 — Optimizācija (pasākumi)
+
+## 1. Mērķis
+Procesu optimizācijas pasākumu reģistrs ar hierarhiju Process → Galaprodukts → pasākums; dati Supabase tabulā `procesu_optimizacija` (`pasakumi_json`).
+
+## 2. Darbības joma
+`optimizacijaCard`, `Optimizacija.js`, procesa/GP kartiņu saites (`Procesu registrs.js`).
+
+## 3. Lietotāju lomas
+Skatīšana — visas; CRUD — `admin`.
+
+## 4. Funkcionālās prasības
+
+| ID | Prasība |
+|----|---------|
+| SPEC-024-FR-001 | Saraksts: **Aktuālie** un **Neaktuālie** optimizācijas pasākumi (virsraksti 17px, vienāda krāsa). |
+| SPEC-024-FR-002 | Aktuālie: statuss Nav uzsākts, Izpildē. Neaktuālie: Pabeigts, Atcelts. |
+| SPEC-024-FR-003 | Statusam Atcelts obligāts lauks **Atcelšanas iemesls** (`atcelsanasIemesls` JSON). |
+| SPEC-024-FR-004 | Process — aizverama kartiņa; GP un pasākumi vertikāli; pasākumi kārtoti pēc **ieraksta datuma** (jaunākais augšā). |
+| SPEC-024-FR-005 | Pasākuma rinda: tumši zila fons, balts teksts; statusa zīmīte un datums. |
+| SPEC-024-FR-006 | **«+ Jauns optimizācijas pasākums»** — toolbar labajā augšā; **Atvērt / Aizvērt visas kartiņas** — zem toolbar. |
+| SPEC-024-FR-007 | Saglabāšana/dzēšana: `DB.updateOptimizacija` / `insert` / `delete`; sinhronizācija `app:db-sync` (kind `optimizacija`). |
+| SPEC-024-FR-008 | DB migrācija statusiem: `migrations/2026-09-30_optimizacija_statuss.sql`. |
+
+## 5. Lietotāja darbības
+- Atver procesu → GP → pasākumu; labo/dzēš (admin); pievieno jaunu pasākumu.
+
+## 6. Sistēmas reakcija
+- CRUD atjauno `pasakumi_json`; pārlādē sarakstu; emit sync.
+
+## 7. Datu avoti un glabāšana
+- `procesu_optimizacija.pasakumi_json` — masīvs ar pasākuma laukiem (nosaukums, mērķis, statuss, termiņi u.c.).
+
+## 8. Validācijas noteikumi
+| Lauks | Obligāts |
+|-------|----------|
+| Procesa/GP izvēle, pasākuma nosaukums | Jā |
+| Atcelšanas iemesls | Jā, ja statuss Atcelts |
+
+## 9. Kļūdu un izņēmumu scenāriji
+| Scenārijs | Reakcija |
+|-----------|----------|
+| Tabula trūkst | Brīdinājums + migrācijas norāde |
+
+## 10. Integrācijas
+SPEC-004, SPEC-005, SPEC-017, SPEC-020.
+
+## 11. Pieņemšanas kritēriji
+
+| ID | Kritērijs |
+|----|-----------|
+| SPEC-024-AC-001 | Admin saglabā pasākumu; cits pārlūks/dators redz atjauninājumu pēc sync. |
+| SPEC-024-AC-002 | Pabeigts/Atcelts parādās tikai sadaļā Neaktuālie. |
+
+## 12. Saistītās specifikācijas
+SPEC-002, SPEC-017, SPEC-020
 
 ---
 
@@ -1524,14 +1588,14 @@ SPEC-002, SPEC-004
 | | |
 |---|---|
 | **Lietotājs izdara** | Navigācijā **Jomas (piesaiste galaproduktiem)**. |
-| **Sistēma izdara** | `renderProcessJomasView()` — jomu pīrāgs, tabula ar GP akordeoniem. |
-| **Lietotājs redz** | Jomas, GP skaitu, procesus; var atvērt GP no akordeona. |
+| **Sistēma izdara** | `renderProcessJomasView()` + `Joma.js` — jomu kartiņu saraksts (`#jomasListRoot`). |
+| **Lietotājs redz** | Jomas ar GP/procesu skaitu; atverot — tabula Process → Galaprodukts. |
 
 ### UF-402 — Atvērt jomu kartiņu no saraksta (visas / admin_edit labošanai)
 
 | | |
 |---|---|
-| **Lietotājs izdara** | Klikšķina uz jomas nosaukuma tabulā. |
+| **Lietotājs izdara** | Klikšķina uz jomas nosaukuma kartiņas virsrakstā. |
 | **Sistēma izdara** | `openJomaEditor(jomaName)` — atver `jomaEditorCard`, ielādē datus. |
 | **Lietotājs redz** | Jomu kartiņu (nosaukums, skaidrojums, saistītie NA). |
 
@@ -1692,8 +1756,8 @@ SPEC-002, SPEC-004
 | | |
 |---|---|
 | **Lietotājs izdara** | Navigācijā **Izpildītāji**. |
-| **Sistēma izdara** | `renderExecutorsView()` — noņem placeholder, injicē tabulu: pārvalde → process → GP. |
-| **Lietotājs redz** | Trīskolonu tabulu ar akordeoniem. |
+| **Sistēma izdara** | `renderExecutorsView()` — pārvalžu kartiņas; iekšā amats → GP → joma. |
+| **Lietotājs redz** | Sarakstu ar pārvaldēm; atverot — apvienotu tabulu ar saitēm uz kartiņām. |
 
 ### UF-1002 — Pāriet uz procesu/GP no izpildītāju skata
 
@@ -1955,6 +2019,7 @@ SPEC-002, SPEC-004
 | SPEC-021 | Drošība un piekļuves ierobežojumi | Esošs |
 | SPEC-022 | Mērījumi | **NĀKOTNE** |
 | SPEC-023 | UI iestatījumi un kopīgošana | Esošs |
+| SPEC-024 | Optimizācija (pasākumi) | Esošs |
 
 ### Lietotāja plūsmu indekss (II. daļa)
 

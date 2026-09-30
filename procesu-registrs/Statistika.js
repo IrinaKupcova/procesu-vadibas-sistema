@@ -1294,7 +1294,7 @@
   function renderJomaStatsTable(jomaBody) {
     if (!jomaBody) return;
     removeStatsTableTotals(jomaBody);
-    // GP griezums no uzticamā Joma.js avota (tāpat kā jomu akordeonā).
+    // GP griezums no uzticamā Joma.js avota (tāpat kā jomu kartiņu skatā).
     if (window.Joma && typeof window.Joma.getJomaStats === "function") {
       try {
         const stats = window.Joma.getJomaStats();

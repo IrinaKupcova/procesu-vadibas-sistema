@@ -260,15 +260,16 @@
       .report-lines { margin: 0; padding: 0; list-style: none; display: grid; gap: 6px; }
       .report-lines li { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px dashed #cbd5e1; padding-bottom: 4px; font-size: 13px; color: #1e293b; }
       .report-lines li .n { font-weight: 700; color: #1e3a8a; }
-      .inline-stats { display:grid; grid-template-columns: repeat(auto-fit,minmax(180px,1fr)); gap:10px; margin:10px 0 8px; }
-      .inline-stats .stat-box { background:#eef2ff; border:1px solid #c7d2fe; border-radius:10px; padding:10px 14px; min-height:62px; display:flex; flex-direction:column; justify-content:center; color:#1e293b; }
+      .inline-stats { display:flex; flex-wrap:wrap; align-items:stretch; gap:10px; margin:10px 0 8px; }
+      .inline-stats .stat-box { flex:0 1 auto; width:auto; min-width:132px; max-width:200px; background:#eef2ff; border:1px solid #c7d2fe; border-radius:10px; padding:8px 12px; min-height:52px; display:flex; flex-direction:column; justify-content:center; color:#1e293b; box-sizing:border-box; }
       .inline-stats .stat-k { font-size:11px; color:#475569; margin-bottom:2px; line-height:1.3; }
       .inline-stats .stat-v { font-size:18px; font-weight:700; color:#1e3a8a; }
       .process-pie-wrap { background:#f8fafc; border:1px solid #cbd5e1; border-radius:10px; padding:8px 10px; margin-bottom:8px; }
       .process-pie-legend { display:flex; gap:10px; flex-wrap:wrap; margin-top:6px; font-size:12px; color:#334155; }
       .process-stats-layout { display:flex; gap:14px; align-items:flex-start; flex-wrap:wrap; }
-      .process-stats-right { display:grid; grid-template-columns: repeat(2, minmax(170px, 1fr)); gap:10px; margin-top:10px; }
-      #processInlineStats .stat-box, .process-stats-right .stat-box { background:#e0e7ff; border:1px solid #c7d2fe; border-radius:14px; padding:10px 14px; min-height:62px; display:flex; flex-direction:column; justify-content:center; }
+      .process-stats-right { display:flex; flex-wrap:wrap; align-items:stretch; gap:10px; margin-top:10px; }
+      .process-stats-right .stat-box { flex:0 1 auto; width:auto; min-width:132px; max-width:200px; box-sizing:border-box; }
+      #processInlineStats .stat-box, .process-stats-right .stat-box { background:#e0e7ff; border:1px solid #c7d2fe; border-radius:14px; padding:8px 12px; min-height:52px; display:flex; flex-direction:column; justify-content:center; }
       #processInlineStats .stat-v, .process-stats-right .stat-v { color:#1e3a8a; }
       #processGroupsCard .process-pie-wrap { background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%); border-color:#a5b4fc; }
       #processGroupsCard .process-pie-wrap > .stat-k { font-weight: 800; color:#1e40af; }
@@ -368,7 +369,7 @@
           <button type="button" class="secondary side-nav-jump" data-scroll-target="executorsCard">Izpildītāji</button>
           <button type="button" class="secondary side-nav-jump" data-scroll-target="metricsCard">Procesu rādītāji (t.sk. mērījumi)</button>
           <button type="button" class="secondary side-nav-jump nav-subsection" data-scroll-target="optimizacijaCard">Optimizācija</button>
-          <button type="button" class="secondary side-nav-jump" data-scroll-target="normActsCard">Procesus reglamentējoši normatīvie akti</button>
+          <button type="button" class="secondary side-nav-jump" data-scroll-target="normActsCard">Procesus reglamentējošie normatīvie akti</button>
           <button type="button" class="secondary side-nav-jump" data-scroll-target="reportsCard">Statistika</button>
           <button type="button" class="secondary side-nav-jump" data-scroll-target="manualCard">Rokasgrāmata</button>
           <button type="button" id="helpAdminOpenBtn" class="secondary side-nav-jump hidden" data-scroll-target="skaidrojumiAdminCard">Skaidrojuma ievietošana</button>
@@ -522,7 +523,7 @@
         <h2 style="margin:0;font-size:18px">Skaidrojuma ievietošana</h2>
         <button type="button" id="helpAdminCloseBtn" class="secondary">Aizvērt</button>
       </div>
-      <p class="hint" style="margin-top:0">Tikai lomai «administrators (labot)». Šeit pārvaldāt «i» skaidrojumus un BUJ sarakstu. Datu glabāšana: pārlūka <code>localStorage</code> (nākotnē var pārcelt uz DB).</p>
+      <p class="hint" style="margin-top:0">Tikai lomai «Administrators». Šeit pārvaldāt «i» skaidrojumus un BUJ sarakstu. Datu glabāšana: Supabase datubāze (<code>sistema_help_icons</code>, <code>sistema_help_faq</code>).</p>
       <div id="skaidrojumiAdminMount"></div>
     </div>
 
@@ -591,7 +592,7 @@
           </span>
         </div>
           <div class="right">
-            <button type="button" id="accordionToggleAllBtn" class="secondary hidden" title="Atvērt vai aizvērt visus GP akordeonus šajā lapā">Atvērt visus akordeonus</button>
+            <button type="button" id="accordionToggleAllBtn" class="secondary hidden" title="Atvērt vai aizvērt visas GP akordeonsadaļas šajā lapā">Atvērt visas akordeonsadaļas</button>
             <button type="button" id="exportProcessExcelBtn" class="secondary">Eksportēt uz Excel</button>
             <button type="button" id="newBtn" class="secondary">Pievienot jaunu procesu</button>
           </div>
@@ -735,9 +736,7 @@
           <th data-filter-label="Procesa galaprodukta Nr.">Procesa galaprodukta Nr.<br><strong class="th-db-col">Procesa_galaprodukta_Nr.</strong></th>
           <th data-filter-label="Procesa galaprodukts">Procesa galaprodukts<br><strong class="th-db-col">Procesa_galaprodukti</strong></th>
           <th data-filter-label="Patstāvīgā struktūrvienība">Patstāvīgā struktūrvienība<br><strong class="th-db-col">Procesa_izpilditajs-patstaviga_strukturvieniba</strong></th>
-          <th data-filter-label="Daļas nosaukums">Daļas nosaukums<br><strong class="th-db-col">Strukturvieniba_dala</strong></th>
-          <th data-filter-label="Procesa Nr.">Procesa Nr.<br><strong class="th-db-col">Procesa_Nr.</strong></th>
-          <th data-filter-label="Process">Process<br><strong class="th-db-col">Process</strong></th>
+          <th data-filter-label="Daļa/ amats">Daļa/ amats<br><strong class="th-db-col">Strukturvieniba_dala</strong></th>
           <th data-filter-label="Galaprodukta joma">Galaprodukta joma<br><strong class="th-db-col">Darbibas_joma</strong></th>
           <th data-filter-label="GP kartiņa">GP kartiņa</th>
         </tr></thead><tbody></tbody></table>
@@ -801,7 +800,7 @@
     </div>
 
     <div class="card hidden editor-frame" id="jomaEditorCard">
-      <h2 id="jomaEditorTitle">Jomas kartiņa</h2>
+      <h2 id="jomaEditorTitle"><span class="joma-editor-kind">Jomas kartiņa</span></h2>
       <form id="jomaEditorForm">
         <input id="jOriginalJomaKey" type="hidden" />
         <div class="form-group">
@@ -817,7 +816,7 @@
           <textarea id="jFunkcijas" rows="6"></textarea>
         </div>
         <div class="form-group">
-          <label>Procesus reglamentējoši normatīvie akti</label>
+          <label>Procesus reglamentējošie normatīvie akti</label>
           <div id="jNaActions" class="na-linked-list"></div>
           <button type="button" id="jAddNaBtn" class="secondary" style="margin-top:8px">Pievienot normatīvo aktu</button>
         </div>
@@ -865,13 +864,30 @@
           <div id="cNaInlineHost" class="kartina-inline-host kartina-inline-host--na"></div>
         </div>
 
-        <div class="editor-section">
+        <div class="editor-section" id="cGpExtraSection">
           <h3 class="editor-section-title">5. Galaprodukta papildu informācija</h3>
-          <div class="form-row">
+          <div class="form-row" data-gp-sec5="veidi">
             <div class="form-group form-group--full">
-              <label>Galaprodukta papildu informācija</label>
+              <label for="cGalaproduktaVeidi">Galaprodukta veidi</label>
+              <textarea id="cGalaproduktaVeidi" rows="4"></textarea>
+            </div>
+          </div>
+          <div class="form-row" data-gp-sec5="parakst">
+            <div class="form-group form-group--full">
+              <label for="cParaksttiesibas">Paraksttiesības</label>
+              <textarea id="cParaksttiesibas" rows="4"></textarea>
+            </div>
+          </div>
+          <div class="form-row" data-gp-sec5="papildu">
+            <div class="form-group form-group--full">
+              <label for="cAdditionalInfo">Galaprodukta papildu informācija</label>
               <textarea id="cAdditionalInfo" rows="6"></textarea>
-              <div class="hint" style="margin-top:8px">Pielikumi (attēli, PDF, Office):</div>
+            </div>
+          </div>
+          <div class="form-row" data-gp-sec5="attachments">
+            <div class="form-group form-group--full">
+              <label for="cAttachmentsFile">Pievienot failus</label>
+              <div class="hint" style="margin:0 0 6px">Attēli, PDF, Office u.c.</div>
               <input type="file" id="cAttachmentsFile" multiple="" accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,application/pdf" style="margin-top:4px;font-size:13px;max-width:100%" />
               <div id="cAttachmentsList"></div>
             </div>
@@ -913,7 +929,7 @@
 
     <div class="card section-block hidden" id="normActsCard">
       <div class="toolbar">
-        <div class="left"><div class="section-title">Procesus reglamentējoši normatīvie akti</div></div>
+        <div class="left"><div class="section-title">Procesus reglamentējošie normatīvie akti</div></div>
         <div class="right">
           <button type="button" id="naNewBtn" class="secondary">Pievienot jaunu normatīvo aktu</button>
         </div>
@@ -924,7 +940,7 @@
       <div class="form-row" style="margin-bottom:10px">
         <div class="form-group form-group--wide">
           <label>Meklēt</label>
-          <input id="naSearchInput" placeholder="Meklēt pēc nosaukuma, numura, jomas, procesa…" autocomplete="off" />
+          <input id="naSearchInput" placeholder="Meklēt pēc veida, nosaukuma, numura, datuma…" autocomplete="off" />
         </div>
       </div>
       <div style="overflow-x:auto;width:100%;">
@@ -935,10 +951,6 @@
               <th data-filter-label="Normatīvā akta nosaukums">Normatīvā akta nosaukums</th>
               <th data-filter-label="Numurs">Numurs</th>
               <th data-filter-label="Pieņemšanas datums">Pieņemšanas datums</th>
-              <th data-filter-label="Procesu joma">Procesu joma</th>
-              <th data-filter-label="Process">Process</th>
-              <th data-filter-label="GP">GP</th>
-              <th data-filter-label="Darbība">Darbība</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -1046,10 +1058,10 @@
   <!-- Neobligāti: config.js no config.example.js (iestādes Supabase). Ja nav — DB.js noklusējums. -->
   <script src="config.js"></script>
   <script src="DB.js?v=20260818a"></script>
-  <script src="Lomas.js?v=20260923a"></script>
+  <script src="Lomas.js?v=20260930a"></script>
   <script src="PVConfirm.js"></script>
   <script src="Procesa%20kartina.js?v=20260731a"></script>
-  <script src="GP%20kataogs.js?v=20260923b"></script>
+  <script src="GP%20kataogs.js?v=20260930d"></script>
 
     <script>
       let processRows = [], csvRows = [], catalogRowsView = [], user = "daina", roles = {};
@@ -1086,15 +1098,15 @@
         );
       }
       const role = () => {
-        const stored = window.PVRoles
-          ? window.PVRoles.normalizeRole(roles[user])
-          : String(roles[user] || "").trim();
-        if (stored) return stored;
         const rs = $("roleSelect");
         if (rs && rs.value) {
           const fromUi = window.PVRoles ? window.PVRoles.normalizeRole(rs.value) : String(rs.value).trim();
           if (fromUi) return fromUi;
         }
+        const stored = window.PVRoles
+          ? window.PVRoles.normalizeRole(roles[user])
+          : String(roles[user] || "").trim();
+        if (stored) return stored;
         return window.PVRoles ? window.PVRoles.DEFAULT_ROLE : "admin";
       };
       const canEdit = () => (window.PVRoles ? window.PVRoles.canEditForRole(role()) : role() === "admin");
@@ -1321,7 +1333,7 @@
             td.textContent = val || "";
             return td;
           };
-          [x.typeNo, sanitizeGpName(x.type), x.unit, x.department, x.procNo, x.process, x.darbibasJoma].forEach(v=>tr.appendChild(makeCell(v)));
+          [x.typeNo, sanitizeGpName(x.type), x.unit, x.department, x.darbibasJoma].forEach(v=>tr.appendChild(makeCell(v)));
           const td=document.createElement("td");
           const b=document.createElement("button");
           b.type="button"; b.className="secondary"; b.textContent="Atvērt kartiņu";
@@ -1507,9 +1519,7 @@
             <th data-filter-label="Procesa galaprodukta Nr.">Procesa galaprodukta Nr.</th>
             <th data-filter-label="Procesa galaprodukts">Procesa galaprodukts</th>
             <th data-filter-label="Patstāvīgā struktūrvienība">Patstāvīgā struktūrvienība</th>
-            <th data-filter-label="Daļas nosaukums">Daļas nosaukums<br><strong class="th-db-col">Strukturvieniba_dala</strong></th>
-            <th data-filter-label="Procesa Nr.">Procesa Nr.</th>
-            <th data-filter-label="Process">Process</th>
+            <th data-filter-label="Daļa/ amats">Daļa/ amats<br><strong class="th-db-col">Strukturvieniba_dala</strong></th>
             <th data-filter-label="Galaprodukta joma">Galaprodukta joma</th>
             <th data-filter-label="GP kartiņa">GP kartiņa</th>
           </tr>`;
@@ -2356,8 +2366,8 @@
             }else{
               bulk.classList.remove("hidden");
               const anyOpen = Array.from(hdrs).some((h)=>h.getAttribute("aria-expanded")==="true");
-              bulk.textContent = anyOpen ? "Aizvērt visus akordeonus" : "Atvērt visus akordeonus";
-              bulk.title = anyOpen ? "Aizvērt visus GP akordeonus šajā lapā" : "Atvērt visus GP akordeonus šajā lapā";
+              bulk.textContent = anyOpen ? "Aizvērt visas akordeonsadaļas" : "Atvērt visas akordeonsadaļas";
+              bulk.title = anyOpen ? "Aizvērt visas GP akordeonsadaļas šajā lapā" : "Atvērt visas GP akordeonsadaļas šajā lapā";
             }
           }
         }
@@ -4703,7 +4713,25 @@
       $("shareBtn").onclick=async()=>{ const u=new URL(location.href); u.searchParams.set("user",user); u.searchParams.set("level",$("levelSelect").value); try{await navigator.clipboard.writeText(u.toString()); alert("Saite nokopēta.");}catch{alert("Neizdevās kopēt saiti.");}};
       $("emailBtn").onclick=()=>{ const u=new URL(location.href); u.searchParams.set("user",user); u.searchParams.set("level",$("levelSelect").value); location.href="mailto:?subject="+encodeURIComponent("Procesu vadības bloks")+"&body="+encodeURIComponent("Saite:\n"+u.toString()); };
       if($("userSelect")) $("userSelect").onchange=()=>{ user=$("userSelect").value; if($("roleSelect")) $("roleSelect").value=(window.PVRoles?window.PVRoles.normalizeRole(roles[user]):roles[user])||(window.PVRoles?window.PVRoles.DEFAULT_ROLE:"admin"); refreshSaveRoleBtnVisibility(); refreshOpenEditorDeleteButtons(); refreshModeHint(); refreshToolbarForRole(); renderTable(); if(typeof window.refreshHelpAdminVisibility==="function")window.refreshHelpAdminVisibility(); };
-      if($("roleSelect")) $("roleSelect").addEventListener("change", ()=>{ refreshSaveRoleBtnVisibility(); refreshOpenEditorDeleteButtons(); refreshModeHint(); refreshToolbarForRole(); renderTable(); if(typeof window.refreshHelpAdminVisibility==="function")window.refreshHelpAdminVisibility(); });
+      if($("roleSelect")) $("roleSelect").addEventListener("change", ()=>{
+        const rs=$("roleSelect");
+        const next=rs?(window.PVRoles?window.PVRoles.normalizeRole(rs.value):rs.value):"admin";
+        if(user && next){ roles[user]=next; try{ localStorage.setItem("roleMap", JSON.stringify(roles)); }catch(_){} }
+        refreshSaveRoleBtnVisibility();
+        refreshOpenEditorDeleteButtons();
+        refreshModeHint();
+        refreshToolbarForRole();
+        renderTable();
+        if(typeof window.refreshHelpAdminVisibility==="function")window.refreshHelpAdminVisibility();
+        if(window.Optimizacija && typeof window.Optimizacija.render==="function"){
+          const oc=$("optimizacijaCard");
+          if(oc && !oc.classList.contains("hidden")) window.Optimizacija.render();
+        }
+        if(window.NormAkti && typeof window.NormAkti.render==="function"){
+          const nc=$("normActsCard");
+          if(nc && !nc.classList.contains("hidden")) window.NormAkti.render();
+        }
+      });
       if($("saveRoleBtn")) $("saveRoleBtn").onclick=()=>{
         const rs=$("roleSelect");
         const next=rs?(window.PVRoles?window.PVRoles.normalizeRole(rs.value):rs.value):"admin";
@@ -4836,7 +4864,7 @@
     <script src="Procesu%20registrs.js"></script>
     <script src="Pievienot%20jaunu%20procesu.js"></script>
     <script src="Statistika.js"></script>
-    <script src="Optimizacija.js"></script>
+    <script src="Optimizacija.js?v=20260930b"></script>
     <script src="Izmainu_pieteikums.js"></script>
     <script src="Rokasgramata.js?v=20260818b"></script>
     <script src="Skaidrojumi.js"></script>
@@ -4845,7 +4873,7 @@
     <script src="Navigacija.js"></script>
     <script src="Numeracija.js?v=20260731d"></script>
     <script src="Joma.js?v=20260706g"></script>
-    <script src="Joma%20kartina.js?v=20260731b"></script>
+    <script src="Joma%20kartina.js?v=20260930a"></script>
   </body>
   </html>
 

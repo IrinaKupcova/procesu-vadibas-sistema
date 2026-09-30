@@ -47,17 +47,20 @@ GRANT USAGE, SELECT ON SEQUENCE public.procesu_optimizacija_id_seq TO anon, auth
 -- pasakumi_json masīva elements (viens optimizācijas pasākums):
 -- {
 --   "id": "unikāls-id",
---   "nosaukums": "Pasākuma nosaukums",
---   "uzsaksanasDatums": "2026-09-01",
---   "planotaisIzpildesDatums": "2026-12-31",
---   "izpildesDatums": null,
---   "statuss": "nav_uzsakts | izpilde | pabeigts",
---   "atbildigie": [
---     { "parvalde": "Pārvalde", "dala": "Daļa", "vardsUzvards": "Vārds Uzvārds" }
---   ],
---   "pieteiktsRz": "Teksts par pieteikto RZ",
---   "apraksts": "Aprakstošais lauks",
---   "izpildesGaita": "Informācija par izpildes gaitu"
+--   "nosaukums": "Optimizācijas pasākuma nosaukums",
+--   "merkis": "Mērķis",
+--   "ierakstaDatums": "2026-09-01",
+--   "apraksts": "...",
+--   "kpi": "...",
+--   "ieguvums": "Optimizācijas ieguvums",
+--   "atbildigaisKontakts": "Vārds, kontakti",
+--   "izpildesGaita": "Informācija par izpildi",
+--   "pieteiktsRz": "Pieteiktie RZ",
+--   "saistitasIs": "Saistītās IS",
+--   "planotaisIeviesanasTermins": "2026-12-31",
+--   "ieviesanasTermins": null,
+--   "statuss": "nav_uzsakts | izpilde | pabeigts | atcelts",
+--   "atcelsanasIemesls": "… (obligāts, ja statuss atcelts)"
 -- }
 
 NOTIFY pgrst, 'reload schema';

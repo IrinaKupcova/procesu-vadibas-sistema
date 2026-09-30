@@ -1,51 +1,174 @@
-/* Skaidrojumi: «i» pogas, BUJ, administrators — localStorage. */
+/* Skaidrojumi: «i» pogas, BUJ, administrators — Supabase (DB.js). */
 (function () {
   "use strict";
 
   const K_ICONS = "pv_help_icons_v1";
   const K_FAQ = "pv_help_faq_v1";
 
-  const PRESETS = [
-    { label: "Izvēlēties sadaļu", selector: "" },
-    { label: "Augšējā vadības zona", selector: "#topToolbarCard" },
-    { label: "Procesu reģistrs (bloks)", selector: "#processListCard" },
-    { label: "Galaproduktu veidu katalogs (bloks)", selector: "#catalogListCard" },
-    { label: "Meklēšana", selector: "#searchInput" },
-    { label: "Procesu tabula", selector: "#processTable" },
-    { label: "Kataloga tabula", selector: "#catalogTable" },
-    { label: "Pārskati", selector: "#reportsCard" },
-    { label: "Izmaiņu pieteikuma veidlapa", selector: "#changeRequestCard" },
-    { label: "Procesa kartiņa (forma)", selector: "#editorCard" },
-    { label: "Galaproduktu veida kartiņa (forma)", selector: "#catalogEditorCard" },
-  ];
-
   const $ = (id) => document.getElementById(id);
+
+  /** Sadaļas no navigācijas + kartīnes un biežākie elementi — pilna izvēlne «i» pievienošanai. */
+  function collectSectionPresets() {
+    const out = [];
+    const seen = new Set();
+
+    function add(label, selector) {
+      const sel = String(selector || "").trim();
+      if (!sel || seen.has(sel)) return;
+      seen.add(sel);
+      const lab = String(label || sel).trim() || sel;
+      out.push({ label: lab, selector: sel });
+    }
+
+    add("Izvēlēties sadaļu", "");
+
+    document.querySelectorAll(".side-nav-jump[data-scroll-target]").forEach((btn) => {
+      const id = String(btn.getAttribute("data-scroll-target") || "").trim();
+      if (!id || id === "skaidrojumiAdminCard" || id === "__home") return;
+      const card = document.getElementById(id);
+      const navLabel = String(btn.textContent || "").trim();
+      const titleEl =
+        card &&
+        (card.querySelector(".toolbar .section-title") ||
+          card.querySelector(".section-title") ||
+          card.querySelector("h2"));
+      const titleLabel = titleEl ? String(titleEl.textContent || "").trim() : "";
+      const blockLabel = titleLabel || navLabel || id;
+      add(blockLabel, "#" + id);
+      add(blockLabel + " — virsraksts", "#" + id + " .section-title");
+    });
+
+    [
+      ["Augšējā vadības zona", "#topToolbarCard"],
+      ["Izmaiņu pieteikums", "#changeRequestCard"],
+      ["Uzdevumi", "#tasksViewCard"],
+      ["Procesu grupas", "#processGroupsCard"],
+      ["Plūsmas shēmas", "#plusmasShemasCard"],
+      ["Meklēšana", "#searchInput"],
+      ["Procesu reģistra skats", "#levelSelect"],
+      ["Procesu tabula", "#processTable"],
+      ["Kataloga tabula", "#catalogTable"],
+      ["Normatīvo aktu tabula", "#naTable"],
+      ["Izpildītāju tabula", "#executorsTable"],
+      ["Jomu tabula", "#processJomasTable"],
+      ["Procesu grupu tabula", "#processGroupsTable"],
+      ["Procesa kartiņa", "#editorCard"],
+      ["Galaprodukta kartiņa", "#catalogEditorCard"],
+      ["Normatīvā akta kartiņa", "#normActEditorCard"],
+      ["Jomas kartiņa", "#jomaEditorCard"],
+      ["Uzdevuma kartiņa", "#taskEditorCard"],
+      ["Lietotāja loma", "#roleSelect"],
+    ].forEach(([label, sel]) => add(label, sel));
+
+    out.sort((a, b) => {
+      if (!a.selector) return -1;
+      if (!b.selector) return 1;
+      return a.label.localeCompare(b.label, "lv", { sensitivity: "base" });
+    });
+    return out;
+  }
+
+  function ensureAdminStyles() {
+    if (document.getElementById("pvHelpAdminStyles")) return;
+    const s = document.createElement("style");
+    s.id = "pvHelpAdminStyles";
+    s.textContent =
+      "#skaidrojumiAdminCard h3,#skaidrojumiAdminMount h3{color:#334155!important;font-weight:700;font-size:14px;margin:14px 0 8px;letter-spacing:.01em}" +
+      "#skaidrojumiAdminMount h3:first-child{margin-top:0}";
+    document.head.appendChild(s);
+  }
 
   function isAdminEdit() {
     if (typeof window.canEdit === "function") return window.canEdit();
     const rs = $("roleSelect");
-    return rs && (rs.value === "admin" || rs.value === "admin_edit");
+    if (window.PVRoles) return window.PVRoles.canEditFromSelectValue(rs && rs.value);
+    return !!(rs && rs.value === "admin");
   }
 
-  function loadIcons() {
+  let iconsCache = [];
+  let faqCache = [];
+  let dataReadyPromise = null;
+
+  function loadIconsFromLegacy() {
     try {
       return JSON.parse(localStorage.getItem(K_ICONS) || "[]");
     } catch (_) {
       return [];
     }
   }
-  function saveIcons(arr) {
-    localStorage.setItem(K_ICONS, JSON.stringify(arr));
-  }
-  function loadFaq() {
+
+  function loadFaqFromLegacy() {
     try {
       return JSON.parse(localStorage.getItem(K_FAQ) || "[]");
     } catch (_) {
       return [];
     }
   }
-  function saveFaq(arr) {
-    localStorage.setItem(K_FAQ, JSON.stringify(arr));
+
+  function loadIcons() {
+    return iconsCache.slice();
+  }
+
+  function loadFaq() {
+    return faqCache.slice();
+  }
+
+  function dbErrorMessage(err) {
+    if (window.DB && typeof window.DB.mapDbError === "function") {
+      try {
+        return window.DB.mapDbError(err);
+      } catch (_) {}
+    }
+    return String((err && err.message) || err || "Nezināma kļūda");
+  }
+
+  async function persistIcons(arr) {
+    iconsCache = Array.isArray(arr) ? arr.slice() : [];
+    if (!window.DB || typeof window.DB.saveHelpIcons !== "function") {
+      throw new Error("Datubāzes modulis nav pieejams.");
+    }
+    await window.DB.saveHelpIcons(iconsCache);
+  }
+
+  async function persistFaq(arr) {
+    faqCache = Array.isArray(arr) ? arr.slice() : [];
+    if (!window.DB || typeof window.DB.saveHelpFaq !== "function") {
+      throw new Error("Datubāzes modulis nav pieejams.");
+    }
+    await window.DB.saveHelpFaq(faqCache);
+  }
+
+  async function reloadFromDb() {
+    if (!window.DB || typeof window.DB.loadHelpIcons !== "function") {
+      throw new Error("Datubāzes modulis nav pieejams.");
+    }
+    iconsCache = await window.DB.loadHelpIcons();
+    faqCache = await window.DB.loadHelpFaq();
+    const legacyIcons = loadIconsFromLegacy();
+    const legacyFaq = loadFaqFromLegacy();
+    if (!iconsCache.length && legacyIcons.length) {
+      iconsCache = legacyIcons;
+      await window.DB.saveHelpIcons(iconsCache);
+      try {
+        localStorage.removeItem(K_ICONS);
+      } catch (_) {}
+    }
+    if (!faqCache.length && legacyFaq.length) {
+      faqCache = legacyFaq;
+      await window.DB.saveHelpFaq(faqCache);
+      try {
+        localStorage.removeItem(K_FAQ);
+      } catch (_) {}
+    }
+  }
+
+  function ensureDataReady() {
+    if (!dataReadyPromise) dataReadyPromise = reloadFromDb();
+    return dataReadyPromise;
+  }
+
+  function resetDataReady() {
+    dataReadyPromise = null;
   }
 
   let openPopoverId = null;
@@ -161,21 +284,33 @@
     return escapeHtml(s).replace(/'/g, "&#39;");
   }
 
+  function fillHelpPresetSelect(presetEl) {
+    if (!presetEl) return;
+    const prev = presetEl.value;
+    presetEl.innerHTML = "";
+    collectSectionPresets().forEach((p) => {
+      const o = document.createElement("option");
+      o.value = p.selector;
+      o.textContent = p.label;
+      presetEl.appendChild(o);
+    });
+    if (prev && Array.from(presetEl.options).some((o) => o.value === prev)) presetEl.value = prev;
+  }
+
+  const ADMIN_UI_VERSION = "2";
+
   function buildAdminUI() {
     const mount = $("skaidrojumiAdminMount");
-    if (!mount || mount.dataset.built === "1") return;
+    if (!mount) return;
+    if (mount.dataset.built === "1" && mount.dataset.builtVersion === ADMIN_UI_VERSION) return;
+    if (mount.dataset.built === "1") {
+      mount.innerHTML = "";
+      mount.dataset.built = "";
+    }
+    ensureAdminStyles();
     mount.dataset.built = "1";
+    mount.dataset.builtVersion = ADMIN_UI_VERSION;
     mount.innerHTML = `
-      <h3>Vietnes sadaļas un elementi (īsais saraksts)</h3>
-      <ul class="hint" style="margin-top:4px;padding-left:18px">
-        <li><code>#topToolbarCard</code> — augšējā zona</li>
-        <li><code>#processListCard</code>, <code>#catalogListCard</code> — reģistrs un katalogs</li>
-        <li><code>#processTable</code>, <code>#catalogTable</code> — tabulas</li>
-        <li><code>#searchInput</code>, <code>#levelSelect</code> — filtri</li>
-        <li><code>#extraViewsCard</code> — skatu zona</li>
-        <li><code>#changeRequestCard</code> — izmaiņu pieteikums</li>
-        <li>Jebkurš derīgs CSS selektors (piem. <code>#processListCard .section-title</code>)</li>
-      </ul>
       <h3>«i» skaidrojumu saraksts</h3>
       <div class="form-row" style="align-items:flex-end">
         <div class="form-group" style="flex:1 1 200px">
@@ -209,7 +344,6 @@
       </div>
       <div id="helpIconsListWrap" style="margin-top:12px"></div>
       <h3 style="margin-top:20px">Biežāk uzdotie jautājumi un skaidrojumi</h3>
-      <p class="hint">Šie ieraksti parādās logā «Biežāk uzdotie jautājumi un skaidrojumi». Rediģē tikai administrators.</p>
       <div class="form-row">
         <div class="form-group" style="flex:1 1 200px"><label>Jautājums</label><input type="text" id="newFaqQ" /></div>
         <div class="form-group" style="flex:2 1 320px"><label>Atbilde</label><textarea id="newFaqA" rows="2"></textarea></div>
@@ -219,12 +353,7 @@
       <div id="faqAdminListWrap" style="margin-top:12px"></div>
     `;
     const preset = $("newHelpPreset");
-    PRESETS.forEach((p) => {
-      const o = document.createElement("option");
-      o.value = p.selector;
-      o.textContent = p.label;
-      preset.appendChild(o);
-    });
+    fillHelpPresetSelect(preset);
     preset.addEventListener("change", () => {
       if (preset.value) $("newHelpSelector").value = preset.value;
     });
@@ -234,7 +363,8 @@
     renderFaqAdmin();
   }
 
-  function addHelpIconRow() {
+  async function addHelpIconRow() {
+    await ensureDataReady();
     const sel = ($("newHelpSelector").value || "").trim();
     if (!sel) {
       alert("Norādiet CSS selektoru vai izvēlieties sadaļu.");
@@ -269,13 +399,19 @@
       enabled: $("newHelpEnabled").checked,
       position: $("newHelpPosition").value || "append",
     });
-    saveIcons(icons);
+    try {
+      await persistIcons(icons);
+    } catch (err) {
+      alert("Neizdevās saglabāt DB: " + dbErrorMessage(err));
+      return;
+    }
     $("newHelpText").value = "";
     renderHelpIconsAdmin();
     refreshHelpIcons();
   }
 
-  function addFaqRow() {
+  async function addFaqRow() {
+    await ensureDataReady();
     const q = ($("newFaqQ").value || "").trim();
     const a = ($("newFaqA").value || "").trim();
     if (!q) {
@@ -295,7 +431,12 @@
       answer: a,
       sort: Number($("newFaqSort").value) || 0,
     });
-    saveFaq(faq);
+    try {
+      await persistFaq(faq);
+    } catch (err) {
+      alert("Neizdevās saglabāt DB: " + dbErrorMessage(err));
+      return;
+    }
     $("newFaqQ").value = "";
     $("newFaqA").value = "";
     renderFaqAdmin();
@@ -340,7 +481,8 @@
     if (typeof window.applyTableColumnSizing === "function") window.applyTableColumnSizing(wrap.querySelector("table"));
     wrap.querySelectorAll("tr[data-id]").forEach((tr) => {
       const id = tr.getAttribute("data-id");
-      tr.querySelector(".hi-save").addEventListener("click", () => {
+      tr.querySelector(".hi-save").addEventListener("click", async () => {
+        await ensureDataReady();
         const lbl = tr.querySelector(".hi-label") ? tr.querySelector(".hi-label").value.trim() : "skaidrojuma ierakstu";
         const saveLabel = `skaidrojuma «i» ierakstu «${lbl || "—"}»`;
         if (window.PVConfirm) {
@@ -356,11 +498,17 @@
         all[i].position = tr.querySelector(".hi-pos").value;
         all[i].enabled = tr.querySelector(".hi-en").checked;
         all[i].text = tr.querySelector(".hi-txt").value.trim();
-        saveIcons(all);
+        try {
+          await persistIcons(all);
+        } catch (err) {
+          alert("Neizdevās saglabāt DB: " + dbErrorMessage(err));
+          return;
+        }
         refreshHelpIcons();
         alert("Saglabāts.");
       });
-      tr.querySelector(".hi-del").addEventListener("click", () => {
+      tr.querySelector(".hi-del").addEventListener("click", async () => {
+        await ensureDataReady();
         const lbl = tr.querySelector(".hi-label") ? tr.querySelector(".hi-label").value.trim() : "skaidrojumu";
         const delLabel = `skaidrojuma «i» ierakstu «${lbl || "—"}»`;
         if (window.PVConfirm) {
@@ -368,7 +516,12 @@
         } else if (!confirm(`Vai tiešām gribat dzēst — ${delLabel}?`)) {
           return;
         }
-        saveIcons(loadIcons().filter((x) => x.id !== id));
+        try {
+          await persistIcons(loadIcons().filter((x) => x.id !== id));
+        } catch (err) {
+          alert("Neizdevās saglabāt DB: " + dbErrorMessage(err));
+          return;
+        }
         renderHelpIconsAdmin();
         refreshHelpIcons();
       });
@@ -392,7 +545,8 @@
     if (typeof window.applyTableColumnSizing === "function") window.applyTableColumnSizing(wrap.querySelector("table"));
     wrap.querySelectorAll("tr[data-fid]").forEach((tr) => {
       const id = tr.getAttribute("data-fid");
-      tr.querySelector(".fq-save").addEventListener("click", () => {
+      tr.querySelector(".fq-save").addEventListener("click", async () => {
+        await ensureDataReady();
         const q = tr.querySelector(".fq-q") ? tr.querySelector(".fq-q").value.trim() : "";
         const saveLabel = `BUJ ierakstu «${q || "—"}»`;
         if (window.PVConfirm) {
@@ -406,11 +560,17 @@
         all[i].sort = Number(tr.querySelector(".fq-sort").value) || 0;
         all[i].question = tr.querySelector(".fq-q").value.trim();
         all[i].answer = tr.querySelector(".fq-a").value.trim();
-        saveFaq(all);
+        try {
+          await persistFaq(all);
+        } catch (err) {
+          alert("Neizdevās saglabāt DB: " + dbErrorMessage(err));
+          return;
+        }
         renderFaqModal();
         alert("BUJ saglabāts.");
       });
-      tr.querySelector(".fq-del").addEventListener("click", () => {
+      tr.querySelector(".fq-del").addEventListener("click", async () => {
+        await ensureDataReady();
         const q = tr.querySelector(".fq-q") ? tr.querySelector(".fq-q").value.trim() : "";
         const delLabel = `BUJ ierakstu «${q || "—"}»`;
         if (window.PVConfirm) {
@@ -418,7 +578,12 @@
         } else if (!confirm(`Vai tiešām gribat dzēst — ${delLabel}?`)) {
           return;
         }
-        saveFaq(loadFaq().filter((x) => x.id !== id));
+        try {
+          await persistFaq(loadFaq().filter((x) => x.id !== id));
+        } catch (err) {
+          alert("Neizdevās saglabāt DB: " + dbErrorMessage(err));
+          return;
+        }
         renderFaqAdmin();
         renderFaqModal();
       });
@@ -434,7 +599,11 @@
     if (adminBtn && (!show || (card && card.classList.contains("hidden")))) {
       adminBtn.classList.remove("nav-active");
     }
-    if (show) buildAdminUI();
+    if (show) {
+      ensureAdminStyles();
+      buildAdminUI();
+      fillHelpPresetSelect($("newHelpPreset"));
+    }
   }
 
   function init() {
@@ -447,9 +616,11 @@
 
     if (faqOpen && faqModal) {
       faqOpen.addEventListener("click", () => {
-        renderFaqModal();
-        faqModal.classList.remove("hidden");
-        faqModal.setAttribute("aria-hidden", "false");
+        ensureDataReady().then(() => {
+          renderFaqModal();
+          faqModal.classList.remove("hidden");
+          faqModal.setAttribute("aria-hidden", "false");
+        });
       });
     }
     if (faqClose && faqModal) {
@@ -487,8 +658,29 @@
     window.refreshHelpIcons = refreshHelpIcons;
     window.refreshHelpAdminVisibility = refreshHelpAdminVisibility;
 
-    refreshHelpAdminVisibility();
-    refreshHelpIcons();
+    window.addEventListener("app:db-sync", (ev) => {
+      const d = ev && ev.detail ? ev.detail : {};
+      const kind = d.kind || "all";
+      const source = d.source || "";
+      if (source === "html") return;
+      if (kind !== "all" && kind !== "skaidrojumi") return;
+      resetDataReady();
+      ensureDataReady()
+        .then(() => {
+          refreshHelpIcons();
+          if ($("skaidrojumiAdminMount") && $("skaidrojumiAdminMount").dataset.built === "1") {
+            renderHelpIconsAdmin();
+            renderFaqAdmin();
+          }
+          renderFaqModal();
+        })
+        .catch(() => {});
+    });
+
+    ensureDataReady().then(() => {
+      refreshHelpAdminVisibility();
+      refreshHelpIcons();
+    });
 
     window.addEventListener("scroll", () => {
       const btn = document.querySelector(".pv-help-i-btn[aria-expanded='true']");

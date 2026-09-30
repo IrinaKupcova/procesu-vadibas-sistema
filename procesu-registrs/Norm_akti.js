@@ -1,8 +1,8 @@
-/* Procesus reglamentējoši normatīvie akti — uzskaites bloks (Supabase + localStorage rezerve). */
+/* Procesus reglamentējošie normatīvie akti — uzskaites bloks (Supabase + localStorage rezerve). */
 (function () {
   "use strict";
 
-  const NA_TITLE = "Procesus reglamentējoši normatīvie akti";
+  const NA_TITLE = "Procesus reglamentējošie normatīvie akti";
   const STORAGE_ACTS = "pv_norm_akti_v1";
   const STORAGE_VEIDI = "pv_norm_akti_veidi_v1";
   const MIGRATED_FLAG = "pv_norm_akti_db_migrated_v1";
@@ -120,7 +120,8 @@
   function canEdit() {
     if (typeof window.canEdit === "function") return window.canEdit();
     const rs = $("roleSelect");
-    return rs && (rs.value === "admin" || rs.value === "admin_edit");
+    if (window.PVRoles) return window.PVRoles.canEditFromSelectValue(rs && rs.value);
+    return !!(rs && rs.value === "admin");
   }
 
   function statusMsg(text, kind) {
@@ -906,41 +907,23 @@
     if (!rows.length) {
       const tr = document.createElement("tr");
       const td = document.createElement("td");
-      td.colSpan = 8;
+      td.colSpan = 4;
       td.className = "hint";
       td.textContent = "Nav ierakstu. Pievienojiet jaunu normatīvo aktu.";
       tr.appendChild(td);
       tbody.appendChild(tr);
       return;
     }
-    const editMode = canEdit();
     rows.forEach((r) => {
       const tr = document.createElement("tr");
-      const procLabel = registryPairLabel(r.processNo, r.process) || r.process || r.processNo || "";
-      const gpParts = (r.gpRefs || [])
-        .map(gpRefSummaryLabel)
-        .filter(Boolean)
-        .sort((a, b) => a.localeCompare(b, "lv", { sensitivity: "base" }));
-      const gpLabel =
-        gpParts.length > 0
-          ? gpParts.join("; ")
-          : registryPairLabel(r.gpTypeNo, r.gp) || r.gp || r.gpTypeNo || "";
+      tr.style.cursor = "pointer";
+      tr.title = "Atvērt normatīvā akta kartiņu";
       tr.innerHTML =
         `<td>${escapeHtml(r.veids)}</td>` +
         `<td>${escapeHtml(r.nosaukums)}</td>` +
         `<td>${escapeHtml(r.numurs)}</td>` +
-        `<td>${escapeHtml(formatPenemsanasDatumsDisplay(r.penemsanasDatums))}</td>` +
-        `<td>${escapeHtml(r.joma)}</td>` +
-        `<td>${escapeHtml(procLabel)}</td>` +
-        `<td>${escapeHtml(gpLabel)}</td>`;
-      const tdAct = document.createElement("td");
-      const btn = document.createElement("button");
-      btn.type = "button";
-      btn.className = "secondary";
-      btn.textContent = openActLabel(editMode);
-      btn.onclick = () => openEditor(r.id);
-      tdAct.appendChild(btn);
-      tr.appendChild(tdAct);
+        `<td>${escapeHtml(formatPenemsanasDatumsDisplay(r.penemsanasDatums))}</td>`;
+      tr.addEventListener("click", () => openEditor(r.id));
       tbody.appendChild(tr);
     });
     const countEl = $("naStatActCount");
@@ -1390,16 +1373,16 @@
     hint.className = "hint";
     hint.style.marginBottom = "6px";
     hint.textContent = procCardNa
-      ? "Atzīmējiet normatīvos aktus, ko saistīt ar šo kartiņu (jaunu pievieno sadaļā «Procesus reglamentējoši normatīvie akti»):"
-      : "Atzīmējiet normatīvos aktus, ko saistīt ar šo kartiņu (jaunu pievieno sadaļā «Procesus reglamentējoši normatīvie akti»):";
+      ? "Atzīmējiet normatīvos aktus, ko saistīt ar šo kartiņu (jaunu pievieno sadaļā «Procesus reglamentējošie normatīvie akti»):"
+      : "Atzīmējiet normatīvos aktus, ko saistīt ar šo kartiņu (jaunu pievieno sadaļā «Procesus reglamentējošie normatīvie akti»):";
     pickMount.appendChild(hint);
 
     if (!all.length) {
       const empty = document.createElement("div");
       empty.className = "hint";
       empty.textContent = procCardNa
-        ? "Nav reģistrētu normatīvo aktu — vispirms pievienojiet sadaļā «Procesus reglamentējoši normatīvie akti»."
-        : "Nav reģistrētu normatīvo aktu — vispirms pievienojiet sadaļā «Procesus reglamentējoši normatīvie akti».";
+        ? "Nav reģistrētu normatīvo aktu — vispirms pievienojiet sadaļā «Procesus reglamentējošie normatīvie akti»."
+        : "Nav reģistrētu normatīvo aktu — vispirms pievienojiet sadaļā «Procesus reglamentējošie normatīvie akti».";
       pickMount.appendChild(empty);
       return;
     }

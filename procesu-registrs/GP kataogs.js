@@ -10,6 +10,7 @@
   "use strict";
 
   const STORAGE_SENS = "pv_gp_sensitivity_v1";
+  const DALA_AMATS_LABEL = "Daļa/ amats";
 
   function loadSensMap() {
     try {
@@ -61,11 +62,59 @@
     table.classList.remove("catalog-view--compact");
     const card = document.getElementById("catalogListCard");
     if (card) card.classList.add("catalog-detail-open");
+    applyCatalogDalaAmatsColumnLabel();
   };
+
+  let catalogDalaLabelPatchLock = false;
+
+  function applyCatalogDalaAmatsColumnLabel() {
+    const table = document.getElementById("catalogTable");
+    if (!table || catalogDalaLabelPatchLock) return;
+    catalogDalaLabelPatchLock = true;
+    try {
+      table.querySelectorAll("thead th").forEach((th) => {
+        const filterLabel = (th.getAttribute("data-filter-label") || "").trim();
+        const dbCol = th.querySelector(".th-db-col");
+        const dbName = dbCol ? String(dbCol.textContent || "").trim() : "";
+        const isDalaCol =
+          filterLabel === "Daļas nosaukums" ||
+          filterLabel === DALA_AMATS_LABEL ||
+          dbName === "Strukturvieniba_dala";
+        if (!isDalaCol) return;
+        if (filterLabel === DALA_AMATS_LABEL) return;
+        th.setAttribute("data-filter-label", DALA_AMATS_LABEL);
+        const filterTitle = th.querySelector(".th-filter-wrap > span");
+        if (filterTitle) {
+          filterTitle.textContent = DALA_AMATS_LABEL;
+          return;
+        }
+        if (dbCol) {
+          th.innerHTML = `${DALA_AMATS_LABEL}<br>${dbCol.outerHTML}`;
+        } else {
+          th.textContent = DALA_AMATS_LABEL;
+        }
+      });
+    } finally {
+      catalogDalaLabelPatchLock = false;
+    }
+  }
+
+  function observeCatalogDalaColumnLabel() {
+    const table = document.getElementById("catalogTable");
+    if (!table || table.dataset.gpDalaLabelObs) return;
+    table.dataset.gpDalaLabelObs = "1";
+    const thead = table.querySelector("thead");
+    if (thead) {
+      const obs = new MutationObserver(() => applyCatalogDalaAmatsColumnLabel());
+      obs.observe(thead, { childList: true, subtree: true });
+    }
+    applyCatalogDalaAmatsColumnLabel();
+  }
 
   function ensureToolbar() {
     // Skata pārslēdzējs vairs netiek rādīts.
     window.applyGpCatalogView();
+    observeCatalogDalaColumnLabel();
   }
 
   function norm(v) {
@@ -332,7 +381,7 @@
     const editable = catalogFormEditable();
     const rows = rowsFromUnitDepartmentFields();
 
-    let html = `<div class="gp-resp-head"><span>Patstāvīgā struktūrvienība</span><span>Daļa / amats</span><span></span></div>`;
+    let html = `<div class="gp-resp-head"><span>Patstāvīgā struktūrvienība</span><span>${DALA_AMATS_LABEL}</span><span></span></div>`;
     rows.forEach((row, idx) => {
       html += `<div class="gp-resp-row" data-idx="${idx}">
         <input type="text" class="gp-resp-unit" value="${escHtml(row.unit)}" ${editable ? "" : "disabled"} />
@@ -423,11 +472,11 @@
         margin-bottom: 6px;
       }
       #cGpResponsibleRoot .gp-resp-head {
-        font-size: 11px;
-        font-weight: 700;
-        color: #64748b;
-        text-transform: uppercase;
-        letter-spacing: 0.04em;
+        font-size: 12px;
+        font-weight: 600;
+        color: #334155;
+        text-transform: none;
+        letter-spacing: 0.03em;
       }
       #cGpResponsibleRoot .gp-resp-head span:last-child { width: 36px; }
       #cGpResponsibleRoot .gp-resp-del { min-width: 36px; padding: 6px 8px; }
@@ -565,14 +614,65 @@
 
   function readGpExtraFieldsFromDom() {
     return {
+      galaproduktaVeidi: String(gp$("cGalaproduktaVeidi")?.value || "").trim(),
       paraksttiesibas: String(gp$("cParaksttiesibas")?.value || "").trim(),
       riskuParvaldiba: String(gp$("cRiskuParvaldiba")?.value || "").trim(),
     };
   }
 
+  function ensureGpSection5Row(sec5, key) {
+    let row = sec5.querySelector(`.form-row[data-gp-sec5="${key}"]`);
+    if (!row) {
+      row = document.createElement("div");
+      row.className = "form-row";
+      row.dataset.gpSec5 = key;
+      row.innerHTML = '<div class="form-group form-group--full"></div>';
+      sec5.appendChild(row);
+    }
+    return row;
+  }
+
+  function layoutGpSection5Fields() {
+    const sec5 = gp$("cGpExtraSection") || gp$("cAdditionalInfo")?.closest(".editor-section");
+    if (!sec5) return;
+
+    const title5 = sec5.querySelector(".editor-section-title");
+    ensureGpSection5Row(sec5, "veidi");
+    ensureGpSection5Row(sec5, "parakst");
+    ensureGpSection5Row(sec5, "papildu");
+    ensureGpSection5Row(sec5, "attachments");
+
+    const veidiRow = sec5.querySelector('.form-row[data-gp-sec5="veidi"]');
+    const parakstRow = sec5.querySelector('.form-row[data-gp-sec5="parakst"]');
+    const papilduRow = sec5.querySelector('.form-row[data-gp-sec5="papildu"]');
+    const attachRow = sec5.querySelector('.form-row[data-gp-sec5="attachments"]');
+    [veidiRow, parakstRow, papilduRow, attachRow].filter(Boolean).forEach((row) => {
+      sec5.appendChild(row);
+    });
+    if (title5 && veidiRow && title5.nextSibling !== veidiRow) {
+      sec5.insertBefore(veidiRow, title5.nextSibling);
+    }
+
+    const moveInto = (row, id) => {
+      const el = gp$(id);
+      if (!el || !row) return;
+      const group = row.querySelector(".form-group") || row;
+      if (el.parentNode !== group) group.appendChild(el);
+    };
+    moveInto(papilduRow, "cAdditionalInfo");
+    moveInto(parakstRow, "cParaksttiesibas");
+    moveInto(veidiRow, "cGalaproduktaVeidi");
+    moveInto(attachRow, "cAttachmentsFile");
+    const listEl = gp$("cAttachmentsList");
+    if (listEl && attachRow && listEl.parentNode !== attachRow.querySelector(".form-group")) {
+      attachRow.querySelector(".form-group")?.appendChild(listEl);
+    }
+  }
+
   function ensureGpExtraSections() {
     const form = gp$("catalogEditorForm");
     if (!form) return;
+    layoutGpSection5Fields();
     const addInfo = gp$("cAdditionalInfo");
     const sec5 = addInfo ? addInfo.closest(".editor-section") : null;
     if (sec5) {
@@ -580,15 +680,10 @@
       if (title5) title5.textContent = "5. Galaprodukta papildu informācija";
       const addLabel = addInfo.closest(".form-group")?.querySelector("label");
       if (addLabel) addLabel.textContent = "Galaprodukta papildu informācija";
-      if (!gp$("cParaksttiesibas")) {
-        const group = document.createElement("div");
-        group.className = "form-group form-group--full";
-        group.innerHTML =
-          '<label for="cParaksttiesibas">Paraksttiesības</label>' +
-          '<textarea id="cParaksttiesibas" rows="4"></textarea>';
-        const anchor = addInfo.closest(".form-group");
-        if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(group, anchor.nextSibling);
-      }
+      const parakstLabel = sec5.querySelector('label[for="cParaksttiesibas"]');
+      if (parakstLabel) parakstLabel.textContent = "Paraksttiesības";
+      const attachLabel = sec5.querySelector('label[for="cAttachmentsFile"]');
+      if (attachLabel) attachLabel.textContent = "Pievienot failus";
     }
     let secRisk = gp$("cGpRiskSection");
     const toolsSec = gp$("cGpToolsLinks");
@@ -622,9 +717,10 @@
   }
 
   function syncGpExtraFieldsToForm() {
+    const taV = gp$("cGalaproduktaVeidi");
     const taP = gp$("cParaksttiesibas");
     const taR = gp$("cRiskuParvaldiba");
-    if (!taP && !taR) return;
+    if (!taV && !taP && !taR) return;
     const typeNo = String(gp$("cTypeNo")?.value || "").trim();
     const type = String(gp$("cType")?.value || "").trim();
     let slot = {};
@@ -635,9 +731,11 @@
         rows.find((r) => norm(r.type) === norm(type));
       if (hit && hit.raw) slot = gpMetaSlot(hit.raw, type);
     }
+    if (taV) taV.value = String(slot.galaproduktaVeidi != null ? slot.galaproduktaVeidi : "");
     if (taP) taP.value = String(slot.paraksttiesibas != null ? slot.paraksttiesibas : "");
     if (taR) taR.value = String(slot.riskuParvaldiba != null ? slot.riskuParvaldiba : "");
     const editable = catalogFormEditable();
+    if (taV) taV.disabled = !editable;
     if (taP) taP.disabled = !editable;
     if (taR) taR.disabled = !editable;
   }
