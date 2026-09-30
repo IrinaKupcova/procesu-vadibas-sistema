@@ -17,6 +17,8 @@
   const ADD_NEW = "__add_new__";
 
   let editingId = null;
+  /** NA kartiņas 2. sadaļa — gpRefs momentuzņēmums (GP no GP kartiņas; šeit tikai lasāms + jauni procesi). */
+  let editorGpRefsSnapshot = [];
   let actsCache = [];
   let customVeidiCache = [];
   let loadPromise = null;
@@ -266,7 +268,43 @@
         }),
       ];
     }
+    const procNo = String(src.processNo || src.process_no || "").trim();
+    const procName = String(src.process || src.process_nosaukums || "").trim();
+    if (procNo || procName) {
+      return [
+        parseGpRefItem({
+          processNo: procNo,
+          process: procName,
+          gpTypeNo: "",
+          gp: "",
+          pantsPunkts: src.pantsPunkts || src.pants_punkts,
+        }),
+      ];
+    }
     return [];
+  }
+
+  function mergeActGpRefsPreferRicher(act, preferredRefs) {
+    const base = normalizeActRow(act || {});
+    const pref = (preferredRefs || []).map(parseGpRefItem).filter((r) => r.gpTypeNo || r.gp || r.processNo || r.process);
+    if (!pref.length) return base;
+    const fromAct = parseGpRefsFromRaw(base);
+    if (pref.length >= fromAct.length) {
+      return normalizeActRow(applyGpRefsToAct(base, pref));
+    }
+    return base;
+  }
+
+  function mergeActsCacheWithLocalGpRefs(dbRows) {
+    const local = loadActsLocal().map(normalizeActRow);
+    return (dbRows || []).map((dbRow) => {
+      const sid = String(dbRow.id || "").trim();
+      const loc =
+        local.find((x) => String(x.id) === sid) ||
+        local.find((x) => String(x.nosaukums) === String(dbRow.nosaukums) && sid);
+      if (!loc) return normalizeActRow(dbRow);
+      return mergeActGpRefsPreferRicher(dbRow, parseGpRefsFromRaw(loc));
+    });
   }
 
   function gpRefMatchesCtx(ref, ctx) {
@@ -317,10 +355,7 @@
 
   function gpRefSummaryLabel(ref) {
     const r = parseGpRefItem(ref);
-    const gpLbl = r.gpTypeNo && r.gp ? r.gpTypeNo + " — " + r.gp : r.gp || r.gpTypeNo || "";
-    if (r.pantsPunkts && gpLbl) return gpLbl + " (" + r.pantsPunkts + ")";
-    if (r.pantsPunkts) return r.pantsPunkts;
-    return gpLbl;
+    return registryPairLabel(r.gpTypeNo, r.gp);
   }
 
   function normalizeActRow(r) {
@@ -362,7 +397,8 @@
         return actsCache;
       }
       try {
-        actsCache = (await api.loadNormActs()).map(normalizeActRow);
+        actsCache = mergeActsCacheWithLocalGpRefs((await api.loadNormActs()).map(normalizeActRow));
+        saveJson(STORAGE_ACTS, actsCache);
         await loadKlasifikatoriFromDb();
         await migrateLocalToDbIfNeeded();
         return actsCache;
@@ -384,7 +420,7 @@
     el.innerHTML = "";
     const empty = document.createElement("option");
     empty.value = "";
-    empty.textContent = "— Nav —";
+    empty.textContent = "Nav";
     el.appendChild(empty);
     (options || []).forEach((opt) => {
       const o = document.createElement("option");
@@ -440,7 +476,7 @@
       const key = no + "\u0001" + name;
       if (seen.has(key)) return;
       seen.add(key);
-      out.push({ processNo: no, process: name, label: no && name ? no + " — " + name : no || name });
+      out.push({ processNo: no, process: name, label: registryPairLabel(no, name) || no || name });
     });
     return out.sort((a, b) =>
       String(a.label).localeCompare(String(b.label), "lv", { sensitivity: "base" })
@@ -465,7 +501,7 @@
       out.push({
         typeNo,
         type,
-        label: typeNo && type ? typeNo + " — " + type : typeNo || type,
+        label: registryPairLabel(typeNo, type) || typeNo || type,
       });
     });
     return out.sort((a, b) =>
@@ -500,7 +536,7 @@
     sel.innerHTML = "";
     const empty = document.createElement("option");
     empty.value = "";
-    empty.textContent = "— Nav —";
+    empty.textContent = "Nav";
     sel.appendChild(empty);
     collectProcessOptions().forEach((p) => {
       const o = document.createElement("option");
@@ -511,118 +547,317 @@
     if (selectedKey) sel.value = selectedKey;
   }
 
-  function fillGpSelectEl(sel, processKey, selectedGpKey) {
+  function registryPairLabel(no, name) {
+    if (typeof window.pvPairLabel === "function") return window.pvPairLabel(no, name);
+    const n = String(no || "").trim();
+    const t = String(name || "").trim();
+    if (n && t) return n + " " + t;
+    return t || n || "";
+  }
+
+  function emptyMark() {
+    return (typeof window.pvEmptyMark === "string" && window.pvEmptyMark) || "–";
+  }
+
+  function processDisplayLabel(pNo, pName) {
+    return registryPairLabel(pNo, pName) || emptyMark();
+  }
+
+  function gpDisplayLabel(ref) {
+    const r = parseGpRefItem(ref);
+    return registryPairLabel(r.gpTypeNo, r.gp);
+  }
+
+  function processGroupKey(pNo, pName) {
+    const no = String(pNo || "").trim();
+    const name = String(pName || "").trim();
+    if (no) return "no:" + processNoKey(no);
+    if (name) return "name:" + normKey(name);
+    return "";
+  }
+
+  function snapshotHasProcessLink(pNo, pName) {
+    return editorGpRefsSnapshot.some((r) => processRefMatches(r, pNo, pName));
+  }
+
+  function snapshotHasGpRef(pNo, pName, gpTypeNo, gp) {
+    const ctx = { procNo: pNo, gpTypeNo, gp };
+    return editorGpRefsSnapshot.some((r) => gpRefMatchesCtx(r, ctx));
+  }
+
+  function ensureProcessStubInSnapshot(pNo, pName) {
+    if (snapshotHasProcessLink(pNo, pName)) return;
+    editorGpRefsSnapshot.push(
+      parseGpRefItem({ processNo: pNo, process: pName, gpTypeNo: "", gp: "", pantsPunkts: "" })
+    );
+  }
+
+  function mergeContextIntoSnapshot(ctx) {
+    if (!ctx) return;
+    const pNo = String(ctx.processNo || ctx.procNo || "").trim();
+    const pName = String(ctx.process || "").trim();
+    const gpTypeNo = String(ctx.gpTypeNo || ctx.typeNo || "").trim();
+    const gp = String(ctx.gp || ctx.type || "").trim();
+    if (pNo || pName) ensureProcessStubInSnapshot(pNo, pName);
+    if (gpTypeNo || gp) {
+      if (!snapshotHasGpRef(pNo, pName, gpTypeNo, gp)) {
+        editorGpRefsSnapshot.push(
+          parseGpRefItem({ processNo: pNo, process: pName, gpTypeNo, gp, pantsPunkts: "" })
+        );
+      }
+    }
+  }
+
+  function addGpToProcessInSnapshot(pNo, pName, gpTypeNo, gp) {
+    ensureProcessStubInSnapshot(pNo, pName);
+    if (snapshotHasGpRef(pNo, pName, gpTypeNo, gp)) return false;
+    editorGpRefsSnapshot.push(
+      parseGpRefItem({ processNo: pNo, process: pName, gpTypeNo, gp, pantsPunkts: "" })
+    );
+    return true;
+  }
+
+  function removeGpFromSnapshot(pNo, pName, gpTypeNo, gp) {
+    const ctx = { procNo: pNo, gpTypeNo, gp };
+    editorGpRefsSnapshot = editorGpRefsSnapshot.filter((r) => !gpRefMatchesCtx(r, ctx));
+    const left = editorGpRefsSnapshot.some((r) => processRefMatches(r, pNo, pName));
+    if (!left && (pNo || pName)) ensureProcessStubInSnapshot(pNo, pName);
+  }
+
+  function removeProcessFromSnapshot(pNo, pName) {
+    editorGpRefsSnapshot = editorGpRefsSnapshot.filter((r) => !processRefMatches(r, pNo, pName));
+  }
+
+  function refreshNaRegistryEditorUi() {
+    const actRow = editingId ? findActById(editingId) : null;
+    renderNaProcessRegistryView(actRow);
+    fillNaAddProcessSelect();
+  }
+
+  function buildProcessGroupsFromSnapshot(actRow) {
+    const groups = new Map();
+    const addGroup = (pNo, pName) => {
+      const key = processGroupKey(pNo, pName);
+      if (!key) return;
+      if (!groups.has(key)) {
+        groups.set(key, { processNo: String(pNo || "").trim(), process: String(pName || "").trim(), gps: [] });
+      } else {
+        const g = groups.get(key);
+        if (!g.processNo && pNo) g.processNo = String(pNo).trim();
+        if (!g.process && pName) g.process = String(pName).trim();
+      }
+    };
+    editorGpRefsSnapshot.forEach((ref) => {
+      const r = parseGpRefItem(ref);
+      addGroup(r.processNo, r.process);
+      const key = processGroupKey(r.processNo, r.process);
+      if (key && (r.gp || r.gpTypeNo)) {
+        const g = groups.get(key);
+        const lbl = gpDisplayLabel(r);
+        if (lbl && !g.gps.some((x) => gpDisplayLabel(x) === lbl)) g.gps.push(r);
+      }
+    });
+    const list = Array.from(groups.values());
+    list.sort((a, b) =>
+      processDisplayLabel(a.processNo, a.process).localeCompare(
+        processDisplayLabel(b.processNo, b.process),
+        "lv",
+        { sensitivity: "base" }
+      )
+    );
+    list.forEach((g) => {
+      g.gps.sort((a, b) =>
+        gpDisplayLabel(a).localeCompare(gpDisplayLabel(b), "lv", { sensitivity: "base" })
+      );
+    });
+    return list;
+  }
+
+  function fillNaAddProcessSelect() {
+    const sel = $("naAddProcessSelect");
     if (!sel) return;
-    const processNo = String(processKey || "").split("\u0001")[0] || "";
+    const prev = sel.value;
     sel.innerHTML = "";
     const empty = document.createElement("option");
     empty.value = "";
-    empty.textContent = "— Nav —";
+    empty.textContent = "";
     sel.appendChild(empty);
-    collectGpOptions(processNo).forEach((g) => {
+    collectProcessOptions().forEach((p) => {
+      if (snapshotHasProcessLink(p.processNo, p.process)) return;
       const o = document.createElement("option");
-      o.value = g.typeNo + "\u0001" + g.type;
-      o.textContent = g.label;
+      o.value = p.processNo + "\u0001" + p.process;
+      o.textContent = p.label;
       sel.appendChild(o);
     });
-    if (selectedGpKey) sel.value = selectedGpKey;
+    if (prev && Array.from(sel.options).some((o) => o.value === prev)) sel.value = prev;
+    else sel.value = "";
   }
 
-  function wireNaLinkRow(rowEl) {
-    const procSel = rowEl.querySelector(".na-link-row-process");
-    const gpSel = rowEl.querySelector(".na-link-row-gp");
-    if (procSel && gpSel) {
-      procSel.addEventListener("change", () => fillGpSelectEl(gpSel, procSel.value, ""));
-    }
-    const rmBtn = rowEl.querySelector(".na-link-row-remove");
-    if (rmBtn) {
-      rmBtn.addEventListener("click", () => {
-        if (!canEdit()) return;
-        rowEl.remove();
-        const body = $("naLinkRowsBody");
-        if (body && !body.querySelector(".na-link-row")) addNaLinkRow(null);
-      });
-    }
-  }
-
-  function addNaLinkRow(ref) {
-    const body = $("naLinkRowsBody");
-    if (!body) return;
-    const r = parseGpRefItem(ref);
-    const procKey = r.processNo || r.process ? (r.processNo || "") + "\u0001" + (r.process || "") : "";
-    const gpKey = r.gpTypeNo || r.gp ? (r.gpTypeNo || "") + "\u0001" + (r.gp || "") : "";
-    const rowEl = document.createElement("div");
-    rowEl.className = "na-link-row";
-    rowEl.innerHTML =
-      '<div class="form-row">' +
-      '<div class="form-group form-group--wide"><label>Process</label><select class="na-link-row-process"></select></div>' +
-      '<div class="form-group form-group--wide"><label>Galaprodukts (GP)</label><select class="na-link-row-gp"></select></div>' +
-      '<div class="form-group form-group--wide"><label>Informācija par pantu, punktu, sadaļu u.t.t.</label>' +
-      '<input class="na-link-row-pants" placeholder="piem., 12. pants, 3. punkts" /></div>' +
-      '<div class="form-group" style="flex:0 1 auto;min-width:96px">' +
-      '<label aria-hidden="true">&nbsp;</label>' +
-      '<button type="button" class="secondary na-link-row-remove">Dzēst rindu</button></div>' +
-      "</div>";
-    body.appendChild(rowEl);
-    const procSel = rowEl.querySelector(".na-link-row-process");
-    const gpSel = rowEl.querySelector(".na-link-row-gp");
-    const pantsIn = rowEl.querySelector(".na-link-row-pants");
-    fillProcessSelectEl(procSel, procKey);
-    fillGpSelectEl(gpSel, procKey, gpKey);
-    if (pantsIn) pantsIn.value = r.pantsPunkts || "";
-    wireNaLinkRow(rowEl);
-    if (!canEdit()) {
-      rowEl.querySelectorAll("input,select,button").forEach((el) => {
-        el.disabled = true;
-      });
-    }
-  }
-
-  function renderNaLinkRows(refs) {
+  function renderNaProcessRegistryView(actRow) {
     const body = $("naLinkRowsBody");
     if (!body) return;
     body.innerHTML = "";
-    const list = (refs && refs.length ? refs : []).map(parseGpRefItem);
-    if (!list.length) {
-      addNaLinkRow(null);
+    const editMode = canEdit();
+    const groups = buildProcessGroupsFromSnapshot(actRow);
+    if (!groups.length) {
+      const empty = document.createElement("div");
+      empty.className = "na-registry-empty";
+      empty.textContent = "Nav piesaistītu procesu. Pievienojiet procesu no izvēlnes zemāk.";
+      body.appendChild(empty);
       return;
     }
-    list.forEach((r) => addNaLinkRow(r));
+    groups.forEach((g) => {
+      const block = document.createElement("div");
+      block.className = "na-registry-process-block";
+      const row = document.createElement("div");
+      row.className = "na-registry-process-row";
+      const procCol = document.createElement("div");
+      procCol.className = "na-registry-process-col";
+      const procHead = document.createElement("div");
+      procHead.className = "na-registry-process-head";
+      const procTitle = document.createElement("span");
+      procTitle.textContent = processDisplayLabel(g.processNo, g.process);
+      procHead.appendChild(procTitle);
+      if (editMode) {
+        const rmProc = document.createElement("button");
+        rmProc.type = "button";
+        rmProc.className = "secondary";
+        rmProc.style.fontSize = "11px";
+        rmProc.textContent = "Noņemt procesu";
+        rmProc.onclick = () => {
+          removeProcessFromSnapshot(g.processNo, g.process);
+          refreshNaRegistryEditorUi();
+        };
+        procHead.appendChild(rmProc);
+      }
+      procCol.appendChild(procHead);
+      const gpCol = document.createElement("div");
+      gpCol.className = "na-registry-gp-col";
+      const gpColLabel = document.createElement("label");
+      gpColLabel.className = "na-registry-gp-col-label";
+      gpColLabel.textContent = "Galaprodukts";
+      gpCol.appendChild(gpColLabel);
+      const gpColBody = document.createElement("div");
+      gpColBody.className = "na-registry-gp-col-body";
+      if (g.gps.length) {
+        const ul = document.createElement("ul");
+        ul.className = "na-registry-gp-list";
+        g.gps.forEach((ref) => {
+          const li = document.createElement("li");
+          li.className = "na-registry-gp-li";
+          const lbl = document.createElement("span");
+          lbl.textContent = gpDisplayLabel(ref);
+          li.appendChild(lbl);
+          if (editMode) {
+            const rmGp = document.createElement("button");
+            rmGp.type = "button";
+            rmGp.className = "secondary";
+            rmGp.style.fontSize = "11px";
+            rmGp.textContent = "Noņemt";
+            rmGp.onclick = () => {
+              removeGpFromSnapshot(g.processNo, g.process, ref.gpTypeNo, ref.gp);
+              refreshNaRegistryEditorUi();
+            };
+            li.appendChild(rmGp);
+          }
+          ul.appendChild(li);
+        });
+        gpColBody.appendChild(ul);
+      } else {
+        const empty = document.createElement("div");
+        empty.className = "na-registry-empty";
+        empty.textContent = "Nav piesaistītu galaproduktu.";
+        gpColBody.appendChild(empty);
+      }
+      gpCol.appendChild(gpColBody);
+      if (editMode) {
+        const addGpWrap = document.createElement("div");
+        addGpWrap.className = "na-registry-add-gp form-row";
+        const gpField = document.createElement("div");
+        gpField.className = "form-group form-group--wide";
+        const gpSel = document.createElement("select");
+        gpSel.className = "na-registry-gp-select";
+        gpSel.innerHTML = "";
+        const emptyOpt = document.createElement("option");
+        emptyOpt.value = "";
+        emptyOpt.textContent = "";
+        gpSel.appendChild(emptyOpt);
+        collectGpOptions(g.processNo).forEach((opt) => {
+          if (snapshotHasGpRef(g.processNo, g.process, opt.typeNo, opt.type)) return;
+          const o = document.createElement("option");
+          o.value = opt.typeNo + "\u0001" + opt.type;
+          o.textContent = registryPairLabel(opt.typeNo, opt.type) || opt.label.replace(/\s—\s/g, " ");
+          gpSel.appendChild(o);
+        });
+        gpField.appendChild(gpSel);
+        const gpBtnField = document.createElement("div");
+        gpBtnField.className = "form-group form-group--btn";
+        const addGpBtn = document.createElement("button");
+        addGpBtn.type = "button";
+        addGpBtn.className = "secondary";
+        addGpBtn.textContent = "Pievienot GP";
+        addGpBtn.onclick = () => {
+          const val = String(gpSel.value || "");
+          if (!val) {
+            window.alert("Izvēlieties galaproduktu.");
+            return;
+          }
+          const parts = val.split("\u0001");
+          addGpToProcessInSnapshot(g.processNo, g.process, parts[0] || "", parts[1] || "");
+          refreshNaRegistryEditorUi();
+        };
+        gpBtnField.appendChild(addGpBtn);
+        addGpWrap.appendChild(gpField);
+        addGpWrap.appendChild(gpBtnField);
+        gpCol.appendChild(addGpWrap);
+      }
+      row.appendChild(procCol);
+      row.appendChild(gpCol);
+      block.appendChild(row);
+      body.appendChild(block);
+    });
   }
 
-  function readNaLinkRowsFromTable() {
-    const body = $("naLinkRowsBody");
-    if (!body) return [];
-    const out = [];
-    body.querySelectorAll(".na-link-row").forEach((tr) => {
-      const procSel = tr.querySelector(".na-link-row-process");
-      const gpSel = tr.querySelector(".na-link-row-gp");
-      const pantsIn = tr.querySelector(".na-link-row-pants");
-      const procVal = procSel ? String(procSel.value || "") : "";
-      const gpVal = gpSel ? String(gpSel.value || "") : "";
-      const parts = procVal.split("\u0001");
-      const gpParts = gpVal.split("\u0001");
-      const pants = pantsIn ? String(pantsIn.value || "").trim() : "";
-      if (!parts[0] && !parts[1] && !gpParts[0] && !gpParts[1] && !pants) return;
-      out.push(
-        parseGpRefItem({
-          processNo: parts[0] || "",
-          process: parts[1] || "",
-          gpTypeNo: gpParts[0] || "",
-          gp: gpParts[1] || "",
-          pantsPunkts: pants,
-        })
+  function syncEditorGpRefsFromRow(row) {
+    const r = normalizeActRow(row || {});
+    editorGpRefsSnapshot = parseGpRefsFromRaw(r).map(parseGpRefItem);
+    const topNo = String(r.processNo || "").trim();
+    const topName = String(r.process || "").trim();
+    if ((topNo || topName) && !snapshotHasProcessLink(topNo, topName)) {
+      editorGpRefsSnapshot.push(
+        parseGpRefItem({ processNo: topNo, process: topName, gpTypeNo: "", gp: "", pantsPunkts: "" })
       );
-    });
-    return out;
+    }
+  }
+
+  function addProcessToNaRegistryFromSelect() {
+    if (!canEdit()) return;
+    const sel = $("naAddProcessSelect");
+    const val = sel ? String(sel.value || "") : "";
+    if (!val) {
+      window.alert("Izvēlieties procesu.");
+      return;
+    }
+    const parts = val.split("\u0001");
+    const pNo = parts[0] || "";
+    const pName = parts[1] || "";
+    if (snapshotHasProcessLink(pNo, pName)) {
+      window.alert("Šis process jau ir sarakstā.");
+      return;
+    }
+    ensureProcessStubInSnapshot(pNo, pName);
+    refreshNaRegistryEditorUi();
+    if (sel) sel.value = "";
   }
 
   function setNaLinkRowsEditorDisabled(disabled) {
-    const addBtn = $("naLinkRowsAddBtn");
+    const addBtn = $("naAddProcessBtn");
     if (addBtn) addBtn.disabled = !!disabled;
+    const sel = $("naAddProcessSelect");
+    if (sel) sel.disabled = !!disabled;
     const body = $("naLinkRowsBody");
     if (body) {
-      body.querySelectorAll("input,select,button").forEach((el) => {
+      body.querySelectorAll("select,button").forEach((el) => {
         el.disabled = !!disabled;
       });
     }
@@ -671,7 +906,7 @@
     if (!rows.length) {
       const tr = document.createElement("tr");
       const td = document.createElement("td");
-      td.colSpan = 9;
+      td.colSpan = 8;
       td.className = "hint";
       td.textContent = "Nav ierakstu. Pievienojiet jaunu normatīvo aktu.";
       tr.appendChild(td);
@@ -681,21 +916,19 @@
     const editMode = canEdit();
     rows.forEach((r) => {
       const tr = document.createElement("tr");
-      const procLabel = r.processNo && r.process ? r.processNo + " — " + r.process : r.process || r.processNo || "";
-      const gpParts = (r.gpRefs || []).map(gpRefSummaryLabel).filter(Boolean);
+      const procLabel = registryPairLabel(r.processNo, r.process) || r.process || r.processNo || "";
+      const gpParts = (r.gpRefs || [])
+        .map(gpRefSummaryLabel)
+        .filter(Boolean)
+        .sort((a, b) => a.localeCompare(b, "lv", { sensitivity: "base" }));
       const gpLabel =
         gpParts.length > 0
           ? gpParts.join("; ")
-          : r.gpTypeNo && r.gp
-            ? r.gpTypeNo + " — " + r.gp
-            : r.gp || r.gpTypeNo || "";
+          : registryPairLabel(r.gpTypeNo, r.gp) || r.gp || r.gpTypeNo || "";
       tr.innerHTML =
         `<td>${escapeHtml(r.veids)}</td>` +
         `<td>${escapeHtml(r.nosaukums)}</td>` +
         `<td>${escapeHtml(r.numurs)}</td>` +
-        `<td>${escapeHtml(
-          (r.gpRefs || []).map((x) => x.pantsPunkts).filter(Boolean).join("; ") || r.pantsPunkts
-        )}</td>` +
         `<td>${escapeHtml(formatPenemsanasDatumsDisplay(r.penemsanasDatums))}</td>` +
         `<td>${escapeHtml(r.joma)}</td>` +
         `<td>${escapeHtml(procLabel)}</td>` +
@@ -710,12 +943,12 @@
       tr.appendChild(tdAct);
       tbody.appendChild(tr);
     });
-    const countEl = $("naCountHint");
-    if (countEl) countEl.textContent = "Kopā: " + rows.length + " akti";
+    const countEl = $("naStatActCount");
+    if (countEl) countEl.textContent = String(rows.length);
   }
 
   function readForm() {
-    const gpRefs = readNaLinkRowsFromTable();
+    const gpRefs = editorGpRefsSnapshot.map((ref) => parseGpRefItem(ref));
     const base = normalizeActRow({
       id: editingId || "",
       nosaukums: $("naNosaukums") && $("naNosaukums").value,
@@ -728,7 +961,8 @@
     return applyGpRefsToAct(base, gpRefs);
   }
 
-  function fillForm(row) {
+  function fillForm(row, formOpts) {
+    formOpts = formOpts || {};
     const r = normalizeActRow(row);
     editorDraftJoma = String(r.joma || "").trim();
     if ($("naNosaukums")) $("naNosaukums").value = r.nosaukums || "";
@@ -737,7 +971,10 @@
       $("naPenemsanasDatums").value = normalizePenemsanasDatums(r.penemsanasDatums) || "";
     }
     refreshEditorSelects(r.veids || "");
-    renderNaLinkRows(r.gpRefs);
+    syncEditorGpRefsFromRow(r);
+    if (formOpts.seedContext) mergeContextIntoSnapshot(formOpts.seedContext);
+    renderNaProcessRegistryView(r);
+    fillNaAddProcessSelect();
     hideNaJomaFieldInEditor();
   }
 
@@ -755,6 +992,7 @@
     const keepEnabled = new Set(["naCloseBtn"]);
     form.querySelectorAll("input,select,textarea,button").forEach((el) => {
       if (keepEnabled.has(el.id)) return;
+      if (!disabled && el.closest && el.closest("#naLinkRowsBody")) return;
       el.disabled = !!disabled;
     });
     const submitBtn = $("naSaveBtn") || form.querySelector("button[type='submit']");
@@ -769,6 +1007,9 @@
       $("naDeleteBtn").disabled = !showDelete;
     }
     setNaLinkRowsEditorDisabled(disabled);
+    if (!disabled) {
+      refreshNaRegistryEditorUi();
+    }
   }
 
   function showNaEditorCard() {
@@ -817,6 +1058,7 @@
 
   function restoreAfterClose() {
     editingId = null;
+    editorGpRefsSnapshot = [];
     hideNaEditorCard();
     const ctx = returnContext;
     returnContext = null;
@@ -860,11 +1102,23 @@
   function saveActsLocalFromForm(data) {
     const acts = loadActsLocal();
     const now = new Date().toISOString();
-    if (editingId) {
-      const idx = acts.findIndex((x) => String(x.id) === String(editingId));
-      if (idx >= 0) acts[idx] = Object.assign({}, acts[idx], data, { updatedAt: now });
+    const sid = String((data && data.id) || editingId || "").trim();
+    const payload = normalizeActRow(Object.assign({}, data, sid ? { id: sid } : {}));
+    if (sid) {
+      let idx = acts.findIndex((x) => String(x.id) === sid);
+      if (idx < 0 && editingId && String(editingId) !== sid) {
+        idx = acts.findIndex((x) => String(x.id) === String(editingId));
+        if (idx >= 0) {
+          acts[idx] = Object.assign({}, acts[idx], payload, { id: sid, updatedAt: now });
+        }
+      }
+      if (idx >= 0) {
+        acts[idx] = Object.assign({}, acts[idx], payload, { updatedAt: now });
+      } else {
+        acts.push(Object.assign({ createdAt: now, updatedAt: now }, payload));
+      }
     } else {
-      acts.push(Object.assign({ id: "na_" + Date.now(), createdAt: now, updatedAt: now }, data));
+      acts.push(Object.assign({ id: "na_" + Date.now(), createdAt: now, updatedAt: now }, payload));
     }
     saveJson(STORAGE_ACTS, acts);
     actsCache = acts.map(normalizeActRow);
@@ -876,18 +1130,11 @@
     if (act.nosaukums) parts.push(act.nosaukums);
     if (act.numurs) parts.push("Nr. " + act.numurs);
     if (act.penemsanasDatums) parts.push("(" + formatPenemsanasDatumsDisplay(act.penemsanasDatums) + ")");
-    return parts.length ? parts.join(" ") : "—";
+    return parts.length ? parts.join(" ") : emptyMark();
   }
 
   function actPickLabel(act) {
-    const parts = [actBaseTitle(act)];
-    const refs = parseGpRefsFromRaw(act);
-    if (refs.length === 1 && refs[0].pantsPunkts) {
-      parts.push("(" + refs[0].pantsPunkts + ")");
-    } else if (!refs.length && act.pantsPunkts) {
-      parts.push("(" + act.pantsPunkts + ")");
-    }
-    return parts.join(" ");
+    return actBaseTitle(act);
   }
 
   function actLinkedToProcess(act, pNo, pName) {
@@ -930,6 +1177,19 @@
       btn.parentNode.insertBefore(wrap, btn.nextSibling);
     }
     return wrap;
+  }
+
+  async function persistGpRefPantsForAct(act, ctx, pantsPunkts) {
+    const rowData = findActById(act.id) || act;
+    let refs = parseGpRefsFromRaw(rowData);
+    const idx = refs.findIndex((r) => gpRefMatchesCtx(r, ctx));
+    if (idx < 0) return;
+    refs[idx] = parseGpRefItem(Object.assign({}, refs[idx], { pantsPunkts: String(pantsPunkts || "").trim() }));
+    const data = applyGpRefsToAct(rowData, refs);
+    await persistActUpdate(act.id, data);
+    try {
+      await loadFromDb(true);
+    } catch (_) {}
   }
 
   async function applyNaLinkChange(act, cfg, pickMount, shouldLink) {
@@ -976,28 +1236,8 @@
     acts.forEach((act) => {
       const line = document.createElement("div");
       line.className = "na-linked-item";
-      line.style.flexDirection = "column";
-      line.style.alignItems = "flex-start";
-      const head = document.createElement("div");
-      head.style.display = "flex";
-      head.style.flexWrap = "wrap";
-      head.style.alignItems = "center";
-      head.style.gap = "6px";
       const labelText = cfg && cfg.actTitle ? cfg.actTitle(act) : actPickLabel(act);
-      const span = document.createElement("span");
-      span.textContent = labelText;
-      head.appendChild(span);
-      const detailText = cfg && cfg.actDetail ? cfg.actDetail(act) : "";
-      if (detailText) {
-        const sub = document.createElement("div");
-        sub.className = "hint";
-        sub.style.margin = "2px 0 0 0";
-        sub.textContent = detailText;
-        line.appendChild(head);
-        line.appendChild(sub);
-      } else {
-        line.appendChild(head);
-      }
+
       const btn = document.createElement("button");
       btn.type = "button";
       btn.className = "secondary";
@@ -1006,9 +1246,10 @@
         captureReturnFromEmbedded();
         openEditor(act.id, { skipCapture: true });
       };
-      head.appendChild(btn);
-      if (editMode && cfg) {
-        const rm = document.createElement("button");
+
+      let rm = null;
+      if (editMode && cfg && !cfg.noUnlink) {
+        rm = document.createElement("button");
         rm.type = "button";
         rm.className = "secondary";
         rm.textContent = "Noņemt";
@@ -1023,7 +1264,84 @@
             rm.disabled = false;
           }
         };
-        head.appendChild(rm);
+      }
+
+      if (cfg && cfg.gpPantsEditor && cfg.ctx) {
+        line.classList.add("na-linked-item--gp-row");
+        const ref = findGpRefForCtx(act, cfg.ctx);
+        const pp =
+          (ref && ref.pantsPunkts) ||
+          (parseGpRefsFromRaw(act).length === 1 ? parseGpRefsFromRaw(act)[0].pantsPunkts : "") ||
+          act.pantsPunkts ||
+          "";
+        const span = document.createElement("span");
+        span.className = "na-linked-item__title";
+        span.textContent = labelText;
+        const pantsWrap = document.createElement("div");
+        pantsWrap.className = "na-linked-item__pants-wrap";
+        const pantsLbl = document.createElement("label");
+        pantsLbl.className = "na-linked-item__pants-label";
+        pantsLbl.textContent = "Informācija par pantu, punktu, sadaļu u.t.t.";
+        const inp = document.createElement("input");
+        inp.type = "text";
+        inp.className = "na-linked-item__pants";
+        inp.placeholder = "";
+        const inpId = "naPantsIn-" + String(act.id || Date.now());
+        inp.id = inpId;
+        pantsLbl.setAttribute("for", inpId);
+        inp.value = pp;
+        if (editMode) {
+          inp.addEventListener("change", async () => {
+            const next = String(inp.value || "").trim();
+            if (next === String(pp || "").trim()) return;
+            if (window.PVConfirm && !window.PVConfirm.confirmSave("Pantus / punktus galaprodukta kartiņā")) {
+              inp.value = pp;
+              return;
+            }
+            inp.disabled = true;
+            try {
+              await persistGpRefPantsForAct(act, cfg.ctx, next);
+              if (typeof cfg.refresh === "function") cfg.refresh();
+            } catch (err) {
+              console.error("NormAkti gp pants:", err);
+              inp.value = pp;
+              window.alert("Neizdevās saglabāt: " + (err.message || err));
+            } finally {
+              inp.disabled = false;
+            }
+          });
+        } else {
+          inp.readOnly = true;
+          inp.tabIndex = -1;
+        }
+        pantsWrap.appendChild(pantsLbl);
+        pantsWrap.appendChild(inp);
+        line.appendChild(span);
+        line.appendChild(pantsWrap);
+        line.appendChild(btn);
+        if (rm) line.appendChild(rm);
+      } else {
+        line.style.flexDirection = "column";
+        line.style.alignItems = "flex-start";
+        const head = document.createElement("div");
+        head.style.display = "flex";
+        head.style.flexWrap = "wrap";
+        head.style.alignItems = "center";
+        head.style.gap = "6px";
+        const span = document.createElement("span");
+        span.textContent = labelText;
+        head.appendChild(span);
+        head.appendChild(btn);
+        if (rm) head.appendChild(rm);
+        line.appendChild(head);
+        const detailText = cfg && cfg.actDetail ? cfg.actDetail(act) : "";
+        if (detailText) {
+          const sub = document.createElement("div");
+          sub.className = "hint";
+          sub.style.margin = "2px 0 0 0";
+          sub.textContent = detailText;
+          line.appendChild(sub);
+        }
       }
       mountEl.appendChild(line);
     });
@@ -1198,9 +1516,8 @@
       line.style.alignItems = "center";
       line.style.gap = "6px";
       const parts = [act.nosaukums];
-      if (act.pantsPunkts) parts.push("(" + act.pantsPunkts + ")");
       if (act.numurs) parts.push("Nr. " + act.numurs);
-      const labelText = parts.filter(Boolean).join(" ") || "—";
+      const labelText = parts.filter(Boolean).join(" ") || emptyMark();
       const span = document.createElement("span");
       span.textContent = labelText;
       line.appendChild(span);
@@ -1217,42 +1534,124 @@
     });
   }
 
+  function renderNaCardReflection(mountEl, addBtn, opts) {
+    const o = opts || {};
+    const pNo = String(o.procNo || o.processNo || "").trim();
+    const pName = String(o.process || "").trim();
+    const gpTypeNo = String(o.gpTypeNo || "").trim();
+    const gp = String(o.gp || "").trim();
+    const gpCtx = gpTypeNo || gp ? { procNo: pNo, gpTypeNo, gp } : null;
+    const pickMount = o.pickMountId ? $(o.pickMountId) : null;
+    if (pickMount) {
+      pickMount.style.display = "none";
+      pickMount.innerHTML = "";
+    }
+    if (!mountEl) return;
+    mountEl.innerHTML = "";
+    mountEl.classList.add("na-linked-list");
+    const acts = loadActs()
+      .filter((a) => {
+        if (gpCtx) return actLinkedToGp(a, gpCtx);
+        return actLinkedToProcess(a, pNo, pName);
+      })
+      .sort((a, b) => actBaseTitle(a).localeCompare(actBaseTitle(b), "lv", { sensitivity: "base" }));
+    const editMode = canEdit();
+    if (!acts.length) {
+      const empty = document.createElement("div");
+      empty.className = "hint";
+      empty.textContent =
+        o.emptyText ||
+        "Nav piesaistītu normatīvo aktu. Pievienojiet, atverot normatīvā akta kartiņu zemāk.";
+      mountEl.appendChild(empty);
+    } else if (gpCtx) {
+      renderNaLinkedSummary(mountEl, acts, editMode, {
+        actTitle: (act) => actBaseTitle(act),
+        gpPantsEditor: true,
+        ctx: Object.assign({ process: pName }, gpCtx),
+        noUnlink: true,
+        refresh: o.refresh,
+      }, pickMount);
+    } else {
+      acts.forEach((act) => {
+        const line = document.createElement("div");
+        line.className = "na-reflection-item";
+        line.style.marginBottom = "8px";
+        const title = document.createElement("div");
+        title.style.fontWeight = "600";
+        title.textContent = actBaseTitle(act);
+        line.appendChild(title);
+        const refs = gpRefsForProcess(act, pNo, pName).filter((r) => r.gp || r.gpTypeNo);
+        if (refs.length) {
+          const gps = document.createElement("div");
+          gps.className = "hint";
+          gps.style.marginTop = "2px";
+          gps.textContent = refs
+            .map((r) => registryPairLabel(r.gpTypeNo, r.gp))
+            .filter(Boolean)
+            .sort((a, b) => a.localeCompare(b, "lv", { sensitivity: "base" }))
+            .join(" · ");
+          line.appendChild(gps);
+        }
+        const openBtn = document.createElement("button");
+        openBtn.type = "button";
+        openBtn.className = "secondary";
+        openBtn.style.marginTop = "4px";
+        openBtn.style.fontSize = "12px";
+        openBtn.textContent = openActLabel(editMode);
+        openBtn.onclick = () => {
+          if (typeof o.onOpenAct === "function") o.onOpenAct(act.id);
+          else {
+            captureReturnFromEmbedded();
+            openEditor(act.id, { skipCapture: true });
+          }
+        };
+        line.appendChild(openBtn);
+        mountEl.appendChild(line);
+      });
+    }
+    if (addBtn) {
+      addBtn.textContent = "Pievienot normatīvo aktu";
+      addBtn.classList.remove("hidden");
+      addBtn.style.display = editMode ? "" : "none";
+      addBtn.disabled = o.canAdd === false;
+      addBtn.title = o.blockedMsg || "";
+      addBtn.onclick = () => {
+        if (!canEdit()) return;
+        if (o.canAdd === false) {
+          window.alert(o.blockedMsg || "Norādiet kartiņas datus.");
+          return;
+        }
+        if (typeof o.onAddNew === "function") o.onAddNew();
+      };
+    }
+  }
+
   function renderProcessLinks(procNo, processRow) {
     wireAttachBlocks();
     const pNo = String(procNo || "").trim();
     const pName = String((processRow && processRow.process) || elVal("eProcess")).trim();
-    renderNaAttachUi($("eNaActions"), $("eNaAttachWrap"), $("eAddNaBtn"), {
-      isLinked: (act) => actLinkedToProcess(act, pNo, pName),
-      canLink: () => !!(pNo || pName),
+    renderNaCardReflection($("eNaActions"), $("eAddNaBtn"), {
+      procNo: pNo,
+      process: pName,
+      pickMountId: "eNaAttachWrap",
+      canAdd: !!(pNo || pName),
       blockedMsg: "Norādiet procesa nosaukumu vai Nr.",
-      linkOkMsg: "Normatīvais akts saistīts.",
-      unlinkOkMsg: "Normatīvais akts noņemts no kartiņas.",
-      actTitle: (act) => actBaseTitle(act),
-      actDetail: (act) => {
-        const refs = gpRefsForProcess(act, pNo, pName);
-        if (refs.length) {
-          return refs
-            .map((r) => {
-              const gpLbl = r.gpTypeNo && r.gp ? r.gpTypeNo + " — " + r.gp : r.gp || r.gpTypeNo || "GP";
-              const pp = r.pantsPunkts || act.pantsPunkts;
-              return pp ? gpLbl + ": " + pp : gpLbl;
-            })
-            .join(" · ");
+      emptyText:
+        "Nav piesaistītu normatīvo aktu. Nospiediet «Pievienot normatīvo aktu», lai zemāk atvērtu NA kartiņu.",
+      onAddNew: () => {
+        if (window.ProcesaKartina && typeof window.ProcesaKartina.openNaInlineNew === "function") {
+          window.ProcesaKartina.openNaInlineNew();
+          return;
         }
-        if (act.pantsPunkts) return "Pants / punkts: " + act.pantsPunkts;
-        return "";
+        openEditorWithContext({ processNo: pNo, process: pName }, null);
       },
-      getLinkPatch: () => ({ processNo: pNo, process: pName }),
-      getUnlinkData: (act) => {
-        let refs = parseGpRefsFromRaw(act).filter((r) => !processRefMatches(r, pNo, pName));
-        let next = applyGpRefsToAct(act, refs);
-        if (processNoKey(next.processNo) === processNoKey(pNo) || normKey(next.process) === normKey(pName)) {
-          next = normalizeActRow(Object.assign({}, next, { processNo: "", process: "" }));
-          next = applyGpRefsToAct(next, refs);
+      onOpenAct: (id) => {
+        if (window.ProcesaKartina && typeof window.ProcesaKartina.openNaInlineExisting === "function") {
+          window.ProcesaKartina.openNaInlineExisting(id);
+          return;
         }
-        return next;
+        openEditor(id, { skipCapture: true });
       },
-      refresh: refreshProcessLinksFromEditor,
     });
   }
 
@@ -1262,34 +1661,35 @@
     const process = elVal("cProcess");
     const gpTypeNo = elVal("cTypeNo");
     const gp = elVal("cType");
-    const joma = elVal("cDarbibasJoma");
-    const ctx = { procNo, gpTypeNo, gp };
-    renderNaAttachUi($("cNaActions"), $("cNaAttachWrap"), $("cAddNaBtn"), {
-      isLinked: (act) => actLinkedToGp(act, ctx),
-      canLink: () => !!(gpTypeNo || gp || procNo || process),
+    renderNaCardReflection($("cNaActions"), $("cAddNaBtn"), {
+      procNo,
+      process,
+      gpTypeNo,
+      gp,
+      pickMountId: "cNaAttachWrap",
+      canAdd: !!(gpTypeNo || gp || procNo || process),
       blockedMsg: "Norādiet galaprodukta nosaukumu vai Nr.",
-      actTitle: (act) => actBaseTitle(act),
-      actDetail: (act) => {
-        const ref = findGpRefForCtx(act, ctx);
-        const pp = (ref && ref.pantsPunkts) || act.pantsPunkts;
-        if (pp) return "Attiecas: " + pp;
-        return "Norādiet pantu/punktu normatīvā akta kartiņā (2. sadaļa).";
-      },
-      getLinkPatch: (act) => {
-        const merged = Object.assign({}, act, { processNo: procNo, process, joma });
-        let refs = parseGpRefsFromRaw(merged);
-        const newRef = parseGpRefItem({ processNo: procNo, process, gpTypeNo, gp, pantsPunkts: "" });
-        const idx = refs.findIndex((r) => gpRefMatchesCtx(r, ctx));
-        if (idx >= 0) refs[idx] = Object.assign({}, refs[idx], newRef);
-        else refs.push(newRef);
-        return applyGpRefsToAct(merged, refs);
-      },
-      getUnlinkData: (act) => {
-        if (!actLinkedToGp(act, ctx)) return normalizeActRow(act);
-        const refs = parseGpRefsFromRaw(act).filter((r) => !gpRefMatchesCtx(r, ctx));
-        return applyGpRefsToAct(act, refs);
-      },
+      emptyText:
+        "Nav piesaistītu normatīvo aktu. Nospiediet «Pievienot normatīvo aktu», lai zemāk atvērtu NA kartiņu.",
       refresh: refreshCatalogLinksFromEditor,
+      onAddNew: () => {
+        if (window.KartinaInline && typeof window.KartinaInline.openCatalogNaInlineNew === "function") {
+          window.KartinaInline.openCatalogNaInlineNew();
+          return;
+        }
+        openEditorWithContext(
+          { processNo: procNo, process, gpTypeNo, gp, catalog: true },
+          null
+        );
+      },
+      onOpenAct: (id) => {
+        if (window.KartinaInline && typeof window.KartinaInline.openCatalogNaInlineExisting === "function") {
+          window.KartinaInline.openCatalogNaInlineExisting(id);
+          return;
+        }
+        captureReturnFromEmbedded();
+        openEditor(id, { skipCapture: true });
+      },
     });
   }
 
@@ -1327,13 +1727,15 @@
       window.alert("Pievienošana pieejama tikai administratoram (labot).");
       return;
     }
-    captureReturnFromEmbedded();
+    if (!window.__naInlineInProcessCard && !window.__naInlineInCatalogCard) {
+      captureReturnFromEmbedded();
+    }
     editingId = id || null;
     showNaEditorCard();
     const row = editingId ? findActById(editingId) : null;
     if ($("naEditorTitle")) {
       if (row) {
-        $("naEditorTitle").textContent = "Normatīvā akta kartiņa — " + NA_TITLE;
+        $("naEditorTitle").textContent = "Normatīvā akta kartiņa: " + NA_TITLE;
       } else if (ctx && ctx.gp) {
         $("naEditorTitle").textContent = "Jauns normatīvais akts (galaprodukts)";
       } else if (ctx && ctx.process) {
@@ -1344,7 +1746,7 @@
         $("naEditorTitle").textContent = "Jauns normatīvais akts";
       }
     }
-    fillForm(row || ctx || {});
+    fillForm(row || ctx || {}, { seedContext: !row && ctx ? ctx : null });
     setEditorDisabled(!canEdit());
     const card = $("normActEditorCard");
     if (card && card.scrollIntoView) card.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1365,7 +1767,7 @@
     const row = editingId ? findActById(editingId) : null;
     if ($("naEditorTitle")) {
       $("naEditorTitle").textContent = row
-        ? "Normatīvā akta kartiņa — " + NA_TITLE
+        ? "Normatīvā akta kartiņa: " + NA_TITLE
         : "Jauns normatīvais akts";
     }
     fillForm(row || {});
@@ -1389,6 +1791,12 @@
       window.alert("Ievadiet normatīvā akta nosaukumu.");
       return;
     }
+    const saveLabel = `normatīvā akta kartiņu «${data.nosaukums}»`;
+    if (window.PVConfirm) {
+      if (!window.PVConfirm.confirmSave(saveLabel)) return;
+    } else if (!window.confirm(`Vai tiešām gribat labot vai saglabāt — ${saveLabel}?`)) {
+      return;
+    }
     const api = window.DB;
     try {
       let savedToDb = false;
@@ -1405,7 +1813,21 @@
             result = await api.insertNormAct(data);
           }
           if (result != null) {
+            const rid = String((result && result.id) || editingId || "").trim();
+            const merged = mergeActGpRefsPreferRicher(result, data.gpRefs || parseGpRefsFromRaw(data));
+            if (rid) {
+              editingId = rid;
+              merged.id = rid;
+            }
+            saveActsLocalFromForm(merged);
             await loadFromDb(true);
+            if (rid) {
+              const idx = actsCache.findIndex((x) => String(x.id) === rid);
+              if (idx >= 0) {
+                actsCache[idx] = mergeActGpRefsPreferRicher(actsCache[idx], parseGpRefsFromRaw(merged));
+              }
+              saveJson(STORAGE_ACTS, actsCache);
+            }
             savedToDb = true;
             statusMsg("Normatīvais akts saglabāts.", "ok");
           }
@@ -1432,7 +1854,16 @@
 
   async function deleteAct() {
     if (!canEdit() || !editingId) return;
-    if (!window.confirm("Vai dzēst šo normatīvā akta kartiņu no reģistra? Darbību nevar atsaukt.")) return;
+    const actTitle =
+      ($("naNosaukums") && String($("naNosaukums").value || "").trim()) ||
+      String((actsCache || []).find((x) => String(x.id) === String(editingId))?.nosaukums || "").trim() ||
+      "normatīvā akta kartiņu";
+    const delLabel = `normatīvā akta kartiņu «${actTitle}»`;
+    if (window.PVConfirm) {
+      if (!window.PVConfirm.confirmDelete(delLabel)) return;
+    } else if (!window.confirm(`Vai tiešām gribat dzēst — ${delLabel}?`)) {
+      return;
+    }
     const api = window.DB;
     try {
       if (api && typeof api.deleteNormAct === "function") {
@@ -1486,11 +1917,8 @@
     if ($("naVeids")) {
       $("naVeids").addEventListener("change", () => { handleSelectAddNew($("naVeids"), addCustomVeids); });
     }
-    if ($("naLinkRowsAddBtn")) {
-      $("naLinkRowsAddBtn").addEventListener("click", () => {
-        if (!canEdit()) return;
-        addNaLinkRow(null);
-      });
+    if ($("naAddProcessBtn")) {
+      $("naAddProcessBtn").addEventListener("click", () => addProcessToNaRegistryFromSelect());
     }
     wireAttachBlocks();
 

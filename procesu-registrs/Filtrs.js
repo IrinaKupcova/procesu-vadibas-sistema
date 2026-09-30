@@ -289,7 +289,7 @@
     if (icon && !icon.dataset.boundSearchClick) {
       icon.dataset.boundSearchClick = "1";
       icon.addEventListener("click", () => {
-        if (typeof window.runGlobalSearch === "function") window.runGlobalSearch();
+        if (typeof window.runGlobalSearch === "function") window.runGlobalSearch({ scrollToResults: true });
       });
     }
     if (!searchInput.dataset.boundSearchEnter) {
@@ -297,7 +297,7 @@
       searchInput.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
           e.preventDefault();
-          if (typeof window.runGlobalSearch === "function") window.runGlobalSearch();
+          if (typeof window.runGlobalSearch === "function") window.runGlobalSearch({ scrollToResults: true });
         }
       });
     }
@@ -308,8 +308,11 @@
         if (globalFilterTimer) clearTimeout(globalFilterTimer);
         globalFilterTimer = setTimeout(() => {
           globalFilterTimer = null;
-          applyAllFilters();
-          refreshClearFilterButtonActive();
+          if (typeof window.runGlobalSearch === "function") window.runGlobalSearch();
+          else {
+            applyAllFilters();
+            refreshClearFilterButtonActive();
+          }
         }, 350);
       });
     }
@@ -429,7 +432,12 @@
           refreshClearFilterButtonActive();
           return;
         }
-        if (tableId === "processJomasTable" || tableId === "processGroupsTable") {
+        if (tableId === "processJomasTable") {
+          applyJomasFilters();
+          refreshClearFilterButtonActive();
+          return;
+        }
+        if (tableId === "processGroupsTable") {
           applyAccordionTableFilters(tableId, key);
           refreshClearFilterButtonActive();
           return;
@@ -500,6 +508,7 @@
     const tbody = document.querySelector("#processTable tbody");
     if (!tbody) return;
 
+    const globalTerm = norm(document.getElementById("searchInput")?.value || "");
     const rows = Array.from(tbody.querySelectorAll("tr"));
     const headerByBlock = processAccordionHeaderByBlock(rows);
     rows.forEach((tr) => {
@@ -512,6 +521,12 @@
         contains(processText, state.quick.process) &&
         contains(taskText, state.quick.task) &&
         contains(outputText, state.quick.output);
+      if (show && globalTerm) {
+        const rowHay = Array.from(tr.children || [])
+          .map((td) => td.textContent || "")
+          .join(" ");
+        if (!contains(rowHay, globalTerm)) show = false;
+      }
       const typeNoFilter = state.processHeader["3"] || "";
 
       if (show) {
@@ -598,6 +613,84 @@
     return true;
   }
 
+  function jomasTableUsesExecutorLayout() {
+    return !!document.querySelector("#processJomasTable tbody tr.ex-dept-hdr");
+  }
+
+  function jomaRowFilterText(tr, col) {
+    const idx = Number(col);
+    if (tr.classList.contains("ex-dept-hdr")) {
+      return String(tr.children[idx]?.textContent || "").trim();
+    }
+    if (idx === 0) return String(tr.children[0]?.textContent || "").trim();
+    if (idx === 1) {
+      return String(tr.getAttribute("data-joma-proc") || tr.children[1]?.textContent || "").trim();
+    }
+    if (idx === 2) {
+      return String(tr.getAttribute("data-joma-gp") || tr.children[tr.children.length - 1]?.textContent || "").trim();
+    }
+    return "";
+  }
+
+  function jomasRowMatches(tr, globalTerm) {
+    if (globalTerm) {
+      const hay = [
+        tr.textContent || "",
+        tr.getAttribute("data-joma-proc") || "",
+        tr.getAttribute("data-joma-gp") || "",
+      ].join(" ");
+      if (!contains(hay, globalTerm)) return false;
+    }
+    for (const col in state.processJomasHeader) {
+      const terms = normalizeFilterValue(state.processJomasHeader[col]);
+      if (!terms.length) continue;
+      const idx = Number(col);
+      if (!cellMatchesAnyTerm(jomaRowFilterText(tr, idx), terms)) return false;
+    }
+    return true;
+  }
+
+  function applyJomasFilters() {
+    const tbody = document.querySelector("#processJomasTable tbody");
+    if (!tbody) return;
+    if (!jomasTableUsesExecutorLayout()) {
+      applyAccordionTableFilters("processJomasTable", "processJomasHeader");
+      return;
+    }
+    const globalTerm = norm(document.getElementById("searchInput")?.value || "");
+    const rows = Array.from(tbody.querySelectorAll("tr"));
+    const hasColFilters = Object.values(state.processJomasHeader || {}).some((v) => isFilterActive(v));
+    if (!globalTerm && !hasColFilters) {
+      rows.forEach((tr) => {
+        tr.style.display = "";
+      });
+      return;
+    }
+
+    let i = 0;
+    while (i < rows.length) {
+      const tr = rows[i];
+      if (tr.classList.contains("ex-dept-hdr")) {
+        const gpRows = [];
+        i += 1;
+        while (i < rows.length && !rows[i].classList.contains("ex-dept-hdr")) {
+          gpRows.push(rows[i]);
+          i += 1;
+        }
+        let deptShow = jomasRowMatches(tr, globalTerm);
+        gpRows.forEach((gpTr) => {
+          const gpShow = jomasRowMatches(gpTr, globalTerm);
+          gpTr.style.display = gpShow ? "" : "none";
+          if (gpShow) deptShow = true;
+        });
+        tr.style.display = deptShow ? "" : "none";
+        continue;
+      }
+      tr.style.display = jomasRowMatches(tr, globalTerm) ? "" : "none";
+      i += 1;
+    }
+  }
+
   function applyExecutorsFilters() {
     const tbody = document.querySelector("#executorsTable tbody");
     if (!tbody) return;
@@ -665,10 +758,15 @@
   function applySimpleTableFilters(tableId, key) {
     const tbody = document.querySelector(`#${tableId} tbody`);
     if (!tbody) return;
+    const globalTerm = norm(document.getElementById("searchInput")?.value || "");
     const rows = Array.from(tbody.querySelectorAll("tr"));
     rows.forEach((tr) => {
       const tds = Array.from(tr.children);
       let show = true;
+      if (globalTerm) {
+        const hay = tds.map((td) => td.textContent || "").join(" ");
+        if (!contains(hay, globalTerm)) show = false;
+      }
       for (const col in state[key]) {
         const terms = normalizeFilterValue(state[key][col]);
         if (!cellMatchesAnyTerm(tds[Number(col)]?.textContent || "", terms)) {
@@ -682,12 +780,13 @@
   function applyAccordionTableFilters(tableId, key) {
     const tbody = document.querySelector(`#${tableId} tbody`);
     if (!tbody) return;
+    const globalTerm = norm(document.getElementById("searchInput")?.value || "");
     const rows = Array.from(tbody.querySelectorAll("tr"));
     const headers = rows.filter((tr) => tr.classList && tr.classList.contains("process-accordion-hdr"));
     const hasTerms = Object.values(state[key] || {}).some((v) => isFilterActive(v));
     // Bez aktīviem filtriem NEAIZTIEKAM tabulas redzamību:
     // atstājam tieši renderētās atvēršanas/aizvēršanas stāvokli.
-    if (!hasTerms) return;
+    if (!hasTerms && !globalTerm) return;
     const cellText = (tr, col, hdr) => {
       if (!tr) return "";
       const isPart = tr.classList && tr.classList.contains("process-accordion-part");
@@ -695,6 +794,12 @@
       return String(tr.children[Number(col)]?.textContent || "");
     };
     const rowMatches = (tr, hdr) => {
+      if (globalTerm) {
+        const hay = Array.from(tr.children || [])
+          .map((td, col) => cellText(tr, col, hdr))
+          .join(" ");
+        if (!contains(hay, globalTerm)) return false;
+      }
       for (const col in state[key]) {
         const terms = normalizeFilterValue(state[key][col]);
         if (!terms.length) continue;
@@ -753,24 +858,363 @@
     }, 120);
   }
 
+  const GLOBAL_SEARCH_MAX = 35;
+
+  function haystackIncludes(hay, term) {
+    const t = norm(term);
+    if (!t) return true;
+    const h = norm(hay);
+    const parts = t.split(/\s+/).filter(Boolean);
+    if (!parts.length) return true;
+    return parts.every((p) => h.includes(p));
+  }
+
+  function objectHaystackExtra(obj) {
+    if (!obj || typeof obj !== "object") return "";
+    try {
+      return JSON.stringify(obj);
+    } catch (_) {
+      return "";
+    }
+  }
+
+  function processRowHaystack(r) {
+    if (!r) return "";
+    const parts = [
+      r.group,
+      r.processNo,
+      r.process,
+      r.darbibasJoma,
+      r.jomaSearchText,
+      r.input,
+      r.executorPatstaviga,
+      r.executorDala,
+      r.productsText,
+      r.productTypes,
+      r.typeNos,
+      r.products,
+      r.relatedProcesses,
+      r.services,
+      r.flowcharts,
+      r.itResources,
+      r.optimization,
+      r.otherMetrics,
+      r.task,
+      r.taskNo,
+      objectHaystackExtra(r.raw),
+      objectHaystackExtra(r.gpItems),
+    ];
+    return parts.join(" ");
+  }
+
+  function catalogRowHaystack(r) {
+    if (!r) return "";
+    return [
+      r.typeNo,
+      r.id,
+      r.type,
+      r.unit,
+      r.department,
+      r.procNo,
+      r.process,
+      r.darbibasJoma,
+      r.group,
+      r.additionalInfo,
+      objectHaystackExtra(r.raw),
+    ].join(" ");
+  }
+
+  function getCatalogRowsForSearch() {
+    if (typeof window.getCatalogRowsDetailed === "function") {
+      const d = window.getCatalogRowsDetailed();
+      if (Array.isArray(d) && d.length) return d;
+    }
+    if (typeof window.getCatalogRows === "function") return window.getCatalogRows() || [];
+    return [];
+  }
+
+  function scrollToSectionCard(cardId) {
+    const card = document.getElementById(cardId);
+    if (!card) return;
+    card.classList.remove("hidden");
+    card.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function appendGlobalSearchSection(body, title, cardId, hits, onHit) {
+    if (!hits.length) return 0;
+    const section = document.createElement("div");
+    section.className = "gs-section";
+    const h = document.createElement("h3");
+    h.className = "gs-section-title";
+    h.textContent = title;
+    section.appendChild(h);
+    const ul = document.createElement("ul");
+    ul.className = "gs-hits";
+    const shown = hits.slice(0, GLOBAL_SEARCH_MAX);
+    shown.forEach((hit) => {
+      const li = document.createElement("li");
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "gs-hit-btn";
+      btn.textContent = hit.label;
+      btn.addEventListener("click", () => {
+        scrollToSectionCard(cardId);
+        if (typeof onHit === "function") onHit(hit);
+      });
+      li.appendChild(btn);
+      ul.appendChild(li);
+    });
+    section.appendChild(ul);
+    if (hits.length > GLOBAL_SEARCH_MAX) {
+      const more = document.createElement("p");
+      more.className = "gs-more";
+      more.textContent = `+ vēl ${hits.length - GLOBAL_SEARCH_MAX} atbilstības — precizējiet meklēšanu.`;
+      section.appendChild(more);
+    }
+    body.appendChild(section);
+    return hits.length;
+  }
+
+  function collectTaskSearchHits(term) {
+    const rows =
+      typeof window.getProcessRows === "function" ? window.getProcessRows() || [] : [];
+    const byTask = new Map();
+    rows.forEach((r) => {
+      const rawTaskName = String((r && r.task) || "").trim();
+      const rawTaskNo = String((r && r.taskNo) || "").trim();
+      const key = `${rawTaskNo}|${rawTaskName}`;
+      if (!byTask.has(key)) {
+        byTask.set(key, { no: rawTaskNo, name: rawTaskName, hay: `${rawTaskNo} ${rawTaskName}` });
+      }
+      const x = byTask.get(key);
+      x.hay += ` ${processRowHaystack(r)}`;
+    });
+    const out = [];
+    byTask.forEach((x) => {
+      if (!haystackIncludes(x.hay, term)) return;
+      const label =
+        (typeof window.pvPairLabel === "function" ? window.pvPairLabel(x.no, x.name) : [x.no, x.name].filter(Boolean).join(" ")) ||
+        "(uzdevums)";
+      out.push({ label, taskNo: x.no, taskName: x.name });
+    });
+    out.sort((a, b) => a.label.localeCompare(b.label, "lv", { sensitivity: "base" }));
+    return out;
+  }
+
+  function collectJomaSearchHits(term) {
+    const labels = new Set();
+    if (window.JomaKartina && typeof window.JomaKartina.listJomaLabels === "function") {
+      (window.JomaKartina.listJomaLabels() || []).forEach((j) => {
+        const s = String(j || "").trim();
+        if (s) labels.add(s);
+      });
+    }
+    const cat = getCatalogRowsForSearch();
+    cat.forEach((r) => {
+      String((r && r.darbibasJoma) || "")
+        .split(/[;,]+/)
+        .map((x) => x.trim())
+        .filter(Boolean)
+        .forEach((j) => labels.add(j));
+    });
+    const merged =
+      typeof window.getMergedProcessRegisterRows === "function"
+        ? window.getMergedProcessRegisterRows() || []
+        : [];
+    merged.forEach((r) => {
+      String((r && r.darbibasJoma) || "")
+        .split(/[;,]+/)
+        .map((x) => x.trim())
+        .filter(Boolean)
+        .forEach((j) => labels.add(j));
+    });
+    const out = [];
+    labels.forEach((name) => {
+      if (!haystackIncludes(name, term)) return;
+      out.push({ label: name, joma: name });
+    });
+    out.sort((a, b) => a.label.localeCompare(b.label, "lv", { sensitivity: "base" }));
+    return out;
+  }
+
+  function renderGlobalSearchResults() {
+    const card = document.getElementById("globalSearchResultsCard");
+    const body = document.getElementById("globalSearchResultsBody");
+    const meta = document.getElementById("globalSearchResultsMeta");
+    if (!card || !body) return;
+
+    const term = norm(document.getElementById("searchInput")?.value || "");
+    body.innerHTML = "";
+    if (!term) {
+      card.classList.add("hidden");
+      if (meta) meta.textContent = "";
+      return;
+    }
+
+    let total = 0;
+    const merged =
+      typeof window.getMergedProcessRegisterRows === "function"
+        ? window.getMergedProcessRegisterRows() || []
+        : typeof window.getProcessRows === "function"
+          ? window.getProcessRows() || []
+          : [];
+
+    const processHits = merged
+      .filter((r) => haystackIncludes(processRowHaystack(r), term))
+      .map((r) => ({
+        label: [r.group, r.processNo, r.process].filter(Boolean).join(" · ") || String(r.process || ""),
+        procNo: String(r.processNo || "").trim(),
+        process: String(r.process || "").trim(),
+      }));
+    processHits.sort((a, b) => a.label.localeCompare(b.label, "lv", { sensitivity: "base" }));
+
+    const catalogRows = getCatalogRowsForSearch();
+    const catalogHits = catalogRows
+      .filter((r) => haystackIncludes(catalogRowHaystack(r), term))
+      .map((r) => ({
+        label: [r.typeNo, r.type, r.procNo, r.process].filter(Boolean).join(" · "),
+        procNo: String(r.procNo || "").trim(),
+        type: String(r.type || "").trim(),
+        row: r,
+      }))
+      .filter((h) => h.label);
+    catalogHits.sort((a, b) => a.label.localeCompare(b.label, "lv", { sensitivity: "base" }));
+
+    const taskHits = collectTaskSearchHits(term);
+
+    const executorHits = [];
+    const executorSeen = new Set();
+    const pushExecutorHit = (label, procNo, type) => {
+      const key = norm(label);
+      if (!key || executorSeen.has(key)) return;
+      executorSeen.add(key);
+      executorHits.push({ label, procNo: String(procNo || "").trim(), type: String(type || "").trim() });
+    };
+    catalogRows.forEach((r) => {
+      const hay = [r.unit, r.department, r.type, r.procNo, r.process, r.darbibasJoma].join(" ");
+      if (!haystackIncludes(hay, term)) return;
+      pushExecutorHit(
+        [r.unit, r.department, r.type, r.procNo, r.process].filter(Boolean).join(" → "),
+        r.procNo,
+        r.type
+      );
+    });
+    const rawProcess =
+      typeof window.getProcessRows === "function" ? window.getProcessRows() || [] : [];
+    rawProcess.forEach((r) => {
+      const hay = [r.executorPatstaviga, r.executorDala, processRowHaystack(r)].join(" ");
+      if (!haystackIncludes(hay, term)) return;
+      pushExecutorHit(
+        [r.executorPatstaviga, r.executorDala, r.processNo, r.process].filter(Boolean).join(" → "),
+        r.processNo,
+        r.productsText || r.products
+      );
+    });
+    executorHits.sort((a, b) => a.label.localeCompare(b.label, "lv", { sensitivity: "base" }));
+
+    const groupSet = new Map();
+    merged.forEach((r) => {
+      const g = String(r.group || "").trim();
+      const p = String(r.process || "").trim();
+      const hay = `${g} ${p} ${r.processNo || ""}`;
+      if (!haystackIncludes(hay, term)) return;
+      const key = `${g}|${p}`.toLowerCase();
+      if (!groupSet.has(key)) groupSet.set(key, { label: [g, p].filter(Boolean).join(" · "), group: g, process: p });
+    });
+    const groupHits = Array.from(groupSet.values()).sort((a, b) =>
+      a.label.localeCompare(b.label, "lv", { sensitivity: "base" })
+    );
+
+    const jomaHits = collectJomaSearchHits(term);
+
+    const naHits = [];
+    const acts =
+      window.NormAkti && typeof window.NormAkti.loadActs === "function" ? window.NormAkti.loadActs() || [] : [];
+    acts.forEach((a) => {
+      const hay = [
+        a.nosaukums,
+        a.veids,
+        a.numurs,
+        a.pantsPunkts,
+        a.joma,
+        a.process,
+        a.processNo,
+        a.gp,
+        a.gpTypeNo,
+      ].join(" ");
+      if (!haystackIncludes(hay, term)) return;
+      naHits.push({
+        label: [a.veids, a.nosaukums, a.numurs].filter(Boolean).join(" · "),
+        act: a,
+      });
+    });
+    naHits.sort((a, b) => a.label.localeCompare(b.label, "lv", { sensitivity: "base" }));
+
+    total += appendGlobalSearchSection(body, "Procesu reģistrs", "processListCard", processHits, (hit) => {
+      if (typeof window.openProcessEditorByProcNoOrName === "function") {
+        window.openProcessEditorByProcNoOrName(hit.procNo, hit.process);
+      }
+    });
+    total += appendGlobalSearchSection(body, "Galaproduktu katalogs", "catalogListCard", catalogHits, (hit) => {
+      if (typeof window.openCatalogByProcessGp === "function") {
+        window.openCatalogByProcessGp(hit.procNo, hit.type);
+      }
+    });
+    total += appendGlobalSearchSection(body, "Uzdevumi", "tasksViewCard", taskHits, () => {});
+    total += appendGlobalSearchSection(body, "Izpildītāji", "executorsCard", executorHits, (hit) => {
+      if (typeof window.openCatalogByProcessGp === "function") {
+        window.openCatalogByProcessGp(hit.procNo, hit.type);
+      }
+    });
+    total += appendGlobalSearchSection(body, "Grupu statistika", "reportsCard", groupHits, () => {
+      const navBtn = document.querySelector('.side-nav-jump[data-scroll-target="reportsCard"]');
+      if (navBtn) navBtn.click();
+      const openGroup = () => {
+        if (typeof window.openStatsSection === "function") window.openStatsSection("group");
+      };
+      setTimeout(openGroup, 120);
+      setTimeout(openGroup, 400);
+    });
+    total += appendGlobalSearchSection(body, "Galaprodukta jomas", "processJomasCard", jomaHits, (hit) => {
+      if (typeof window.openJomaEditor === "function") window.openJomaEditor(hit.joma);
+    });
+    total += appendGlobalSearchSection(body, "Normatīvie akti", "normActsCard", naHits, (hit) => {
+      if (window.NormAkti && typeof window.NormAkti.openEditor === "function") {
+        window.NormAkti.openEditor(hit.act);
+      }
+    });
+
+    if (meta) {
+      meta.textContent = total
+        ? `${total} atbilstība(s) visās sadaļās`
+        : "Nav atbilstību — mēģiniet citu atslēgvārdu.";
+    }
+    card.classList.remove("hidden");
+  }
+
   function applyAllFilters() {
     applyProcessFilters();
     applyCatalogFilters();
     applyTasksFilters();
     applyExecutorsFilters();
     applyAccordionTableFilters("processGroupsTable", "processGroupsHeader");
-    applyAccordionTableFilters("processJomasTable", "processJomasHeader");
+    applyJomasFilters();
     applyNaFilters();
     autoOpenOnFilteredResult();
     refreshClearFilterButtonActive();
     scheduleRenderReports();
+    const globalTerm = norm(document.getElementById("searchInput")?.value || "");
+    if (globalTerm) renderGlobalSearchResults();
   }
 
   function autoOpenOnFilteredResult() {
+    const globalTerm = norm(document.getElementById("searchInput")?.value || "");
     const processTable = document.getElementById("processTable");
     const catalogTable = document.getElementById("catalogTable");
-    const processHasFilter = Object.values(state.processHeader || {}).some((v) => isFilterActive(v));
-    const catalogHasFilter = Object.values(state.catalogHeader || {}).some((v) => isFilterActive(v));
+    const processHasFilter =
+      globalTerm || Object.values(state.processHeader || {}).some((v) => isFilterActive(v));
+    const catalogHasFilter =
+      globalTerm || Object.values(state.catalogHeader || {}).some((v) => isFilterActive(v));
 
     if (processTable && processHasFilter) {
       const hasVisible = Array.from(processTable.querySelectorAll("tbody tr")).some((tr) => tr.style.display !== "none");
@@ -790,7 +1234,8 @@
     }
 
     const tasksTable = document.getElementById("tasksSummaryTable");
-    const tasksHasFilter = Object.values(state.tasksHeader || {}).some((v) => isFilterActive(v));
+    const tasksHasFilter =
+      globalTerm || Object.values(state.tasksHeader || {}).some((v) => isFilterActive(v));
     if (tasksTable && tasksHasFilter) {
       const taskCard = document.getElementById("tasksViewCard");
       const hasVisible = Array.from(tasksTable.querySelectorAll("tbody tr")).some((tr) => tr.style.display !== "none");
@@ -828,7 +1273,21 @@
           if (clean) uniqVals.add(clean);
         });
       } else {
-      if (tableId === "processJomasTable" || tableId === "processGroupsTable") {
+      if (tableId === "processJomasTable" && jomasTableUsesExecutorLayout()) {
+        if (col === 0) {
+          Array.from(tbody.querySelectorAll("tr.ex-dept-hdr")).forEach((tr) => {
+            const raw = String(tr.children[0]?.textContent || "")
+              .replace(/^[▾▸]\s*/u, "")
+              .trim();
+            if (raw) uniqVals.add(raw);
+          });
+        } else {
+          Array.from(tbody.querySelectorAll("tr.ex-gp-hdr, tr.ex-dept-hdr")).forEach((tr) => {
+            const raw = jomaRowFilterText(tr, col);
+            if (raw) uniqVals.add(raw);
+          });
+        }
+      } else if (tableId === "processJomasTable" || tableId === "processGroupsTable") {
         const hdrRows = Array.from(tbody.querySelectorAll("tr.process-accordion-hdr"));
         if (col === 0) {
           hdrRows.forEach((tr) => {
@@ -886,6 +1345,7 @@
     if (typeof window.clearStatsFilters === "function") window.clearStatsFilters();
 
     rerender();
+    if (typeof renderGlobalSearchResults === "function") renderGlobalSearchResults();
     refreshClearFilterButtonActive();
   }
 
@@ -937,7 +1397,7 @@
       ensureHeaderFilters("naTable", "naHeader", true);
       refreshHeaderFilterOptions("naTable", "naHeader");
       applyTasksFilters();
-      applyAccordionTableFilters("processJomasTable", "processJomasHeader");
+      applyJomasFilters();
       applyNaFilters();
       applyAllTableColumnSizing();
       refreshClearFilterButtonActive();
@@ -971,7 +1431,9 @@
     window.syncExecutorsColumnFilters = syncExecutorsColumnFilters;
     window.scheduleExecutorsColumnFilters = scheduleExecutorsColumnFilters;
     window.applyExecutorsFilters = applyExecutorsFilters;
+    window.applyJomasFilters = applyJomasFilters;
     window.applyAllFilters = applyAllFilters;
+    window.renderGlobalSearchResults = renderGlobalSearchResults;
     window.applyTableColumnSizing = applyTableColumnSizing;
     window.applyAllTableColumnSizing = applyAllTableColumnSizing;
     const clearBtn = document.getElementById("clearFiltersBtn");

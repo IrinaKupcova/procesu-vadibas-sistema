@@ -10,11 +10,11 @@
   let inlineEditMode = false;
   const executorDeptExpanded = new Set();
   const BULK_BTN_ID = "executorsBulkAccordionToggleBtn";
-  const SUMMARY_ID = "executorsViewSummary";
-  const DEPT_EMPTY_LABEL = "Nav norādīta struktūrvienība";
+  const DEPT_EMPTY_LABEL = "Nav norādīta patstāvīgā struktūrvienība";
+  const UNIT_COL_LABEL = "Patstāvīgā struktūrvienība";
 
   const COL_DEFS = [
-    { label: "Pārvalde", filter: "Pārvalde" },
+    { label: UNIT_COL_LABEL, filter: UNIT_COL_LABEL },
     {
       label: "Struktūrvienība/ amats, kas atbild par galaprodukta radīšanu",
       filter: "Struktūrvienība/ amats",
@@ -64,15 +64,8 @@
 
   function ensureControls(card) {
     if (!card) return;
-    if (!document.getElementById(SUMMARY_ID)) {
-      const summary = document.createElement("p");
-      summary.id = SUMMARY_ID;
-      summary.className = "ex-view-summary";
-      summary.setAttribute("aria-live", "polite");
-      const toolbar = card.querySelector(".toolbar");
-      if (toolbar) toolbar.insertAdjacentElement("afterend", summary);
-      else card.insertBefore(summary, card.firstChild);
-    }
+    const legacySummary = document.getElementById("executorsViewSummary");
+    if (legacySummary) legacySummary.remove();
     if (document.getElementById(BULK_BTN_ID)) return;
     const controls = document.createElement("div");
     controls.className = "ex-view-controls";
@@ -82,8 +75,8 @@
     bulk.className = "secondary";
     bulk.textContent = "Atvērt visus akordeonus";
     controls.appendChild(bulk);
-    const summary = document.getElementById(SUMMARY_ID);
-    if (summary) summary.insertAdjacentElement("afterend", controls);
+    const toolbar = card.querySelector(".toolbar");
+    if (toolbar) toolbar.insertAdjacentElement("afterend", controls);
     else card.insertBefore(controls, card.firstChild);
   }
 
@@ -162,26 +155,25 @@
       s.id = "executorsAccordionCss";
       document.head.appendChild(s);
     }
-    if (s.dataset.layout === "dept-gp-proc-v3") return;
-    s.dataset.layout = "dept-gp-proc-v3";
+    if (s.dataset.layout === "dept-gp-proc-v5") return;
+    s.dataset.layout = "dept-gp-proc-v5";
     s.textContent = `
-      #executorsCard .ex-view-summary{margin:8px 0 4px;font-size:13px;color:#475569;line-height:1.4}
-      #executorsCard .ex-view-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px}
+      #executorsCard .ex-view-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 12px}
       #executorsCard .ex-table-scroll{overflow-x:auto;width:100%;border:1px solid #e2e8f0;border-radius:10px;background:#fff}
       #${TABLE_ID}.ex-table-fixed{table-layout:fixed!important;width:100%;min-width:920px;border-collapse:separate;border-spacing:0}
       #${TABLE_ID} thead th{
         position:sticky;top:0;z-index:2;
-        background:#f1f5f9;color:#0f172a;font-size:12px;font-weight:700;
+        background:#f1f5f9;color:#475569;font-size:12px;font-weight:700;
         text-align:left;padding:10px 12px;border-bottom:2px solid #cbd5e1;
         box-shadow:0 1px 0 #e2e8f0
       }
       #${TABLE_ID} td{padding:8px 12px;vertical-align:middle;border-bottom:1px solid #f1f5f9;line-height:1.35}
       #${TABLE_ID} .ex-dept-hdr td{
         background:linear-gradient(90deg,#dbeafe 0%,#eff6ff 100%);
-        color:#0f172a;font-weight:700;font-size:14px;
+        color:#475569;font-weight:700;font-size:14px;
         border-bottom:1px solid #93c5fd;border-top:3px solid #3b82f6
       }
-      #${TABLE_ID} .ex-gp-hdr td{background:#f8fafc;color:#1e293b;font-weight:600}
+      #${TABLE_ID} .ex-gp-hdr td{background:#f8fafc;color:#475569;font-weight:600}
       #${TABLE_ID} .ex-dept-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
       #${TABLE_ID} .ex-gp-cell{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-left:12px;border-left:3px solid #cbd5e1;margin-left:2px}
       #${TABLE_ID} .ex-proc-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}
@@ -201,7 +193,7 @@
       #${TABLE_ID} .ex-chip-muted{background:#64748b}
       #${TABLE_ID} .ex-link{color:#1d4ed8;cursor:pointer;text-decoration:underline;text-underline-offset:2px}
       #${TABLE_ID} .ex-link:hover{color:#1e3a8a}
-      #${TABLE_ID} .ex-gp-label{font-weight:600;color:#0f172a}
+      #${TABLE_ID} .ex-gp-label{font-weight:600;color:#475569}
       #${TABLE_ID} .ex-unit-tag{font-size:12px;color:#475569}
       #${TABLE_ID} td{overflow-wrap:anywhere;word-break:break-word}
       #${TABLE_ID}.ex-table-fixed th:nth-child(1),#${TABLE_ID}.ex-table-fixed td:nth-child(1){width:16%}
@@ -380,7 +372,9 @@
       const li = document.createElement("li");
       li.className = "ex-proc-item";
       const main = document.createElement("div");
-      const procLabel = [pr.procNo, pr.proc].filter(Boolean).join(" — ") || "—";
+      const procLabel =
+        (typeof window.pvPairLabel === "function" ? window.pvPairLabel(pr.procNo, pr.proc) : [pr.procNo, pr.proc].filter(Boolean).join(" ")) ||
+        (window.pvEmptyMark || "–");
       const link = document.createElement("span");
       link.className = "ex-link";
       link.textContent = procLabel;
@@ -400,7 +394,7 @@
       if (procUnits && procUnits !== "—" && procUnits !== fb) {
         const meta = document.createElement("div");
         meta.className = "ex-proc-meta";
-        meta.textContent = "Pārvalde (procesam): " + procUnits;
+        meta.textContent = "Patstāvīgā struktūrvienība (procesam): " + procUnits;
         li.appendChild(meta);
       }
       ul.appendChild(li);
@@ -439,12 +433,12 @@
         totalProc += g.processMap.size;
       });
     });
-    const summaryEl = document.getElementById(SUMMARY_ID);
-    if (summaryEl) {
-      summaryEl.textContent =
-        `${departments.length} struktūrvienība(s) · ${totalGp} galaprodukti · ${totalProc} procesu saites. ` +
-        "Hierarhija: struktūrvienība → galaprodukts → process.";
-    }
+    const elDept = document.getElementById("statExecutorsDeptCount");
+    const elGp = document.getElementById("statExecutorsGpCount");
+    const elProc = document.getElementById("statExecutorsProcLinks");
+    if (elDept) elDept.textContent = String(departments.length);
+    if (elGp) elGp.textContent = String(totalGp);
+    if (elProc) elProc.textContent = String(totalProc);
 
     const bulkBtn = document.getElementById(BULK_BTN_ID);
     if (bulkBtn && !bulkBtn.dataset.bound) {
@@ -516,7 +510,8 @@
 
         const gtr = document.createElement("tr");
         gtr.className = "ex-gp-hdr";
-        const gpLabel = g.no ? `${g.no} — ${g.name}` : g.name;
+        const gpLabel =
+          typeof window.pvPairLabel === "function" ? window.pvPairLabel(g.no, g.name) || g.name : g.no ? `${g.no} ${g.name}` : g.name;
 
         const tParvalde = document.createElement("td");
         tParvalde.className = "ex-unit-tag";
@@ -612,7 +607,7 @@
         toggleBtn.dataset.boundInlineEdit = "1";
         toggleBtn.addEventListener("click", () => {
           if (!canEdit()) {
-            alert("Tabulas labošanas režīms pieejams tikai administrators (labot).");
+            alert("Tabulas labošanas režīms pieejams tikai lietotājam ar administratora tiesībām (loma Administrators).");
             return;
           }
           inlineEditMode = !inlineEditMode;
@@ -631,3 +626,4 @@
     } catch (_) {}
   });
 })();
+

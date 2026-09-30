@@ -1,4 +1,4 @@
-/* Abreviatūru atšifrējumi pārvaldēm ar hover tooltip. */
+/* Abreviatūru atšifrējumi patstāvīgajām struktūrvienībām (saīsinājumi) ar hover tooltip. */
 (function () {
   "use strict";
 
@@ -122,7 +122,7 @@
         span.className = "pv-abbr";
         span.textContent = m;
         span.dataset.full = full;
-        span.setAttribute("aria-label", `${m} — ${full}`);
+        span.setAttribute("aria-label", `${m} ${full}`);
         span.title = full;
         frag.appendChild(span);
       } else {

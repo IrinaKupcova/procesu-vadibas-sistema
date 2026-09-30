@@ -147,7 +147,12 @@
 
   function deleteAttachment(item) {
     const label = item.name || "pielikumu";
-    if (!confirm("Noņemt «" + label + "» no saraksta?")) return;
+    const delLabel = `pielikumu «${label}»`;
+    if (window.PVConfirm) {
+      if (!window.PVConfirm.confirmDelete(delLabel)) return;
+    } else if (!confirm("Vai tiešām gribat dzēst — " + delLabel + "?")) {
+      return;
+    }
     if (item.builtin) {
       const hidden = getHiddenIds();
       if (!hidden.includes(item.id)) {

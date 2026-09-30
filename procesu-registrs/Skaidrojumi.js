@@ -1,4 +1,4 @@
-﻿/* Skaidrojumi: «i» pogas, BUJ, administrators — localStorage. */
+/* Skaidrojumi: «i» pogas, BUJ, administrators — localStorage. */
 (function () {
   "use strict";
 
@@ -6,7 +6,7 @@
   const K_FAQ = "pv_help_faq_v1";
 
   const PRESETS = [
-    { label: "— Izvēlēties sadaļu —", selector: "" },
+    { label: "Izvēlēties sadaļu", selector: "" },
     { label: "Augšējā vadības zona", selector: "#topToolbarCard" },
     { label: "Procesu reģistrs (bloks)", selector: "#processListCard" },
     { label: "Galaproduktu veidu katalogs (bloks)", selector: "#catalogListCard" },
@@ -245,7 +245,20 @@
       ok = !!document.querySelector(sel);
     } catch (_) {}
     if (!ok) {
-      if (!confirm("Selektors šobrīd neatrod nevienu elementu. Saglabāt tomēr?")) return;
+      const warnLabel = "jauno skaidrojuma «i» ierakstu (selektors šobrīd neatrod elementu)";
+      if (window.PVConfirm) {
+        if (!window.PVConfirm.confirmSave(warnLabel)) return;
+      } else if (!confirm(`Vai tiešām gribat labot vai saglabāt — ${warnLabel}?`)) {
+        return;
+      }
+    } else {
+      const lbl = ($("newHelpLabel").value || "").trim() || sel;
+      const saveLabel = `jauno skaidrojuma «i» ierakstu «${lbl}»`;
+      if (window.PVConfirm) {
+        if (!window.PVConfirm.confirmSave(saveLabel)) return;
+      } else if (!confirm(`Vai tiešām gribat labot vai saglabāt — ${saveLabel}?`)) {
+        return;
+      }
     }
     const icons = loadIcons();
     icons.push({
@@ -267,6 +280,12 @@
     const a = ($("newFaqA").value || "").trim();
     if (!q) {
       alert("Ievadiet jautājumu.");
+      return;
+    }
+    const saveLabel = `jaunu BUJ ierakstu «${q}»`;
+    if (window.PVConfirm) {
+      if (!window.PVConfirm.confirmSave(saveLabel)) return;
+    } else if (!confirm(`Vai tiešām gribat labot vai saglabāt — ${saveLabel}?`)) {
       return;
     }
     const faq = loadFaq();
@@ -322,6 +341,13 @@
     wrap.querySelectorAll("tr[data-id]").forEach((tr) => {
       const id = tr.getAttribute("data-id");
       tr.querySelector(".hi-save").addEventListener("click", () => {
+        const lbl = tr.querySelector(".hi-label") ? tr.querySelector(".hi-label").value.trim() : "skaidrojuma ierakstu";
+        const saveLabel = `skaidrojuma «i» ierakstu «${lbl || "—"}»`;
+        if (window.PVConfirm) {
+          if (!window.PVConfirm.confirmSave(saveLabel)) return;
+        } else if (!confirm(`Vai tiešām gribat labot vai saglabāt — ${saveLabel}?`)) {
+          return;
+        }
         const all = loadIcons();
         const i = all.findIndex((x) => x.id === id);
         if (i < 0) return;
@@ -335,7 +361,13 @@
         alert("Saglabāts.");
       });
       tr.querySelector(".hi-del").addEventListener("click", () => {
-        if (!confirm("Dzēst šo «i» skaidrojumu?")) return;
+        const lbl = tr.querySelector(".hi-label") ? tr.querySelector(".hi-label").value.trim() : "skaidrojumu";
+        const delLabel = `skaidrojuma «i» ierakstu «${lbl || "—"}»`;
+        if (window.PVConfirm) {
+          if (!window.PVConfirm.confirmDelete(delLabel)) return;
+        } else if (!confirm(`Vai tiešām gribat dzēst — ${delLabel}?`)) {
+          return;
+        }
         saveIcons(loadIcons().filter((x) => x.id !== id));
         renderHelpIconsAdmin();
         refreshHelpIcons();
@@ -361,6 +393,13 @@
     wrap.querySelectorAll("tr[data-fid]").forEach((tr) => {
       const id = tr.getAttribute("data-fid");
       tr.querySelector(".fq-save").addEventListener("click", () => {
+        const q = tr.querySelector(".fq-q") ? tr.querySelector(".fq-q").value.trim() : "";
+        const saveLabel = `BUJ ierakstu «${q || "—"}»`;
+        if (window.PVConfirm) {
+          if (!window.PVConfirm.confirmSave(saveLabel)) return;
+        } else if (!confirm(`Vai tiešām gribat labot vai saglabāt — ${saveLabel}?`)) {
+          return;
+        }
         const all = loadFaq();
         const i = all.findIndex((x) => x.id === id);
         if (i < 0) return;
@@ -372,7 +411,13 @@
         alert("BUJ saglabāts.");
       });
       tr.querySelector(".fq-del").addEventListener("click", () => {
-        if (!confirm("Dzēst BUJ ierakstu?")) return;
+        const q = tr.querySelector(".fq-q") ? tr.querySelector(".fq-q").value.trim() : "";
+        const delLabel = `BUJ ierakstu «${q || "—"}»`;
+        if (window.PVConfirm) {
+          if (!window.PVConfirm.confirmDelete(delLabel)) return;
+        } else if (!confirm(`Vai tiešām gribat dzēst — ${delLabel}?`)) {
+          return;
+        }
         saveFaq(loadFaq().filter((x) => x.id !== id));
         renderFaqAdmin();
         renderFaqModal();

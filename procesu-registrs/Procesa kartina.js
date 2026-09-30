@@ -389,6 +389,8 @@
     markCatalogNaContext,
     closeCardInlineScope,
     undockCatalogNaEditor: undockNaEditorFromCatalogCard,
+    openCatalogNaInlineNew: openNaInlineNewFromCatalogCard,
+    openCatalogNaInlineExisting: openNaInlineExistingFromCatalogCard,
   };
 
   let naEditorHomeParent = null;
@@ -442,7 +444,7 @@
     const ec = document.getElementById("editorCard");
     if (ec) ec.classList.remove("hidden");
     const procNo = elVal("eProcNo");
-    renderProcessNaReadOnly(procNo, resolveProcessRowForCard(procNo));
+    refreshProcessCardNaReflection(procNo, resolveProcessRowForCard(procNo));
   }
 
   function wireNaInlineCloseIntercept() {
@@ -499,7 +501,7 @@
     const parts = [];
     if (act && act.veids) parts.push(act.veids);
     if (act && act.numurs) parts.push("Nr. " + act.numurs);
-    return parts.join(" ") || "—";
+    return parts.join(" ") || (window.pvEmptyMark || "–");
   }
 
   function actLinkedToCurrentProcess(act, procNo, procName) {
@@ -519,82 +521,95 @@
     return false;
   }
 
-  function openNaInlineFromProcessCard(actId) {
-    const sid = String(actId || "").trim();
-    if (!sid) return;
+  function prepareNaInlineInProcessCard() {
     closeCardInlineScope("process");
     window.__naInlineInProcessCard = true;
     document.getElementById("normActsCard")?.classList.add("hidden");
     dockNaEditorToProcessCard();
     const ec = document.getElementById("editorCard");
     if (ec) ec.classList.remove("hidden");
-    if (window.NormAkti && typeof NormAkti.openEditor === "function") {
-      NormAkti.openEditor(sid, { skipCapture: true });
-    }
+  }
+
+  function scrollProcessNaInlineHost() {
     const host = document.getElementById("eNaInlineHost");
     if (host && typeof host.scrollIntoView === "function") {
       host.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   }
 
-  /** 4. bloks: tikai NA nosaukums + saite uz NA kartiņu (bez pievienošanas/noņemšanas). */
-  function renderProcessNaReadOnly(procNo, processRow) {
-    const mount = document.getElementById("eNaActions");
-    if (!mount) return;
-    const addBtn = document.getElementById("eAddNaBtn");
-    if (addBtn) {
-      addBtn.style.display = "none";
-      addBtn.disabled = true;
+  function openNaInlineNewFromProcessCard() {
+    prepareNaInlineInProcessCard();
+    const pNo = elVal("eProcNo");
+    const pName = elVal("eProcess");
+    if (window.NormAkti && typeof NormAkti.openEditorWithContext === "function") {
+      NormAkti.openEditorWithContext({ processNo: pNo, process: pName }, null);
     }
-    const attachWrap = document.getElementById("eNaAttachWrap");
-    if (attachWrap) {
-      attachWrap.style.display = "none";
-      attachWrap.innerHTML = "";
+    scrollProcessNaInlineHost();
+  }
+
+  function openNaInlineExistingFromProcessCard(actId) {
+    const sid = String(actId || "").trim();
+    if (!sid) return;
+    prepareNaInlineInProcessCard();
+    if (window.NormAkti && typeof NormAkti.openEditor === "function") {
+      NormAkti.openEditor(sid, { skipCapture: true });
     }
-    mount.innerHTML = "";
-    mount.classList.add("na-linked-list");
-    let acts = [];
-    if (window.NormAkti && typeof NormAkti.loadActs === "function") {
-      acts = NormAkti.loadActs();
+    scrollProcessNaInlineHost();
+  }
+
+  function openNaInlineNewFromCatalogCard() {
+    window.__naInlineInCatalogCard = true;
+    if (window.KartinaInline && typeof KartinaInline.markCatalogNaContext === "function") {
+      KartinaInline.markCatalogNaContext();
     }
-    const pNo = String(procNo != null ? procNo : elVal("eProcNo")).trim();
-    const pName = String(
-      (processRow && processRow.process) || elVal("eProcess")
-    ).trim();
-    const linked = acts.filter((a) => actLinkedToCurrentProcess(a, pNo, pName));
-    if (!linked.length) {
-      const empty = document.createElement("div");
-      empty.className = "hint";
-      empty.textContent = "Nav piesaistītu normatīvo aktu. Rediģējiet sadaļā «Procesus reglamentējoši normatīvie akti».";
-      mount.appendChild(empty);
-      return;
+    dockNaEditorToCatalogCard();
+    document.getElementById("catalogEditorCard")?.classList.remove("hidden");
+    document.getElementById("normActsCard")?.classList.add("hidden");
+    const procNo = elVal("cProcNo");
+    const process = elVal("cProcess");
+    const gpTypeNo = elVal("cTypeNo");
+    const gp = elVal("cType");
+    if (window.NormAkti && typeof NormAkti.openEditorWithContext === "function") {
+      NormAkti.openEditorWithContext(
+        { processNo: procNo, process, gpTypeNo, gp, catalog: true },
+        null
+      );
     }
-    linked.sort((a, b) =>
-      naActTitleShort(a).localeCompare(naActTitleShort(b), "lv", { sensitivity: "base" })
-    );
-    linked.forEach((act) => {
-      const line = document.createElement("div");
-      line.className = "process-na-readonly-item";
-      const name = document.createElement("span");
-      name.className = "process-na-readonly-name";
-      name.textContent = naActTitleShort(act);
-      const link = document.createElement("button");
-      link.type = "button";
-      link.className = "secondary";
-      link.style.fontSize = "12px";
-      link.textContent = "Skatīt normatīvā akta detalizētāko informāciju";
-      link.title = "Atvērt normatīvā akta kartiņu zem procesa kartiņas";
-      link.onclick = () => openNaInlineFromProcessCard(act.id);
-      line.appendChild(name);
-      line.appendChild(link);
-      mount.appendChild(line);
-    });
+    const host = document.getElementById("cNaInlineHost");
+    if (host && typeof host.scrollIntoView === "function") {
+      host.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }
+
+  function openNaInlineExistingFromCatalogCard(actId) {
+    const sid = String(actId || "").trim();
+    if (!sid) return;
+    window.__naInlineInCatalogCard = true;
+    if (window.KartinaInline && typeof KartinaInline.markCatalogNaContext === "function") {
+      KartinaInline.markCatalogNaContext();
+    }
+    dockNaEditorToCatalogCard();
+    document.getElementById("catalogEditorCard")?.classList.remove("hidden");
+    document.getElementById("normActsCard")?.classList.add("hidden");
+    if (window.NormAkti && typeof NormAkti.openEditor === "function") {
+      NormAkti.openEditor(sid, { skipCapture: true });
+    }
+    const host = document.getElementById("cNaInlineHost");
+    if (host && typeof host.scrollIntoView === "function") {
+      host.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+  }
+
+  function refreshProcessCardNaReflection(procNo, processRow) {
+    if (window.NormAkti && typeof NormAkti.renderProcessLinks === "function") {
+      NormAkti.renderProcessLinks(procNo, processRow);
+    }
   }
 
   function afterProcessCardPanelRefresh(procNo, processRow) {
     stripGpProcessColumn();
     hideProcessExecutorDalaField();
-    renderProcessNaReadOnly(procNo, processRow);
+    refreshProcessCardNaReflection(procNo, processRow);
   }
 
   function resolveProcessRowForCard(procNo) {
@@ -622,17 +637,6 @@
     window.refreshProcessCardGpPanel.__procesaKartinaPatch = true;
   }
 
-  function patchNormAktiProcessLinks() {
-    if (!window.NormAkti || typeof NormAkti.renderProcessLinks !== "function") return false;
-    if (NormAkti.renderProcessLinks.__procesaKartinaPatch) return true;
-    const orig = NormAkti.renderProcessLinks;
-    NormAkti.renderProcessLinks = function (procNo, processRow) {
-      renderProcessNaReadOnly(procNo, processRow);
-    };
-    NormAkti.renderProcessLinks.__procesaKartinaPatch = true;
-    return true;
-  }
-
   function installProcessCardEnhancements() {
     injectProcessCardStyles();
     installKartinaInlineUi();
@@ -642,7 +646,6 @@
     wireNaInlineCloseIntercept();
     watchNaEditorHiddenForInline();
     patchRefreshProcessCardGpPanel();
-    patchNormAktiProcessLinks();
     const card = document.getElementById("editorCard");
     if (card && !card.dataset.naReadonlyObs) {
       card.dataset.naReadonlyObs = "1";
@@ -652,7 +655,7 @@
           return;
         }
         const procNo = elVal("eProcNo");
-        renderProcessNaReadOnly(procNo, resolveProcessRowForCard(procNo));
+        refreshProcessCardNaReflection(procNo, resolveProcessRowForCard(procNo));
       });
       obs.observe(card, { attributes: true, attributeFilter: ["class"] });
     }
@@ -662,7 +665,9 @@
     setAttachments,
     getAttachments,
     wire,
-    refreshProcessNaReadOnly: renderProcessNaReadOnly,
+    openNaInlineNew: openNaInlineNewFromProcessCard,
+    openNaInlineExisting: openNaInlineExistingFromProcessCard,
+    refreshProcessNaReflection: refreshProcessCardNaReflection,
   };
 
   function refreshProcessCardFromGp() {

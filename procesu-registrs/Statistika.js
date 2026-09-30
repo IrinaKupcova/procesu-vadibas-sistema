@@ -5,6 +5,7 @@
   let orgOpen = false;
   let processOpen = false;
   let jomaOpen = false;
+  let groupOpen = false;
   let activeStatsSection = null;
   const filterState = { org: {}, proc: {}, joma: {} };
   const orgDetailOpenState = {
@@ -82,6 +83,8 @@
       .stats-section-nav button:hover:not(.active){background:#e2e8f0}
       body:not(.theme-light) .stats-section-nav button:hover:not(.active){background:#475569}
       .stats-section-nav button.active{background:#2563eb;color:#fff;border-color:#2563eb}
+      .stats-section-nav button.stats-section-nav-sub{margin-left:12px;border-left:3px solid #64748b}
+      body:not(.theme-light) .stats-section-nav button.stats-section-nav-sub{border-left-color:#94a3b8}
       .stats-section-card.stats-section-hidden{display:none!important}
       .stats-org-bar-wrap{display:flex;flex-wrap:wrap;gap:16px;margin:10px 0 14px;align-items:stretch}
       .stats-org-bar-panel{flex:1 1 min(440px,100%);border:1px solid #cbd5e1;border-radius:10px;padding:12px;background:#ffffff}
@@ -133,7 +136,73 @@
       .stats-org-proc{margin:4px 0 0;padding-left:1.2em;line-height:1.35;color:#334155;font-size:12px}
       .stats-org-proc li{margin:2px 0}
       #orgStatsTable .stats-org-proc-cell{vertical-align:top;min-width:180px}
+      #reportsCard #processGroupsCard .process-pie-wrap svg,
+      #reportsCard #processGroupsCard .process-pie-wrap .process-pie-legend{display:block!important}
+      #reportsCard #processGroupsCard{margin-top:12px;background:#f8fafc;border:1px solid #cbd5e1;border-radius:12px;padding:14px}
+      #reportsCard #processGroupsCard .toolbar{margin-bottom:8px}
+      #reportsCard #processGroupsCard.stats-section-hidden{display:none!important}
+      #reportsCard #processGroupsCard.hidden{display:block!important}
+      #reportsCard #processGroupsCard.nav-page-hidden{display:block!important}
+      #reportsCard #processGroupsCard.stats-section-hidden.hidden{display:none!important}
     `;
+  }
+
+  function relocateProcessGroupsIntoStats() {
+    const groupsCard = $("processGroupsCard");
+    const wrap = $("reportsBodyWrap");
+    if (!groupsCard || !wrap || groupsCard.dataset.statsRelocated === "1") return;
+    const title = groupsCard.querySelector(".toolbar .section-title") || groupsCard.querySelector(".section-title");
+    if (title) title.textContent = "Grupu statistika";
+    wrap.appendChild(groupsCard);
+    groupsCard.classList.add("stats-section-card");
+    groupsCard.classList.remove("hidden");
+    groupsCard.classList.remove("nav-page-hidden");
+    groupsCard.dataset.statsRelocated = "1";
+  }
+
+  function showGroupStatsCard(groupCard) {
+    if (!groupCard) return;
+    relocateProcessGroupsIntoStats();
+    groupCard.classList.remove("hidden");
+    groupCard.classList.remove("nav-page-hidden");
+  }
+
+  function removeProcessGroupsSideNav() {
+    document.querySelectorAll('.side-nav-jump[data-scroll-target="processGroupsCard"]').forEach((btn) => {
+      btn.remove();
+    });
+  }
+
+  function injectGroupStatsShortcutButton() {
+    const card = $("processListCard");
+    if (!card || $("btnGotoStatsGroup")) return;
+    const host = card.querySelector(".toolbar .right") || card.querySelector(".toolbar");
+    if (!host) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "btnGotoStatsGroup";
+    btn.className = "secondary";
+    btn.textContent = "Grupu statistika";
+    btn.addEventListener("click", () => {
+      const navBtn = document.querySelector('.side-nav-jump[data-scroll-target="reportsCard"]');
+      if (navBtn) navBtn.click();
+      const open = () => {
+        if (typeof window.openStatsSection === "function") window.openStatsSection("group");
+      };
+      setTimeout(open, 80);
+      setTimeout(open, 320);
+    });
+    host.appendChild(btn);
+  }
+
+  function refreshGroupStatsView() {
+    if (typeof window.renderProcessGroupsView === "function") {
+      try {
+        window.renderProcessGroupsView();
+      } catch (e) {
+        console.warn("renderProcessGroupsView:", e);
+      }
+    }
   }
 
   function populateFilterChecklist(list, values, selected) {
@@ -295,16 +364,32 @@
       const id = btn.getAttribute("data-stats-section");
       btn.classList.toggle("active", id === activeStatsSection);
     });
-    nav.classList.toggle("hidden", !activeStatsSection);
+    const reports = $("reportsCard");
+    const reportsVisible =
+      reports && !reports.classList.contains("hidden") && !reports.classList.contains("nav-page-hidden");
+    nav.classList.toggle("hidden", !reportsVisible);
+  }
+
+  function ensureStatsPanelOpen() {
+    ensurePanelStructure();
+    if (!activeStatsSection) openStatsSection("org");
+    else updateStatsSectionNav();
   }
 
   function openStatsSection(sectionId) {
     const id = String(sectionId || "").trim();
     if (!id) return;
+    relocateProcessGroupsIntoStats();
+    const reports = $("reportsCard");
+    if (reports) {
+      reports.classList.remove("hidden");
+      reports.classList.remove("nav-page-hidden");
+    }
     activeStatsSection = id;
     orgOpen = id === "org";
     processOpen = id === "process";
     jomaOpen = id === "joma";
+    groupOpen = id === "group";
 
     const orgBody = $("orgStatsBody");
     const processBody = $("processOutputStatsBody");
@@ -323,6 +408,7 @@
     const orgCard = $("orgStatsCard");
     const processCard = $("processOutputStatsCard");
     const jomaCard = $("jomaStatsCard");
+    const groupCard = $("processGroupsCard");
     if (orgCard) {
       orgCard.classList.toggle("stats-section-hidden", id !== "org");
       orgCard.classList.add("stats-section-card");
@@ -335,10 +421,21 @@
       jomaCard.classList.toggle("stats-section-hidden", id !== "joma");
       jomaCard.classList.add("stats-section-card");
     }
+    if (groupCard) {
+      groupCard.classList.add("stats-section-card");
+      if (id === "group") {
+        showGroupStatsCard(groupCard);
+        groupCard.classList.remove("stats-section-hidden");
+        refreshGroupStatsView();
+      } else {
+        groupCard.classList.add("stats-section-hidden");
+      }
+    }
 
     updateStatsSectionNav();
 
-    const targetCard = id === "org" ? orgCard : id === "process" ? processCard : jomaCard;
+    const targetCard =
+      id === "org" ? orgCard : id === "process" ? processCard : id === "joma" ? jomaCard : groupCard;
     if (targetCard && targetCard.scrollIntoView) {
       requestAnimationFrame(() => {
         targetCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -356,21 +453,21 @@
       { id: "org", label: "Izpildītāju statistika" },
       { id: "process", label: "Galaproduktu statistika" },
       { id: "joma", label: "Jomu statistika" },
+      { id: "group", label: "Grupu statistika" },
     ];
     sections.forEach((s) => {
       const btn = document.createElement("button");
       btn.type = "button";
       btn.dataset.statsSection = s.id;
       btn.textContent = s.label;
+      if (s.id === "group") btn.classList.add("stats-section-nav-sub");
       btn.addEventListener("click", (e) => {
         e.preventDefault();
         openStatsSection(s.id);
       });
       nav.appendChild(btn);
     });
-    const grid = $("reportsGrid");
-    if (grid && grid.parentNode === wrap) wrap.insertBefore(nav, grid.nextSibling);
-    else wrap.insertBefore(nav, wrap.firstChild);
+    wrap.insertBefore(nav, wrap.firstChild);
   }
 
   function ensurePanelStructure() {
@@ -378,6 +475,7 @@
     const orgCard = $("orgStatsCard");
     if (!reportsWrap || !orgCard) return null;
 
+    relocateProcessGroupsIntoStats();
     ensureStatsSectionNav();
 
     const orgTitle = orgCard.querySelector("h3");
@@ -451,6 +549,14 @@
     jomaBody.classList.toggle("hidden", !jomaOpen);
     jomaCard.classList.add("stats-section-card");
     jomaCard.classList.toggle("stats-section-hidden", activeStatsSection !== "joma" && activeStatsSection !== null);
+    const groupCard = $("processGroupsCard");
+    if (groupCard) {
+      groupCard.classList.add("stats-section-card");
+      groupCard.classList.toggle(
+        "stats-section-hidden",
+        activeStatsSection !== "group" && activeStatsSection !== null
+      );
+    }
     updateStatsSectionNav();
 
     return { orgBody, processBody, jomaBody };
@@ -661,13 +767,13 @@
       p1,
       pairsProcesi,
       "stats-org-bar-fill",
-      "Pārvaldēm piekritīgie procesi, skaits",
+      "Patstāvīgajām struktūrvienībām piekritīgie procesi, skaits",
       "Atverot, tiks parādīti procesi",
       "process",
       (unitData) => unitData.processLines.slice().sort((a, b) => a.localeCompare(b, "lv")),
       null,
-      "Stabiņi rāda procesu skaitu katrā pārvaldē.",
-      "Procesi pārvaldē"
+      "Stabiņi rāda procesu skaitu katrā patstāvīgā struktūrvienībā.",
+      "Procesi (pēc patstāvīgās struktūrvienības)"
     );
     const p2 = document.createElement("div");
     p2.className = "stats-org-bar-panel";
@@ -675,13 +781,13 @@
       p2,
       pairsGp,
       "stats-org-bar-fill stats-org-bar-fill--gp",
-      "Pārvaldēm piekritīgie unikālie galaprodukti, skaits",
+      "Patstāvīgajām struktūrvienībām piekritīgie unikālie galaprodukti, skaits",
       "Atverot, tiks parādīti galaprodukti",
       "gp",
       (unitData) => Array.from(unitData.gpSet).sort((a, b) => a.localeCompare(b, "lv")),
       null,
-      "Stabiņi rāda unikālo galaproduktu skaitu katrā pārvaldē.",
-      "Galaprodukti pārvaldē"
+      "Stabiņi rāda unikālo galaproduktu skaitu katrā patstāvīgā struktūrvienībā.",
+      "Galaprodukti (pēc patstāvīgās struktūrvienības)"
     );
     const p3 = document.createElement("div");
     p3.className = "stats-org-bar-panel";
@@ -695,7 +801,7 @@
       p3,
       pairsProcesi,
       "",
-      "Pārvalžu procesu sadalījums pa procesu grupām",
+      "Patstāvīgo struktūrvienību procesu sadalījums pa procesu grupām",
       "",
       "",
       null,
@@ -720,7 +826,7 @@
         });
         return track;
       },
-      "Stabiņi rāda procesu skaitu pa grupām katrā pārvaldē.",
+      "Stabiņi rāda procesu skaitu pa grupām katrā patstāvīgā struktūrvienībā.",
       ""
     );
     const lg = document.createElement("div");
@@ -736,13 +842,13 @@
       p4,
       pairsServices,
       "stats-org-bar-fill stats-org-bar-fill--services",
-      "Pārvalžu sadalījums pēc pakalpojumu skaita",
+      "Patstāvīgo struktūrvienību sadalījums pēc pakalpojumu skaita",
       "Atverot, tiks parādīti pakalpojumi",
       "services",
       (unitData) => Array.from(unitData.services).sort((a, b) => a.localeCompare(b, "lv")),
       null,
-      "Stabiņi rāda pakalpojumu skaitu katrā pārvaldē.",
-      "Pakalpojumi pārvaldē"
+      "Stabiņi rāda pakalpojumu skaitu katrā patstāvīgā struktūrvienībā.",
+      "Pakalpojumi (pēc patstāvīgās struktūrvienības)"
     );
     const p5 = document.createElement("div");
     p5.className = "stats-org-bar-panel";
@@ -750,13 +856,13 @@
       p5,
       pairsJoma,
       "stats-org-bar-fill stats-org-bar-fill--jomaexec",
-      "Pārvaldēm piekrītīgās jomas, skaits",
+      "Patstāvīgajām struktūrvienībām piekrītīgās jomas, skaits",
       "Atverot, tiks parādītas jomas",
       "joma",
       (unitData) => Array.from(unitData.jomaSet).sort((a, b) => a.localeCompare(b, "lv")),
       null,
-      "Stabiņi rāda jomu skaitu katrā pārvaldē.",
-      "Jomas pārvaldē"
+      "Stabiņi rāda jomu skaitu katrā patstāvīgā struktūrvienībā.",
+      "Jomas (pēc patstāvīgās struktūrvienības)"
     );
 
     wrap.appendChild(p1);
@@ -777,7 +883,7 @@
     merged.forEach((r) => {
       const gpN = countGalaproduktiOnMergedRow(r);
       let units = executorTokensFromMergedRow(r);
-      if (!units.length) units = ["(nav norādītas pārvaldes)"];
+      if (!units.length) units = ["(nav norādīta patstāvīgā struktūrvienība)"];
       const dk = mergedProcessDedupeKey(r);
       const g = normalizeGroup(r.group);
 
@@ -820,7 +926,7 @@
       const gpName = String((c && c.type) || "").trim();
       if (!gpName) return;
       const units = splitMultiValues((c && c.unit) || "");
-      const scopedUnits = units.length ? units : ["(nav norādītas pārvaldes)"];
+      const scopedUnits = units.length ? units : ["(nav norādīta patstāvīgā struktūrvienība)"];
       scopedUnits.forEach((unit) => {
         const agg = ensureUnitAgg(byUnit, unit);
         agg.gpSet.add(gpName);
@@ -838,7 +944,7 @@
     const hint = $("orgStatsHint");
     if (hint) {
       hint.textContent =
-        "Procesu skaiti/grupu sadalījums tiek rēķināts no apvienotajām Procesu reģistra rindām, bet unikālie galaprodukti pa pārvaldēm — no GP kataloga.";
+        "Procesu skaiti/grupu sadalījums tiek rēķināts no apvienotajām Procesu reģistra rindām, bet unikālie galaprodukti pa patstāvīgajām struktūrvienībām — no GP kataloga.";
     }
 
     const sumPamat = unitKeysSorted.reduce((s, u) => s + byUnit.get(u).pamat, 0);
@@ -851,7 +957,7 @@
     tot.className = "stats-table-total";
     tot.style.cssText = "margin:8px 0 0;font-size:13px;font-weight:600;color:#0f172a;";
     tot.textContent =
-      `Kopskaits — izpildītāju (pārvalžu) rindas: ${byUnit.size}; unikālie galaprodukti (summa pa pārvaldēm): ${sumGpUniq}; pamatdarbības: ${sumPamat}; atbalsta: ${sumAtbalsta}; vadības: ${sumVadibas}; pakalpojumu nosaukumu atšķirīgas vērtības (summa): ${sumPak}. Summas var pārsniegt vienreizējā procesu skaitu, ja viens process ir vairākās pārvaldēs.`;
+      `Kopskaits — patstāvīgo struktūrvienību rindas: ${byUnit.size}; unikālie galaprodukti (summa pa struktūrvienībām): ${sumGpUniq}; pamatdarbības: ${sumPamat}; atbalsta: ${sumAtbalsta}; vadības: ${sumVadibas}; pakalpojumu nosaukumu atšķirīgas vērtības (summa): ${sumPak}. Summas var pārsniegt vienreizējā procesu skaitu, ja viens process ir vairākās patstāvīgās struktūrvienībās.`;
     orgBody.appendChild(tot);
   }
 
@@ -1171,7 +1277,7 @@
         const sw = document.createElement("span");
         sw.style.cssText = "display:inline-block;width:9px;height:9px;border-radius:2px;background:" + jomaColor.get(j.name) + ";";
         const txt = document.createElement("span");
-        txt.textContent = j.name + " — " + j.pct + "%";
+        txt.textContent = j.name + " " + j.pct + "%";
         item.appendChild(sw);
         item.appendChild(txt);
         legend.appendChild(item);
@@ -1319,6 +1425,7 @@
     renderOrgTable(refs.orgBody, mergedRows, catalogRows);
     renderProcessOutputTable(refs.processBody);
     renderJomaStatsTable(refs.jomaBody);
+    refreshGroupStatsView();
     if (typeof window.refreshClearFilterButtonActive === "function") window.refreshClearFilterButtonActive();
   }
 
@@ -1352,11 +1459,20 @@
   window.hasActiveStatsFilters = hasActiveStatsFilters;
   window.clearStatsFilters = clearStatsFilters;
   window.openStatsSection = openStatsSection;
+  window.ensureStatsPanelOpen = ensureStatsPanelOpen;
 
   function boot() {
     ensureFilterStyles();
+    removeProcessGroupsSideNav();
+    injectGroupStatsShortcutButton();
     renderOrgStats();
     window.addEventListener("app:db-sync", renderOrgStats);
+    document.addEventListener("click", (e) => {
+      const btn = e.target.closest('.side-nav-jump[data-scroll-target="reportsCard"]');
+      if (!btn) return;
+      setTimeout(() => ensureStatsPanelOpen(), 80);
+    });
+    [400, 1200].forEach((ms) => setTimeout(removeProcessGroupsSideNav, ms));
   }
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

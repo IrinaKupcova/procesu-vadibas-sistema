@@ -1,4 +1,4 @@
-﻿# Procesu reģistrs — funkcionālā specifikācija
+# Procesu reģistrs — funkcionālā specifikācija
 
 > **Versija:** 1.0 (2026-08-19)  
 > **Avots:** esošā implementācija (`index.html`, JS moduļi, `DB.js`, `migrations/`, `docs/`)  

@@ -301,13 +301,19 @@
   }
 
   function processLabel(procNo, process) {
-    if (procNo && process) return `${procNo} — ${process}`;
-    return procNo || process || "—";
+    if (typeof window.pvPairLabel === "function") {
+      const lbl = window.pvPairLabel(procNo, process);
+      if (lbl) return lbl;
+    }
+    return procNo || process || (window.pvEmptyMark || "–");
   }
 
   function gpLabel(gpNo, gpName) {
-    if (gpNo && gpName) return `${gpNo} — ${gpName}`;
-    return gpName || gpNo || "—";
+    if (typeof window.pvPairLabel === "function") {
+      const lbl = window.pvPairLabel(gpNo, gpName);
+      if (lbl) return lbl;
+    }
+    return gpName || gpNo || (window.pvEmptyMark || "–");
   }
 
   function atbildigaisLine(a) {
@@ -482,7 +488,7 @@
   function renderAtbildigieRow(a, idx, showRemove) {
     return `
       <div class="opt-atb-row" data-atb-idx="${idx}">
-        <input type="text" class="opt-atb-parvalde" placeholder="Pārvalde" value="${esc(a.parvalde || "")}" />
+        <input type="text" class="opt-atb-parvalde" placeholder="Patstāvīgā struktūrvienība" value="${esc(a.parvalde || "")}" />
         <input type="text" class="opt-atb-dala" placeholder="Daļa" value="${esc(a.dala || "")}" />
         <input type="text" class="opt-atb-name" placeholder="Vārds, uzvārds" value="${esc(a.vardsUzvards || "")}" />
         <button type="button" class="secondary opt-atb-rm" title="Noņemt"${showRemove ? "" : ' style="visibility:hidden"'}>×</button>
@@ -776,6 +782,15 @@
       return;
     }
 
+    const saveLabel = editingMeasure
+      ? `optimizācijas pasākumu «${nosaukums}»`
+      : `jauno optimizācijas pasākumu «${nosaukums}»`;
+    if (window.PVConfirm) {
+      if (!window.PVConfirm.confirmSave(saveLabel)) return;
+    } else if (!confirm(`Vai tiešām gribat labot vai saglabāt — ${saveLabel}?`)) {
+      return;
+    }
+
     const measure = {
       id: editingMeasure ? editingMeasure.id : newPasakumsId(),
       nosaukums,
@@ -836,7 +851,12 @@
 
   async function deleteMeasure(measure) {
     if (!canEdit()) return;
-    if (!confirm(`Dzēst optimizācijas pasākumu «${measure.nosaukums || "—"}»?`)) return;
+    const delLabel = `optimizācijas pasākumu «${measure.nosaukums || "—"}»`;
+    if (window.PVConfirm) {
+      if (!window.PVConfirm.confirmDelete(delLabel)) return;
+    } else if (!confirm(`Vai tiešām gribat dzēst — ${delLabel}?`)) {
+      return;
+    }
     const parent = findParentById(measure.parentId);
     if (!parent) {
       statusMsg("Ieraksts nav atrasts.", "error");
@@ -900,7 +920,7 @@
             <div class="val"><span class="opt-status-pill ${st.cls}">${esc(st.label)}</span></div>
           </div>
           <div class="opt-detail-field" style="grid-column:1/-1">
-            <label>Atbildīgie (pārvalde, daļa · vārds, uzvārds)</label>
+            <label>Atbildīgie (patstāvīgā struktūrvienība, daļa · vārds, uzvārds)</label>
             <div class="val">${renderAtbildigieDetail(p.atbildigie)}</div>
           </div>
           <div class="opt-detail-field" style="grid-column:1/-1">

@@ -14,39 +14,41 @@
       const userSelect = $("userSelect");
       const currentUser = userSelect ? userSelect.value : "daina";
       const roleMap = JSON.parse(localStorage.getItem("roleMap") || "{}");
-      const r = roleMap[currentUser];
-      return r === "admin" || r === "admin_edit";
+      const r = window.PVRoles && window.PVRoles.normalizeRole
+        ? window.PVRoles.normalizeRole(roleMap[currentUser])
+        : roleMap[currentUser];
+      return r === "admin";
     } catch {
       return false;
     }
   }
 
   function setEditorState() {
-    const form = $("editorForm");
-    if (!form) return;
-
-    const canEdit = isAdminEditRole();
-    form.querySelectorAll("input, select, textarea, button").forEach((el) => {
-      if (el.id === "closeBtn") return;
-      el.disabled = !canEdit;
-    });
-
-    // Ensure process group dropdown is editable for admin_edit role.
+    if (typeof window.applyProcessEditorAccessUi === "function") {
+      const card = $("editorCard");
+      if (card && !card.classList.contains("hidden")) {
+        const hasRow = !!($("eId") && String($("eId").value || "").trim());
+        window.applyProcessEditorAccessUi(hasRow);
+      }
+    }
     const groupSelect = $("eGroup");
-    if (groupSelect) groupSelect.disabled = !canEdit;
-
+    if (groupSelect) groupSelect.disabled = !isAdminEditRole();
     if (typeof window.refreshModeHint === "function") window.refreshModeHint();
   }
 
   function patchOpenEditor() {
     if (typeof window.openEditor !== "function" || window.__newProcessOpenPatched) return;
-
     const originalOpenEditor = window.openEditor;
     window.openEditor = function (row) {
       originalOpenEditor(row);
       setEditorState();
     };
     window.__newProcessOpenPatched = true;
+  }
+
+  function tryPatchOpenEditor() {
+    patchOpenEditor();
+    if (!window.__newProcessOpenPatched) setTimeout(tryPatchOpenEditor, 150);
   }
 
   function patchSubmitSafety() {
@@ -84,7 +86,7 @@
   }
 
   function init() {
-    patchOpenEditor();
+    tryPatchOpenEditor();
     patchSubmitSafety();
     wireUiEvents();
     setEditorState();

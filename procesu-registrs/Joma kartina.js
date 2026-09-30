@@ -320,7 +320,7 @@
         const title = $("jomaEditorTitle");
         if (!title) return;
         title.innerHTML = n
-          ? `<span style="color:#1d4ed8;font-weight:700">${n.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</span> — Jomas kartiņa`
+          ? `<span style="color:#1d4ed8;font-weight:700">${n.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</span> Jomas kartiņa`
           : "Jomas kartiņa";
       });
     }
@@ -366,7 +366,7 @@
     if ($("jSkaidrojums")) $("jSkaidrojums").value = rec.skaidrojums;
     if ($("jomaEditorTitle")) {
       $("jomaEditorTitle").innerHTML = name
-        ? `<span style="color:#1d4ed8;font-weight:700">${name}</span> — Jomas kartiņa`
+        ? `<span style="color:#1d4ed8;font-weight:700">${name}</span> Jomas kartiņa`
         : "Jomas kartiņa";
     }
     setFormDisabled(!isAdminEdit());
@@ -378,12 +378,17 @@
 
   async function deleteCurrentJoma() {
     if (!isAdminEdit()) {
-      alert("Dzēšana pieejama tikai admin (labot).");
+      alert("Dzēšana pieejama tikai lietotājam ar administratora tiesībām (loma Administrators).");
       return;
     }
     const name = String(($("jJomaName") && $("jJomaName").value) || "").trim();
     if (!name) return;
-    if (!window.confirm(`Dzēst jomas kartiņu "${name}"? Šo darbību nevar atsaukt.`)) return;
+    const delLabel = `jomas kartiņu «${name}»`;
+    if (window.PVConfirm) {
+      if (!window.PVConfirm.confirmDelete(delLabel)) return;
+    } else if (!window.confirm(`Vai tiešām gribat dzēst — ${delLabel}?`)) {
+      return;
+    }
     const delBtn = $("jomaDeleteBtn");
     if (delBtn) delBtn.disabled = true;
     try {
@@ -524,12 +529,18 @@
     form.addEventListener("submit", async (e) => {
       e.preventDefault();
       if (!isAdminEdit()) {
-        alert("Labošana pieejama tikai admin (labot).");
+        alert("Labošana pieejama tikai lietotājam ar administratora tiesībām (loma Administrators).");
         return;
       }
       const name = String(($("jJomaName") && $("jJomaName").value) || "").trim();
       if (!name) {
         alert("Ievadiet jomas nosaukumu.");
+        return;
+      }
+      const saveLabel = `jomas kartiņu «${name}»`;
+      if (window.PVConfirm) {
+        if (!window.PVConfirm.confirmSave(saveLabel)) return;
+      } else if (!window.confirm(`Vai tiešām gribat labot vai saglabāt — ${saveLabel}?`)) {
         return;
       }
       const submitBtn = form.querySelector("button[type='submit']");

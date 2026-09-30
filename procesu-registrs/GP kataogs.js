@@ -332,15 +332,15 @@
     const editable = catalogFormEditable();
     const rows = rowsFromUnitDepartmentFields();
 
-    let html = `<div class="gp-resp-head"><span>Pārvalde</span><span>Daļa / amats</span><span></span></div>`;
+    let html = `<div class="gp-resp-head"><span>Patstāvīgā struktūrvienība</span><span>Daļa / amats</span><span></span></div>`;
     rows.forEach((row, idx) => {
       html += `<div class="gp-resp-row" data-idx="${idx}">
-        <input type="text" class="gp-resp-unit" value="${escHtml(row.unit)}" placeholder="Pārvalde" ${editable ? "" : "disabled"} />
-        <input type="text" class="gp-resp-dept" value="${escHtml(row.department)}" placeholder="Daļa / amats" ${editable ? "" : "disabled"} />
+        <input type="text" class="gp-resp-unit" value="${escHtml(row.unit)}" ${editable ? "" : "disabled"} />
+        <input type="text" class="gp-resp-dept" value="${escHtml(row.department)}" ${editable ? "" : "disabled"} />
         <button type="button" class="secondary gp-resp-del" title="Noņemt rindu" ${editable ? "" : "disabled"}>✕</button>
       </div>`;
     });
-    html += `<button type="button" class="secondary gp-resp-add" style="margin-top:8px" ${editable ? "" : "disabled"}>+ Pievienot pārvaldi / amatu</button>`;
+    html += `<button type="button" class="secondary gp-resp-add" style="margin-top:8px" ${editable ? "" : "disabled"}>+ Pievienot patstāvīgo struktūrvienību / amatu</button>`;
     root.innerHTML = html;
 
     root.querySelectorAll(".gp-resp-unit, .gp-resp-dept").forEach((inp) => {
@@ -399,9 +399,10 @@
     try {
       if (gpName) {
         title.innerHTML =
-          `Galaprodukta kartiņa — <span style="color:#1d4ed8;font-weight:700">${escHtml(gpName)}</span>`;
+          `<span class="editor-title-kicker">Galaprodukta kartiņa</span> <span style="color:#1d4ed8;font-weight:700">${escHtml(gpName)}</span>`;
       } else {
-        title.textContent = "Galaprodukta kartiņa (jauns)";
+        title.innerHTML =
+          `<span class="editor-title-kicker">Galaprodukta kartiņa</span> <span style="color:#1d4ed8;font-weight:700">Jauns galaprodukts</span>`;
       }
     } finally {
       gpTitleUpdateLock = false;
@@ -556,6 +557,142 @@
     });
   }
 
+  const GP_KARTINA_META_JSON_KEYS = [
+    "GP_kartinas_papildu_JSON",
+    "gp_kartinas_papildu_json",
+    "GP_kartinas_metadata_JSON",
+  ];
+
+  function readGpExtraFieldsFromDom() {
+    return {
+      paraksttiesibas: String(gp$("cParaksttiesibas")?.value || "").trim(),
+      riskuParvaldiba: String(gp$("cRiskuParvaldiba")?.value || "").trim(),
+    };
+  }
+
+  function ensureGpExtraSections() {
+    const form = gp$("catalogEditorForm");
+    if (!form) return;
+    const addInfo = gp$("cAdditionalInfo");
+    const sec5 = addInfo ? addInfo.closest(".editor-section") : null;
+    if (sec5) {
+      const title5 = sec5.querySelector(".editor-section-title");
+      if (title5) title5.textContent = "5. Galaprodukta papildu informācija";
+      const addLabel = addInfo.closest(".form-group")?.querySelector("label");
+      if (addLabel) addLabel.textContent = "Galaprodukta papildu informācija";
+      if (!gp$("cParaksttiesibas")) {
+        const group = document.createElement("div");
+        group.className = "form-group form-group--full";
+        group.innerHTML =
+          '<label for="cParaksttiesibas">Paraksttiesības</label>' +
+          '<textarea id="cParaksttiesibas" rows="4"></textarea>';
+        const anchor = addInfo.closest(".form-group");
+        if (anchor && anchor.parentNode) anchor.parentNode.insertBefore(group, anchor.nextSibling);
+      }
+    }
+    let secRisk = gp$("cGpRiskSection");
+    const toolsSec = gp$("cGpToolsLinks");
+    if (!secRisk) {
+      secRisk = document.createElement("div");
+      secRisk.className = "editor-section";
+      secRisk.id = "cGpRiskSection";
+      secRisk.innerHTML =
+        '<h3 class="editor-section-title">6. Informācija par galaprodukta riskiem</h3>' +
+        '<div class="form-row"><div class="form-group form-group--full">' +
+        '<label for="cRiskuParvaldiba">Informācija par galaprodukta riskiem</label>' +
+        '<textarea id="cRiskuParvaldiba" rows="6"></textarea>' +
+        "</div></div>";
+      if (toolsSec && toolsSec.parentNode) toolsSec.parentNode.insertBefore(secRisk, toolsSec);
+      else form.appendChild(secRisk);
+    }
+    const riskTitle = secRisk.querySelector(".editor-section-title");
+    if (riskTitle) riskTitle.textContent = "6. Informācija par galaprodukta riskiem";
+    const riskLabel = secRisk.querySelector('label[for="cRiskuParvaldiba"]');
+    if (riskLabel) riskLabel.textContent = "Informācija par galaprodukta riskiem";
+    const toolsTitle = toolsSec?.querySelector(".editor-section-title");
+    if (toolsTitle) toolsTitle.textContent = "7. Galaprodukta rādītāji un optimizācija";
+    const sec1Title = gp$("cGpPamatSection")?.querySelector(".editor-section-title");
+    if (sec1Title) sec1Title.textContent = "1. Galaprodukta pamatinformācija";
+    const sec2 = gp$("cProcessPick")?.closest(".editor-section");
+    const sec2Title = sec2?.querySelector(".editor-section-title");
+    if (sec2Title) sec2Title.textContent = "2. Galaprodukta process";
+    const sec4Title = gp$("cGpNaSection")?.querySelector(".editor-section-title");
+    if (sec4Title) sec4Title.textContent = "4. Reglamentējoši normatīvie akti";
+    form.dataset.gpExtraSections = "1";
+  }
+
+  function syncGpExtraFieldsToForm() {
+    const taP = gp$("cParaksttiesibas");
+    const taR = gp$("cRiskuParvaldiba");
+    if (!taP && !taR) return;
+    const typeNo = String(gp$("cTypeNo")?.value || "").trim();
+    const type = String(gp$("cType")?.value || "").trim();
+    let slot = {};
+    if (typeof window.getCatalogRows === "function" && type) {
+      const rows = window.getCatalogRows() || [];
+      const hit =
+        rows.find((r) => norm(r.type) === norm(type) && (!typeNo || String(r.typeNo || "").trim() === typeNo)) ||
+        rows.find((r) => norm(r.type) === norm(type));
+      if (hit && hit.raw) slot = gpMetaSlot(hit.raw, type);
+    }
+    if (taP) taP.value = String(slot.paraksttiesibas != null ? slot.paraksttiesibas : "");
+    if (taR) taR.value = String(slot.riskuParvaldiba != null ? slot.riskuParvaldiba : "");
+    const editable = catalogFormEditable();
+    if (taP) taP.disabled = !editable;
+    if (taR) taR.disabled = !editable;
+  }
+
+  async function patchGpMetaExtrasAfterCatalogSave(current, row) {
+    const api = window.DB;
+    if (!api || typeof api.load !== "function" || typeof api.update !== "function") return;
+    const extras = readGpExtraFieldsFromDom();
+    const gp = String((row && row.type) || gp$("cType")?.value || "").trim();
+    if (!gp) return;
+    const procNo = String((row && row.procNo) || (current && current.procNo) || gp$("cProcNo")?.value || "").trim();
+    let processRows = [];
+    try {
+      processRows = await api.load();
+    } catch (_) {
+      return;
+    }
+    const target = procNo
+      ? (processRows || []).find((r) => String((r && r.processNo) || "").trim() === procNo)
+      : null;
+    if (!target) return;
+    const raw = (target && target.raw) || {};
+    const map = { ...readGpMetaMapFromRaw(raw) };
+    const key = norm(gp);
+    const prev = (map[key] && typeof map[key] === "object") ? { ...map[key] } : {};
+    map[key] = Object.assign({}, prev, extras);
+    const metaCol =
+      GP_KARTINA_META_JSON_KEYS.find((c) => raw && Object.prototype.hasOwnProperty.call(raw, c)) ||
+      "GP_kartinas_papildu_JSON";
+    try {
+      await api.update(target, { [metaCol]: map });
+    } catch (e) {
+      console.warn("GP kartiņas papildu lauku saglabāšana:", e);
+    }
+  }
+
+  function installCatalogDbExtrasPersistence() {
+    if (!window.DB || window.__gpKartinaExtrasDbHook) return;
+    window.__gpKartinaExtrasDbHook = true;
+    ["insertCatalog", "updateCatalog"].forEach((fnName) => {
+      const orig = window.DB[fnName];
+      if (typeof orig !== "function") return;
+      window.DB[fnName] = async function patchedCatalogWrite(a, b) {
+        const isUpdate = fnName === "updateCatalog";
+        const current = isUpdate ? a : null;
+        const row = isUpdate ? b : a;
+        const result = await orig.apply(this, arguments);
+        try {
+          await patchGpMetaExtrasAfterCatalogSave(current, row);
+        } catch (_) {}
+        return result;
+      };
+    });
+  }
+
   function ensureGpKartinaStructureOnce() {
     if (window.__gpKartinaStructureDone) return;
     const form = gp$("catalogEditorForm");
@@ -592,6 +729,7 @@
     if (!form) return;
     const sections = form.querySelectorAll(":scope > .editor-section");
     if (sections.length < 2) return;
+    ensureGpExtraSections();
     ensureGpKartinaStructureOnce();
     const pamatSec =
       gp$("cGpPamatSection") ||
@@ -604,6 +742,7 @@
     patchCatalogEditorTitleFromLegacy();
     updateCatalogEditorTitle();
     renderGpResponsibleRows();
+    syncGpExtraFieldsToForm();
   }
 
   function patchCatalogEditorTitleFromLegacy() {
@@ -611,7 +750,7 @@
     const title = gp$("catalogEditorTitle");
     if (!title) return;
     const raw = title.textContent || "";
-    if (/Galaprodukta kartiņa —/.test(raw)) return;
+    if (/Galaprodukta kartiņa/.test(raw)) return;
     if (/rediģēt/i.test(raw)) {
       updateCatalogEditorTitle();
     }
@@ -666,7 +805,9 @@
 
   function initGpKartinaUi() {
     ensureGpKartinaStyles();
+    ensureGpExtraSections();
     ensureGpKartinaStructureOnce();
+    installCatalogDbExtrasPersistence();
     wireGpKartinaFormHooks();
     observeGpCatalogEditorCard();
     wireGpNameTitleSync();

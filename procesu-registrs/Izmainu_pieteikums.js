@@ -38,7 +38,7 @@
     lines.push("--- Galaproduktu katalogs ---");
     lines.push("Procesa galaprodukta Nr.: " + val("ch_gp_typeNo"));
     lines.push("Procesa galaprodukts: " + val("ch_gp_type"));
-    lines.push("Procesa izpildītājs, pārvalde: " + val("ch_gp_unit"));
+    lines.push("Patstāvīgā struktūrvienība: " + val("ch_gp_unit"));
     lines.push("Procesa Nr.: " + val("ch_gp_procNo"));
     lines.push("");
     if (uploadedFiles && uploadedFiles.length) {

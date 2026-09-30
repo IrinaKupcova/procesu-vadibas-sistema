@@ -2,12 +2,13 @@
 (function () {
   "use strict";
 
-  const METRICS_LABEL = "Mērījumi/ procesu rādītāji";
+  const METRICS_LABEL = "Procesu rādītāji (t.sk. mērījumi)";
 
   /** Apakšsadaļas zem «Procesu reģistrs». */
   const PROCESS_SUBSECTION_IDS = [
     "catalogListCard",
     "executorsCard",
+    "processJomasCard",
     "plusmasShemasCard",
     "metricsCard",
     "optimizacijaCard",
@@ -19,13 +20,12 @@
     "processListCard",
     "catalogListCard",
     "executorsCard",
+    "processJomasCard",
     "plusmasShemasCard",
     "metricsCard",
     "optimizacijaCard",
     "normActsCard",
     "reportsCard",
-    "processGroupsCard",
-    "processJomasCard",
     "manualCard",
     "skaidrojumiAdminCard",
   ];
@@ -83,17 +83,10 @@
     anchor.insertAdjacentElement("afterend", btn);
   }
 
-  function ensureProcessGroupsNav() {
-    const existing = document.querySelector(".side-nav-jump[data-scroll-target='processGroupsCard']");
-    if (existing) return;
-    const catalogBtn = document.querySelector(".side-nav-jump[data-scroll-target='catalogListCard']");
-    if (!catalogBtn || !catalogBtn.parentElement) return;
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "secondary side-nav-jump";
-    btn.setAttribute("data-scroll-target", "processGroupsCard");
-    btn.textContent = "Procesu grupas";
-    catalogBtn.insertAdjacentElement("afterend", btn);
+  function removeProcessGroupsSideNav() {
+    document.querySelectorAll(".side-nav-jump[data-scroll-target='processGroupsCard']").forEach((btn) => {
+      btn.remove();
+    });
   }
 
   function applyProcessRegisterSubsections() {
@@ -115,7 +108,7 @@
   function applyNavigationLayout() {
     relabelReportsToStats();
     relabelMetrics();
-    ensureProcessGroupsNav();
+    removeProcessGroupsSideNav();
     ensurePlusmasShemasNav();
     ensureOptimizacijaNav();
     reorderSideNav();

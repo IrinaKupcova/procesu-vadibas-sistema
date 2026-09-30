@@ -1095,6 +1095,7 @@
         "Procesa_izpilditajs,_parvalde",
         "Procesa_izpildītājs,_pārvalde",
         "Procesa izpildītājs, pārvalde",
+        "Patstāvīgā struktūrvienība",
       ]),
       department: gv(r, ["Daļa, nodaļa", "Strukturvieniba_dala", "strukturvieniba_dala", "Dala_nodala", "Dala,_nodala", "Daļa_nodaļa"]),
     };

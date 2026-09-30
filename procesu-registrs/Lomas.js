@@ -28,9 +28,14 @@
     return ROLE_LABELS[r] || r || ROLE_LABELS[DEFAULT_ROLE];
   }
 
+  /** Administratora tiesības — jebkurš lietotājs ar lomu «Administrators». */
+  function isAdminRole(roleKey) {
+    return normalizeRole(roleKey) === "admin";
+  }
+
   /** Pilna labošana: procesi, NA, optimizācija, dzēšana, jauni ieraksti. */
   function canEditForRole(roleKey) {
-    return normalizeRole(roleKey) === "admin";
+    return isAdminRole(roleKey);
   }
 
   /** GP kartiņa / kataloga saturs (papildu informācija u.t.t.) — GP atbildīgais + administrators. */
@@ -59,6 +64,7 @@
     ROLE_LABELS,
     normalizeRole,
     roleLabel,
+    isAdminRole,
     canEditForRole,
     canEditGpForRole,
     canDeleteForRole,

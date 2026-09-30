@@ -6,7 +6,7 @@
   "use strict";
 
   const FIELD_IDS = ["cDarbibasJoma"];
-  const EMPTY_LABEL = "— Izvēlēties jomu —";
+  const EMPTY_LABEL = "";
   const ADD_NEW_VALUE = "__joma_add_new__";
   const ADD_NEW_LABEL = "➕ Pievienot jaunu jomu…";
   const CUSTOM_JOMA_STORAGE = "pv_custom_jomas_v1";
@@ -300,9 +300,23 @@
   // ---------------------------------------------------------------------------
   const JOMA_TABLE_ID = "processJomasTable";
   const JOMA_CARD_ID = "processJomasCard";
+  const JOMA_BULK_BTN_ID = "jomasBulkAccordionToggleBtn";
+  const JOMA_COL_DEFS = [
+    { label: "Galaprodukta joma", filter: "Galaprodukta joma" },
+    { label: "Process", filter: "Process" },
+    { label: "Galaprodukts", filter: "Galaprodukts" },
+  ];
   const gpExpanded = new Set();
   let jomaGpBusy = false;
   let originalJomasRender = null;
+
+  function escHtml(s) {
+    return String(s || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
 
   function getCatalogRowsSafe() {
     try {
@@ -362,24 +376,41 @@
       return b;
     }
 
-    function addGp(jomaLabels, gpName, row, procKey) {
+    function addGp(jomaLabels, gpName, row, procNo, procName) {
       const name = String(gpName || "").trim();
       if (!name) return;
       const gpKey = normKey(name);
       allGp.add(gpKey);
+      const procNoS = String(procNo || "").trim();
+      const procNameS = String(procName || "").trim();
+      const procKey = normKey(procNoS || procNameS);
+      if (procKey) allProc.add(procKey);
       const list = jomaLabels && jomaLabels.length ? jomaLabels : ["—"];
       list.forEach((jl) => {
         const bucket = ensureBucket(jl);
-        if (!bucket.gps.has(gpKey)) bucket.gps.set(gpKey, { name, row });
-        if (procKey) bucket.procs.add(procKey);
+        if (!bucket.gps.has(gpKey)) {
+          bucket.gps.set(gpKey, {
+            name,
+            row: row || { type: name, procNo: procNoS },
+            typeNo: String((row && row.typeNo) || "").trim(),
+            processMap: new Map(),
+          });
+        }
+        const gpEntry = bucket.gps.get(gpKey);
+        if (procKey) {
+          if (!gpEntry.processMap.has(procKey)) {
+            gpEntry.processMap.set(procKey, { procNo: procNoS, proc: procNameS, procKey });
+          }
+          bucket.procs.add(procKey);
+        }
       });
     }
 
     const merged = getMergedRowsSafe();
     let usedMerged = false;
     merged.forEach((r) => {
-      const procKey = normKey(String((r && r.processNo) || (r && r.process) || ""));
-      if (procKey) allProc.add(procKey);
+      const procNo = String((r && r.processNo) || "").trim();
+      const procName = String((r && r.process) || "").trim();
       const gpItems = Array.isArray(r && r.gpItems) ? r.gpItems : [];
       gpItems.forEach((gp) => {
         const gpName = String((gp && gp.name) || "").trim();
@@ -387,12 +418,14 @@
         usedMerged = true;
         const catRow = catLookup.get(normKey(gpName)) || {
           type: gpName,
-          procNo: String((gp && gp.procNo) || (r && r.processNo) || ""),
+          typeNo: String((gp && gp.typeNo) || ""),
+          procNo: String((gp && gp.procNo) || procNo || ""),
+          process: procName,
         };
         let jomas = splitJomaValues(gp && gp.jomaText);
         if (!jomas.length) jomas = splitJomaValues(catRow && catRow.darbibasJoma);
         if (!jomas.length) jomas = splitJomaValues(r && r.darbibasJoma);
-        addGp(jomas, gpName, catRow, procKey);
+        addGp(jomas, gpName, catRow, procNo, procName);
       });
     });
 
@@ -401,9 +434,9 @@
       getCatalogRowsSafe().forEach((r) => {
         const gpName = String((r && r.type) || "").trim();
         if (!gpName) return;
-        const procKey = normKey(String((r && r.procNo) || ""));
-        if (procKey) allProc.add(procKey);
-        addGp(splitJomaValues(r && r.darbibasJoma), gpName, r, procKey);
+        const procNo = String((r && r.procNo) || "").trim();
+        const procName = String((r && r.process) || "").trim();
+        addGp(splitJomaValues(r && r.darbibasJoma), gpName, r, procNo, procName);
       });
     }
 
@@ -422,11 +455,7 @@
   }
 
   // Visi stats bloki ar diagrammu, kur jārāda "Galaproduktu skaits" flīze.
-  const GP_TILE_TARGETS = [
-    { card: "processListCard", id: "statProcessGpCount" },
-    { card: "processGroupsCard", id: "pgStatProcessGpCount" },
-    { card: "processJomasCard", id: "pjStatGpCount" },
-  ];
+  const GP_TILE_TARGETS = [{ card: "processGroupsCard", id: "pgStatProcessGpCount" }];
 
   function computeGpTotal() {
     const set = new Set();
@@ -593,26 +622,187 @@
     });
   }
 
-  function setJomaThLabel(th, label, filterLabel) {
-    if (!th) return;
-    th.setAttribute("data-filter-label", filterLabel);
-    const span = th.querySelector(".th-filter-wrap > span");
-    if (span) span.textContent = label;
-    else if (!th.querySelector(".th-filter-wrap")) th.textContent = label;
-  }
-
-  function updateJomaTableHead() {
-    const table = document.getElementById(JOMA_TABLE_ID);
+  function syncJomaTableColumns(table) {
     if (!table) return;
-    const ths = table.querySelectorAll("thead th");
-    if (ths.length >= 3) {
-      setJomaThLabel(ths[1], "Galaprodukts", "Galaprodukts");
-      setJomaThLabel(ths[2], "Galaprodukta kartiņa", "Galaprodukta kartiņa");
+    let tr = table.querySelector("thead tr");
+    if (!tr) {
+      const thead = document.createElement("thead");
+      tr = document.createElement("tr");
+      thead.appendChild(tr);
+      const tb = table.querySelector("tbody");
+      if (tb) table.insertBefore(thead, tb);
+      else table.appendChild(thead);
+    }
+    const colOrderKey = "joma-proc-gp-v2";
+    const thHtml = JOMA_COL_DEFS.map(
+      (c) => `<th data-filter-label="${escHtml(c.filter)}">${escHtml(c.label)}</th>`
+    ).join("");
+    if (tr.children.length !== JOMA_COL_DEFS.length || tr.dataset.colOrder !== colOrderKey) {
+      tr.innerHTML = thHtml;
+      tr.dataset.colOrder = colOrderKey;
+      tr.dataset.filtersReady = "";
+      if (table.dataset) table.dataset.jomaFiltersInit = "";
+    } else {
+      JOMA_COL_DEFS.forEach((c, i) => {
+        if (!tr.children[i]) return;
+        tr.children[i].setAttribute("data-filter-label", c.filter);
+        if (!tr.children[i].querySelector(".th-filter-wrap")) tr.children[i].textContent = c.label;
+      });
+    }
+    table.classList.add("ex-table", "joma-ex-table", "ex-table-fixed");
+    let cg = table.querySelector("colgroup.joma-ex-cols");
+    if (!cg) {
+      cg = document.createElement("colgroup");
+      cg.className = "joma-ex-cols";
+      cg.innerHTML = "<col><col><col>";
+      table.insertBefore(cg, table.firstChild);
     }
   }
 
+  function ensureJomaViewControls(card) {
+    if (!card) return;
+    const legacySummary = document.getElementById("jomasViewSummary");
+    if (legacySummary) legacySummary.remove();
+    if (!document.getElementById(JOMA_BULK_BTN_ID)) {
+      const controls = document.createElement("div");
+      controls.className = "ex-view-controls";
+      const bulk = document.createElement("button");
+      bulk.type = "button";
+      bulk.id = JOMA_BULK_BTN_ID;
+      bulk.className = "secondary";
+      bulk.textContent = "Atvērt visus akordeonus";
+      controls.appendChild(bulk);
+      const toolbar = card.querySelector(".toolbar");
+      if (toolbar) toolbar.insertAdjacentElement("afterend", controls);
+    }
+    const table = document.getElementById(JOMA_TABLE_ID);
+    if (table && !table.closest(".ex-table-scroll")) {
+      const wrap = document.createElement("div");
+      wrap.className = "ex-table-scroll";
+      table.parentNode.insertBefore(wrap, table);
+      wrap.appendChild(table);
+    }
+  }
+
+  function bindJomaToggle(el, fn) {
+    if (!el) return;
+    el.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      fn();
+    });
+  }
+
+  function openJomaProcessCard(processRows, procNo, procName) {
+    if (typeof window.openProcessEditorByProcNoOrName === "function") {
+      window.openProcessEditorByProcNoOrName(procNo, procName);
+      return;
+    }
+    if (typeof window.openProcessEditorByTaskProcNos === "function") {
+      window.openProcessEditorByTaskProcNos(procName, procNo);
+    }
+  }
+
+  function processDisplayLabel(pr) {
+    return (
+      (typeof window.pvPairLabel === "function"
+        ? window.pvPairLabel(pr.procNo, pr.proc)
+        : [pr.procNo, pr.proc].filter(Boolean).join(" ")) ||
+      (window.pvEmptyMark || "–")
+    );
+  }
+
+  function fillJomaSingleProcessCell(td, pr, processRows) {
+    td.className = "ex-proc-cell";
+    td.textContent = "";
+    if (!pr || (!pr.procNo && !pr.proc)) {
+      td.textContent = "—";
+      td.style.color = "#94a3b8";
+      return;
+    }
+    const main = document.createElement("div");
+    main.className = "ex-proc-item";
+    const procLabel = processDisplayLabel(pr);
+    const link = document.createElement("span");
+    link.className = "ex-link";
+    link.textContent = procLabel;
+    link.title = "Atvērt procesa kartiņu";
+    link.addEventListener("click", () => openJomaProcessCard(processRows, pr.procNo, pr.proc));
+    main.appendChild(link);
+    const pBtn = document.createElement("button");
+    pBtn.type = "button";
+    pBtn.className = "secondary";
+    pBtn.style.fontSize = "12px";
+    pBtn.textContent = "Procesa kartiņa";
+    pBtn.addEventListener("click", () => openJomaProcessCard(processRows, pr.procNo, pr.proc));
+    main.appendChild(pBtn);
+    td.appendChild(main);
+  }
+
+  /** Grupē GP pēc procesa (vienam procesam — vairāki GP, process kolonnā ar rowspan). */
+  function groupGpsByProcess(gps) {
+    const byProc = new Map();
+    gps.forEach((gp) => {
+      const procs = gp.processMap ? Array.from(gp.processMap.values()) : [];
+      if (!procs.length) {
+        const key = "__empty__";
+        if (!byProc.has(key)) {
+          byProc.set(key, { procKey: key, procNo: "", proc: "", gps: [] });
+        }
+        byProc.get(key).gps.push(gp);
+        return;
+      }
+      procs.forEach((pr) => {
+        const key = pr.procKey || normKey(`${pr.procNo}\u0001${pr.proc}`);
+        if (!byProc.has(key)) {
+          byProc.set(key, { procKey: key, procNo: pr.procNo, proc: pr.proc, gps: [] });
+        }
+        const bucket = byProc.get(key);
+        const gpKey = normKey(gp.name);
+        if (!bucket.gps.some((g) => normKey(g.name) === gpKey)) bucket.gps.push(gp);
+      });
+    });
+    return Array.from(byProc.values()).sort((a, b) =>
+      processDisplayLabel(a).localeCompare(processDisplayLabel(b), "lv", { sensitivity: "base" })
+    );
+  }
+
+  function hasAnyJomaAccordionOpen() {
+    return gpExpanded.size > 0;
+  }
+
+  function setAllJomaAccordionsOpen(byJoma, open) {
+    gpExpanded.clear();
+    if (!open) return;
+    byJoma.forEach((b) => {
+      const name = String(b.display || "—");
+      gpExpanded.add(name);
+    });
+  }
+
   function tbodyIsMine(tbody) {
-    return !!(tbody && tbody.querySelector(".joma-gp-hdr"));
+    return !!(tbody && tbody.querySelector("tr.ex-dept-hdr"));
+  }
+
+  function afterJomasTableRender(table) {
+    if (!table || table.dataset.jomaFiltersInit === "1") {
+      if (typeof window.applyJomasFilters === "function") {
+        try {
+          window.applyJomasFilters();
+        } catch (_) {}
+      }
+      return;
+    }
+    table.dataset.jomaFiltersInit = "1";
+    if (typeof window.refreshExtraTableFilters === "function") {
+      try {
+        window.refreshExtraTableFilters();
+      } catch (_) {}
+    } else if (typeof window.applyJomasFilters === "function") {
+      try {
+        window.applyJomasFilters();
+      } catch (_) {}
+    }
   }
 
   function rebuildJomaGpBody() {
@@ -623,109 +813,171 @@
     const tbody = table.querySelector("tbody");
     if (!tbody) return;
 
-    updateJomaTableHead();
+    ensureJomaViewControls(card);
+    injectJomaGpStyle();
+    syncJomaTableColumns(table);
     updateGpCountTiles();
 
+    const processRows =
+      typeof window.getProcessRows === "function" ? window.getProcessRows() || [] : [];
     const data = buildJomaGpData();
     const byJoma = data.byJoma;
     const sorted = Array.from(byJoma.values()).sort((a, b) =>
       String(a.display || "").localeCompare(String(b.display || ""), "lv", { sensitivity: "base" })
     );
 
+    const elJoma = document.getElementById("statJomasCount");
+    const elGp = document.getElementById("statJomasGpCount");
+    const elProc = document.getElementById("statJomasProcLinks");
+    if (elJoma) elJoma.textContent = String(data.jomaCount);
+    if (elGp) elGp.textContent = String(data.gpTotal);
+    if (elProc) elProc.textContent = String(data.procTotal);
+
+    const bulkBtn = document.getElementById(JOMA_BULK_BTN_ID);
+    if (bulkBtn && !bulkBtn.dataset.bound) {
+      bulkBtn.addEventListener("click", () => {
+        const wantOpen = !hasAnyJomaAccordionOpen();
+        setAllJomaAccordionsOpen(byJoma, wantOpen);
+        rebuildJomaGpBody();
+      });
+      bulkBtn.dataset.bound = "1";
+    }
+    if (bulkBtn) {
+      bulkBtn.textContent = hasAnyJomaAccordionOpen()
+        ? "Aizvērt visus akordeonus"
+        : "Atvērt visus akordeonus";
+    }
+
     tbody.innerHTML = "";
+    if (!sorted.length) {
+      const empty = document.createElement("tr");
+      empty.innerHTML = `<td colspan="3" style="padding:16px;color:#64748b">Nav datu par jomām un galaproduktiem.</td>`;
+      tbody.appendChild(empty);
+      afterJomasTableRender(table);
+      return;
+    }
+
     sorted.forEach((bucket) => {
       const jomaName = String(bucket.display || "—");
       const gps = Array.from(bucket.gps.values()).sort((a, b) =>
         String(a.name || "").localeCompare(String(b.name || ""), "lv", { sensitivity: "base" })
       );
-      const open = gpExpanded.has(jomaName);
+      const procKeys = new Set();
+      gps.forEach((g) => {
+        if (!g.processMap || !g.processMap.size) procKeys.add("__empty__");
+        else g.processMap.forEach((_, k) => procKeys.add(k));
+      });
+      const procCount = procKeys.size;
+      const jomaOpen = gpExpanded.has(jomaName);
 
       const hdr = document.createElement("tr");
-      hdr.className = "process-accordion-hdr joma-gp-hdr";
-      hdr.style.cursor = "pointer";
-      hdr.setAttribute("data-joma-gp-name", jomaName);
-      hdr.setAttribute("aria-expanded", open ? "true" : "false");
-
-      const tdJoma = document.createElement("td");
-      if (jomaName !== "—") {
-        const jomaOpen = document.createElement("span");
-        jomaOpen.className = "pj-joma-open";
-        jomaOpen.textContent = jomaName;
-        jomaOpen.title = "Atvērt informāciju par jomu";
-        jomaOpen.onclick = (ev) => {
-          ev.stopPropagation();
-          if (typeof window.openJomaEditor === "function") window.openJomaEditor(jomaName);
-        };
-        tdJoma.appendChild(jomaOpen);
-      } else {
-        const strong = document.createElement("strong");
-        strong.textContent = jomaName;
-        tdJoma.appendChild(strong);
-      }
-
-      const tdCount = document.createElement("td");
-      const gpWord = gps.length === 1 ? "galaprodukts" : "galaprodukti";
-      const caret = document.createElement("span");
-      caret.className = "joma-gp-caret" + (open ? " open" : "");
-      caret.textContent = open ? "▾" : "▸";
-      caret.title = open ? "Aizvērt galaproduktu sarakstu" : "Atvērt galaproduktu sarakstu";
-      const cntStrong = document.createElement("strong");
-      cntStrong.textContent = `Kopā: ${gps.length} ${gpWord}`;
-      tdCount.appendChild(caret);
-      tdCount.appendChild(document.createTextNode(" "));
-      tdCount.appendChild(cntStrong);
-      const tdEmpty = document.createElement("td");
-
-      hdr.appendChild(tdJoma);
-      hdr.appendChild(tdCount);
-      hdr.appendChild(tdEmpty);
-      hdr.onclick = (ev) => {
-        if (ev.target.closest("button") || ev.target.closest(".pj-joma-open")) return;
+      hdr.className = "ex-dept-hdr";
+      const toggleJoma = () => {
         if (gpExpanded.has(jomaName)) gpExpanded.delete(jomaName);
         else gpExpanded.add(jomaName);
-        jomaGpBusy = true;
-        try {
-          rebuildJomaGpBody();
-        } finally {
-          jomaGpBusy = false;
-        }
+        rebuildJomaGpBody();
       };
+
+      const cJoma = document.createElement("td");
+      const titleWrap = document.createElement("div");
+      titleWrap.className = "ex-dept-title";
+      const toggle = document.createElement("span");
+      toggle.className = "ex-toggle ex-dept-toggle";
+      toggle.title = "Atvērt/aizvērt";
+      toggle.textContent = jomaOpen ? "▾" : "▸";
+      bindJomaToggle(toggle, toggleJoma);
+      titleWrap.appendChild(toggle);
+      if (jomaName !== "—") {
+        const jomaTitle = document.createElement("span");
+        jomaTitle.className = "ex-joma-name";
+        jomaTitle.textContent = jomaName;
+        jomaTitle.title = "Atvērt jomas kartiņu";
+        jomaTitle.addEventListener("click", (ev) => {
+          ev.stopPropagation();
+          if (typeof window.openJomaEditor === "function") window.openJomaEditor(jomaName);
+        });
+        titleWrap.appendChild(jomaTitle);
+      } else {
+        const plain = document.createElement("span");
+        plain.textContent = jomaName;
+        titleWrap.appendChild(plain);
+      }
+      cJoma.appendChild(titleWrap);
+
+      const cProc = document.createElement("td");
+      cProc.innerHTML = `<span class="ex-chip ex-chip-muted">${procCount} procesi</span>`;
+
+      const cGp = document.createElement("td");
+      cGp.innerHTML = `<span class="ex-chip ex-chip-muted">${gps.length} GP</span>`;
+
+      hdr.appendChild(cJoma);
+      hdr.appendChild(cProc);
+      hdr.appendChild(cGp);
       tbody.appendChild(hdr);
 
-      gps.forEach((gp) => {
-        const tr = document.createElement("tr");
-        tr.className = "process-accordion-part joma-gp-part";
-        tr.classList.toggle("is-visible", !!open);
-        const td1 = document.createElement("td");
-        td1.textContent = "";
-        const td2 = document.createElement("td");
-        const gpOpen = document.createElement("span");
-        gpOpen.className = "pj-process-open";
-        gpOpen.textContent = String(gp.name || "");
-        gpOpen.title = "Atvērt galaprodukta kartiņu";
-        gpOpen.onclick = () => {
-          if (typeof window.openCatalogEditor === "function") window.openCatalogEditor(gp.row);
-        };
-        td2.appendChild(gpOpen);
-        const td3 = document.createElement("td");
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = "secondary";
-        btn.textContent = "Galaprodukta kartiņa";
-        btn.onclick = () => {
-          if (typeof window.openCatalogEditor === "function") window.openCatalogEditor(gp.row);
-        };
-        td3.appendChild(btn);
-        tr.appendChild(td1);
-        tr.appendChild(td2);
-        tr.appendChild(td3);
-        tbody.appendChild(tr);
+      if (!jomaOpen) return;
+
+      const procGroups = groupGpsByProcess(gps);
+      procGroups.forEach((pg) => {
+        const gpList = pg.gps.slice().sort((a, b) =>
+          String(a.name || "").localeCompare(String(b.name || ""), "lv", { sensitivity: "base" })
+        );
+        const procLabel = processDisplayLabel(pg);
+        const span = gpList.length;
+
+        gpList.forEach((gp, idx) => {
+          const gtr = document.createElement("tr");
+          gtr.className = "ex-gp-hdr";
+          gtr.setAttribute("data-joma-proc", procLabel);
+          const gpLabel =
+            typeof window.pvPairLabel === "function"
+              ? window.pvPairLabel(gp.typeNo, gp.name) || gp.name
+              : gp.typeNo
+                ? `${gp.typeNo} ${gp.name}`
+                : gp.name;
+          gtr.setAttribute("data-joma-gp", gpLabel);
+
+          const tJoma = document.createElement("td");
+          tJoma.textContent = "";
+
+          if (idx === 0) {
+            const tProc = document.createElement("td");
+            tProc.className = "ex-proc-merged";
+            if (span > 1) tProc.rowSpan = span;
+            fillJomaSingleProcessCell(
+              tProc,
+              { procNo: pg.procNo, proc: pg.proc },
+              processRows
+            );
+            gtr.appendChild(tJoma);
+            gtr.appendChild(tProc);
+          } else {
+            gtr.appendChild(tJoma);
+          }
+
+          const tGp = document.createElement("td");
+          tGp.innerHTML = `<div class="ex-gp-cell"><span class="ex-gp-label">${escHtml(gpLabel)}</span></div>`;
+          const gpBtn = document.createElement("button");
+          gpBtn.type = "button";
+          gpBtn.className = "secondary";
+          gpBtn.style.fontSize = "12px";
+          gpBtn.textContent = "GP kartiņa";
+          gpBtn.addEventListener("click", () => {
+            if (typeof window.openCatalogEditor === "function") window.openCatalogEditor(gp.row);
+          });
+          tGp.querySelector(".ex-gp-cell").appendChild(gpBtn);
+          gtr.appendChild(tGp);
+          tbody.appendChild(gtr);
+        });
       });
     });
 
     if (typeof window.applyTableColumnSizing === "function") {
-      try { window.applyTableColumnSizing(JOMA_TABLE_ID); } catch (_) {}
+      try {
+        window.applyTableColumnSizing(JOMA_TABLE_ID);
+      } catch (_) {}
     }
+    afterJomasTableRender(table);
   }
 
   function wrapJomasRender() {
@@ -833,20 +1085,39 @@
   }
 
   function injectJomaGpStyle() {
-    if (document.getElementById("jomaGpAccordionStyle")) return;
-    const style = document.createElement("style");
-    style.id = "jomaGpAccordionStyle";
-    style.textContent =
-      // Jomu tabula — fiksēts izkārtojums, lai, atverot akordeonu, kolonnas nelec.
-      "#processJomasTable{table-layout:fixed;width:100%;}" +
-      "#processJomasTable th:nth-child(1),#processJomasTable td:nth-child(1){width:34%;min-width:0;}" +
-      "#processJomasTable th:nth-child(2),#processJomasTable td:nth-child(2){width:51%;min-width:0;}" +
-      "#processJomasTable th:nth-child(3),#processJomasTable td:nth-child(3){width:15%;}" +
-      "#processJomasTable td{overflow-wrap:anywhere;}" +
-      "#processJomasTable tbody tr.joma-gp-part{display:none;}" +
-      "#processJomasTable tbody tr.joma-gp-part.is-visible{display:table-row;}" +
-      "#processJomasTable tbody tr.joma-gp-hdr{cursor:pointer;}" +
-      // Procesu grupu tabula — tāds pats akordeons (ciet pēc noklusējuma) un fiksēts izkārtojums.
+    let s = document.getElementById("jomaGpAccordionStyle");
+    if (!s) {
+      s = document.createElement("style");
+      s.id = "jomaGpAccordionStyle";
+      (document.head || document.documentElement).appendChild(s);
+    }
+    if (s.dataset.layout === "joma-ex-v4") return;
+    s.dataset.layout = "joma-ex-v4";
+    s.textContent =
+      "#processJomasCard .ex-view-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:8px 0 12px}" +
+      "#processJomasCard .ex-table-scroll{overflow-x:auto;width:100%;border:1px solid #e2e8f0;border-radius:10px;background:#fff}" +
+      "#processJomasTable.joma-ex-table.ex-table-fixed{table-layout:fixed!important;width:100%;min-width:720px;border-collapse:separate;border-spacing:0}" +
+      "#processJomasTable thead th{position:sticky;top:0;z-index:2;background:#f1f5f9;color:#475569;font-size:12px;font-weight:700;text-align:left;padding:10px 12px;border-bottom:2px solid #cbd5e1;box-shadow:0 1px 0 #e2e8f0}" +
+      "#processJomasTable td{padding:8px 12px;vertical-align:middle;border-bottom:1px solid #f1f5f9;line-height:1.35;overflow-wrap:anywhere;word-break:break-word;color:#475569}" +
+      "#processJomasTable .ex-dept-hdr td{background:linear-gradient(90deg,#dbeafe 0%,#eff6ff 100%);color:#475569;font-weight:700;font-size:14px;border-bottom:1px solid #93c5fd;border-top:3px solid #3b82f6}" +
+      "#processJomasTable .ex-gp-hdr td{background:#f8fafc;color:#475569;font-weight:600}" +
+      "#processJomasTable .ex-dept-title{display:flex;align-items:center;gap:10px;flex-wrap:wrap}" +
+      "#processJomasTable .ex-joma-name{color:#475569;font-weight:700;cursor:pointer}" +
+      "#processJomasTable .ex-joma-name:hover{text-decoration:underline;color:#334155}" +
+      "#processJomasTable td.ex-proc-merged{vertical-align:top}" +
+      "#processJomasTable .ex-gp-cell{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding-left:12px;border-left:3px solid #cbd5e1;margin-left:2px}" +
+      "#processJomasTable .ex-proc-list{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px}" +
+      "#processJomasTable .ex-proc-item{display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap}" +
+      "#processJomasTable .ex-toggle{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:6px;cursor:pointer;user-select:none;background:#fff;border:1px solid #cbd5e1;color:#334155;font-size:12px}" +
+      "#processJomasTable .ex-toggle:hover{background:#e2e8f0}" +
+      "#processJomasTable .ex-chip{display:inline-flex;align-items:center;gap:4px;min-height:24px;padding:2px 10px;border-radius:999px;background:#1e40af;color:#fff;font-size:12px;font-weight:600;white-space:nowrap}" +
+      "#processJomasTable .ex-chip-muted{background:#64748b}" +
+      "#processJomasTable .ex-link{color:#1d4ed8;cursor:pointer;text-decoration:underline;text-underline-offset:2px}" +
+      "#processJomasTable .ex-link:hover{color:#1e3a8a}" +
+      "#processJomasTable .ex-gp-label{font-weight:600;color:#475569}" +
+      "#processJomasTable.joma-ex-table.ex-table-fixed th:nth-child(1),#processJomasTable.joma-ex-table.ex-table-fixed td:nth-child(1){width:34%}" +
+      "#processJomasTable.joma-ex-table.ex-table-fixed th:nth-child(2),#processJomasTable.joma-ex-table.ex-table-fixed td:nth-child(2){width:33%}" +
+      "#processJomasTable.joma-ex-table.ex-table-fixed th:nth-child(3),#processJomasTable.joma-ex-table.ex-table-fixed td:nth-child(3){width:33%}" +
       "#processGroupsTable{table-layout:fixed;width:100%;}" +
       "#processGroupsTable th:nth-child(1),#processGroupsTable td:nth-child(1){width:34%;min-width:0;}" +
       "#processGroupsTable th:nth-child(2),#processGroupsTable td:nth-child(2){width:51%;min-width:0;}" +
@@ -855,9 +1126,8 @@
       "#processGroupsTable tbody tr.process-accordion-part{display:none;}" +
       "#processGroupsTable tbody tr.process-accordion-part.is-visible{display:table-row;}" +
       "#processGroupsTable tbody tr.process-accordion-hdr{cursor:pointer;}" +
-      ".joma-gp-caret{display:inline-block;width:1em;margin-right:6px;color:#312e81;font-weight:600;cursor:pointer;transition:transform .12s ease;}" +
+      ".joma-gp-caret{display:inline-block;width:1em;margin-right:6px;color:#312e81;font-weight:600;cursor:pointer;}" +
       ".list-title-under-diagram{margin:6px 0 10px;}";
-    (document.head || document.documentElement).appendChild(style);
   }
 
   function setupJomaGpView() {

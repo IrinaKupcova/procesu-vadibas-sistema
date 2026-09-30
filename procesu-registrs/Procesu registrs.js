@@ -209,7 +209,7 @@
   }
 
   function formatListDate(v) {
-    if (!v) return "—";
+    if (!v) return window.pvEmptyMark || "–";
     const t = Date.parse(String(v));
     if (Number.isNaN(t)) return String(v);
     try {
@@ -370,7 +370,7 @@
     const st = normStatusKey(m.statuss);
     const date = formatListDate(m.uzsaksanasDatums || m.planotaisIzpildesDatums || m.createdAt);
     const gpPart = showGp
-      ? `<span class="pr-k-gp">${escHtml(m.gpNo ? m.gpNo + " — " : "")}${escHtml(m.gpName || "—")}</span>`
+      ? `<span class="pr-k-gp">${escHtml((typeof window.pvPairLabel === "function" ? window.pvPairLabel(m.gpNo, m.gpName) : [m.gpNo, m.gpName].filter(Boolean).join(" ")) || (window.pvEmptyMark || "–"))}</span>`
       : "";
     const editBtn =
       typeof window.canEdit === "function" && window.canEdit()
@@ -378,7 +378,7 @@
         : `<button type="button" class="secondary pr-k-opt-view" data-parent="${escHtml(m.parentId)}" data-mid="${escHtml(m.id)}">Skatīt</button>`;
     return `<li class="pr-k-opt-item">
       <span class="pr-k-date">${escHtml(date)}</span>
-      <span class="pr-k-title">${escHtml(m.nosaukums || "—")}</span>
+      <span class="pr-k-title">${escHtml(m.nosaukums || (window.pvEmptyMark || "–"))}</span>
       ${gpPart}
       <span class="pr-k-opt-pill ${statusClass(st)}">${escHtml(statusLabel(st))}</span>
       ${editBtn}
@@ -429,7 +429,7 @@
     if (legacyOpt) {
       parts.push(`<div><label>Optimizācija (reģistra lauks)</label><p class="pr-k-pre">${escHtml(legacyOpt)}</p></div>`);
     }
-    parts.push(`<div><label>Citi procesu rādītāji</label><p class="pr-k-pre">${escHtml(other || "—")}</p></div>`);
+    parts.push(`<div><label>Citi procesu rādītāji</label><p class="pr-k-pre">${escHtml(other || (window.pvEmptyMark || "–"))}</p></div>`);
     parts.push(`<p class="hint" style="margin:8px 0 0">Paplašināta mērījumu un rādītāju ievade tiks attīstīta šajā blokā.</p>`);
     root.innerHTML = parts.join("");
   }
@@ -439,7 +439,7 @@
     if (!root) return;
     root.innerHTML = `
       <p class="pr-k-pre">Galaprodukta mērījumi un rādītāji tiks attēloti šeit (saistībā ar procesu un GP).</p>
-      <p class="hint" style="margin:8px 0 0">Pagaidām skatiet procesa kartiņas sadaļu «Mērījumi / procesu rādītāji» un navigāciju «Mērījumi/ procesu rādītāji».</p>
+      <p class="hint" style="margin:8px 0 0">Pagaidām skatiet procesa kartiņas saiti un navigāciju «Procesu rādītāji (t.sk. mērījumi)».</p>
     `;
   }
 
@@ -709,7 +709,7 @@
         <th class="col-gray" data-filter-label="Procesa grupa">Procesa grupa</th>
         <th class="col-gray" data-filter-label="Procesa Nr.">Procesa Nr.</th>
         <th class="col-gray" data-filter-label="Process">Process</th>
-        <th class="col-gray" data-filter-label="Procesa izpildītājs (pārvalde)">Procesa izpildītājs (pārvalde)</th>
+        <th class="col-gray" data-filter-label="Patstāvīgā struktūrvienība">Patstāvīgā struktūrvienība</th>
         <th data-filter-label="Procesa kartiņa">Procesa kartiņa</th>
       </tr>`;
     } else {
@@ -717,7 +717,7 @@
         <th class="col-gray" data-filter-label="Procesa grupa">Procesa grupa</th>
         <th class="col-gray" data-filter-label="Procesa Nr.">Procesa Nr.</th>
         <th class="col-gray" data-filter-label="Process">Process</th>
-        <th class="col-gray" data-filter-label="Procesa izpildītājs (pārvalde)">Procesa izpildītājs (pārvalde)</th>
+        <th class="col-gray" data-filter-label="Patstāvīgā struktūrvienība">Patstāvīgā struktūrvienība</th>
         <th class="col-gray" data-filter-label="Galaprodukta Nr.">Galaprodukta Nr.</th>
         <th class="col-gray" data-filter-label="Galaprodukts">Galaprodukts</th>
         <th class="col-gray" data-filter-label="Galaprodukta joma">Galaprodukta joma</th>
@@ -843,8 +843,12 @@
         table.classList.remove("table-body-hidden");
         if ($("toggleProcessBtn")) $("toggleProcessBtn").textContent = "Aizvērt procesu reģistru";
       }
-      const firstHit = tbody.querySelector("tr.search-hit");
-      if (firstHit) firstHit.scrollIntoView({ behavior: "smooth", block: "center" });
+      const gs = document.getElementById("globalSearchResultsCard");
+      const gsOpen = gs && !gs.classList.contains("hidden");
+      if (!gsOpen) {
+        const firstHit = tbody.querySelector("tr.search-hit");
+        if (firstHit) firstHit.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
     }
 
     if (typeof window.__afterTableRenderFilters === "function") {
