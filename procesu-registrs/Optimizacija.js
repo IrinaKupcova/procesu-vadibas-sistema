@@ -9,8 +9,63 @@
   const STATUS_ID = "optimizacijaStatus";
   const MODAL_ID = "optimizacijaEditorModal";
   const FORM_ID = "optimizacijaEditorForm";
-  const FORM_VERSION = "5";
+  const FORM_VERSION = "12";
+  const OPT_CITS_TEXT_LABEL = "Mērķa paskaidrojums";
+  const OPT_KLIENT_CITS_TEXT_LABEL = "Klienta ieguvuma paskaidrojums";
+  const OPT_IESTADE_CITS_TEXT_LABEL = "Iestādes ieguvuma paskaidrojums";
   const BULK_BTN_ID = "optimizacijaBulkCardsBtn";
+  const EXPORT_TABLE_ID = "optimizacijaExportTable";
+  const OPT_EXPORT_COLS = [
+    { key: "procNo", label: "Procesa Nr." },
+    { key: "process", label: "Process" },
+    { key: "gpNo", label: "GP Nr." },
+    { key: "gpName", label: "Galaprodukts" },
+    { key: "nosaukums", label: "Pasākuma nosaukums" },
+    { key: "statuss", label: "Statuss" },
+    { key: "ierakstaDatums", label: "Ieraksta datums" },
+    { key: "merkis", label: "Mērķis/ optimizācijas virzieni" },
+    { key: "klientaIeguvumiText", label: "Klientu ieguvumi" },
+    { key: "iestadesIeguvumiText", label: "Iestādes ieguvumi" },
+    { key: "apraksts", label: "Apraksts" },
+    { key: "kpi", label: "KPI" },
+    { key: "ieguvums", label: "Optimizācijas ieguvums" },
+    { key: "atbildigaisKontakts", label: "Atbildīgais / kontaktpersona" },
+    { key: "planotaisIeviesanasTermins", label: "Plānotais ieviešanas termiņš" },
+    { key: "ieviesanasTermins", label: "Ieviešanas termiņš" },
+    { key: "atcelsanasIemesls", label: "Atcelšanas iemesls" },
+  ];
+
+  const OPT_VIRZIENI = [
+    { key: "automatizacija", label: "automatizācija" },
+    { key: "digitalizacija", label: "digitalizācija" },
+    { key: "plusmas_strukturesana", label: "procesa plūsmas strukturēšana" },
+    { key: "darbibu_samazinasana", label: "procesa darbību samazināšana" },
+    { key: "izpilditaju_skaits", label: "procesa izpildītāju skaita optimizācija" },
+    { key: "vadibas_optimizacija", label: "procesa vadības, uzraudzības un kontroles optimizācija" },
+    { key: "cits", label: "cits" },
+  ];
+
+  const OPT_KLIENTA_IEGUVUMI = [
+    { key: "pilniba_atrisinata_vajadziba", label: "pilnībā atrisināta klienta vajadzība" },
+    { key: "ietaupits_laiks", label: "ietaupīts laiks" },
+    { key: "pakalpojums_atbilst_velmem", label: "pakalpojums, kas atbilst klienta vēlmēm" },
+    { key: "apmierinata_pirmaja_reize", label: "klienta vajadzība tiek apmierināta pirmajā reizē" },
+    { key: "mazak_lemumu", label: "klientam problēmas atrisināšanai jāpieņem pēc iespējas mazāk lēmumu" },
+    { key: "istais_laiks_vieta", label: "pakalpojums tiek sniegts īstajā laikā un īstajā vietā" },
+    { key: "cits", label: "cits" },
+  ];
+
+  const OPT_IESTADES_IEGUVUMI = [
+    { key: "samazinati_nodarbinatie", label: "samazināts procesā iesaistīto nodarbināto skaits" },
+    { key: "samazinats_izpildes_laiks", label: "samazināts procesa izpildes laiks" },
+    { key: "samazinats_darbibu_skaits", label: "samazināts procesa darbību skaits" },
+    { key: "samazinatas_izmaksas", label: "samazinātas procesa izmaksas" },
+    { key: "sabalansets_kontroles", label: "sabalansēts kontroļu īpatsvars procesā" },
+    { key: "klientu_apmierinatiba", label: "uzlabojas klientu apmierinātība" },
+    { key: "proaktiva_pieeja", label: "proaktīva pieeja" },
+    { key: "efektivitates_raditaji", label: "uzlabojas procesa efektivitātes rādītāji" },
+    { key: "cits", label: "cits" },
+  ];
 
   const STATUS = {
     nav_uzsakts: { label: "Nav uzsākts", cls: "opt-st-not-started" },
@@ -127,6 +182,185 @@
     return { parvalde: "", dala: "", vardsUzvards: "" };
   }
 
+  function virziensLabelByKey(key) {
+    const k = String(key || "").trim();
+    const found = OPT_VIRZIENI.find((v) => v.key === k);
+    return found ? found.label : k;
+  }
+
+  function matchVirziensKey(item) {
+    const s = normKey(String(item || "").replace(/_/g, " "));
+    if (!s) return "";
+    for (let i = 0; i < OPT_VIRZIENI.length; i++) {
+      const v = OPT_VIRZIENI[i];
+      if (normKey(v.key) === s || normKey(v.label) === s) return v.key;
+    }
+    if (s.includes("automat")) return "automatizacija";
+    if (s.includes("digital")) return "digitalizacija";
+    if (s.includes("plūsm") || s.includes("plusm") || s.includes("struktur")) return "plusmas_strukturesana";
+    if (s.includes("darbību") || s.includes("darbibu") || s.includes("samazin")) return "darbibu_samazinasana";
+    if (s.includes("izpildītāju") || s.includes("izpilditaju") || s.includes("skaita")) return "izpilditaju_skaits";
+    if (s.includes("vadības") || s.includes("vadibas") || s.includes("uzraudz") || s.includes("kontrol"))
+      return "vadibas_optimizacija";
+    if (s === "cits" || s.includes("cits")) return "cits";
+    return "";
+  }
+
+  function normalizeVirzieniKeys(rawList) {
+    const keys = [];
+    (Array.isArray(rawList) ? rawList : []).forEach((item) => {
+      const k = matchVirziensKey(item);
+      if (k && !keys.includes(k)) keys.push(k);
+    });
+    return keys;
+  }
+
+  function parseVirzieniFromRaw(p) {
+    const raw = p && typeof p === "object" ? p : {};
+    let keys = normalizeVirzieniKeys(raw.optimizacijasVirzieni || raw.optimizacijas_virzieni || raw.merkisVirzieni);
+    let cits = displayText(pick(raw, ["optimizacijasVirzieniCits", "optimizacijas_virzieni_cits", "merkisCits"]));
+    const legacyMerkis = displayText(pick(raw, ["merkis", "Mērķis", "merkisText", "target"]));
+    if (keys.includes("cits") && !cits && legacyMerkis && legacyMerkis.indexOf("\n") === -1) {
+      const low = legacyMerkis.toLowerCase();
+      if (!low.startsWith("cits:") && !low.startsWith(`${OPT_CITS_TEXT_LABEL.toLowerCase()}:`)) {
+        cits = legacyMerkis;
+      }
+    }
+    if (!keys.length && legacyMerkis) {
+      return { keys: [], cits: "", legacyMerkis };
+    }
+    return { keys, cits, legacyMerkis: "" };
+  }
+
+  function citsTextForForm(measure) {
+    const parsed = measure ? parseVirzieniFromRaw(measure) : { keys: [], cits: "", legacyMerkis: "" };
+    if (displayText(parsed.cits)) return displayText(parsed.cits);
+    if (parsed.keys.includes("cits")) return "";
+    return displayText(parsed.legacyMerkis);
+  }
+
+  function merkisSummaryText(keys, cits, legacyMerkis) {
+    const list = Array.isArray(keys) ? keys : [];
+    if (!list.length) {
+      const leg = String(legacyMerkis || "").trim();
+      return leg || "";
+    }
+    const lines = list.map((k) => virziensLabelByKey(k));
+    if (list.includes("cits")) {
+      const t = displayText(cits);
+      if (t) lines.push(`${OPT_CITS_TEXT_LABEL}: ${t}`);
+    }
+    return lines.join("\n");
+  }
+
+  function buildVirzieniFormHtml() {
+    return OPT_VIRZIENI.map((v) => {
+      if (v.key === "cits") {
+        return `<div class="opt-virz-row-cits">
+          <label class="opt-virz-check opt-virz-check-compact" for="optFormVirz_cits">
+            <input type="checkbox" id="optFormVirz_cits" value="cits" />
+            <span>${esc(v.label)}</span>
+          </label>
+          <input type="text" id="optFormVirzieniCits" class="opt-virz-cits-inline" disabled placeholder="${esc(
+            OPT_CITS_TEXT_LABEL
+          )}" aria-label="${esc(OPT_CITS_TEXT_LABEL)}" title="${esc(OPT_CITS_TEXT_LABEL)}" autocomplete="off" />
+        </div>`;
+      }
+      return `<label class="opt-virz-check"><input type="checkbox" id="optFormVirz_${esc(v.key)}" value="${esc(
+        v.key
+      )}" /><span>${esc(v.label)}</span></label>`;
+    }).join("");
+  }
+
+  function updateVirzieniSummary() {
+    const el = $("optFormVirzieniSummary");
+    if (!el) return;
+    const { keys } = readVirzieniFromForm();
+    if (!keys.length) {
+      el.textContent = "— Izvēlieties virzienus (var vairākus) —";
+      return;
+    }
+    const { cits } = readVirzieniFromForm();
+    el.textContent = keys
+      .map((k) => {
+        if (k === "cits") {
+          const t = displayText(cits);
+          return t ? `cits — ${t}` : "cits";
+        }
+        return virziensLabelByKey(k);
+      })
+      .join(", ");
+  }
+
+  function setVirzieniPanelOpen(open) {
+    const panel = $("optFormVirzieniPanel");
+    const btn = $("optFormVirzieniToggle");
+    if (!panel) return;
+    panel.classList.toggle("hidden", !open);
+    if (btn) btn.classList.toggle("opt-virz-dropdown--open", open);
+    if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  function toggleVirzieniPanel() {
+    const panel = $("optFormVirzieniPanel");
+    if (!panel) return;
+    setVirzieniPanelOpen(panel.classList.contains("hidden"));
+  }
+
+  function readVirzieniFromForm() {
+    const keys = [];
+    OPT_VIRZIENI.forEach((v) => {
+      const cb = $(`optFormVirz_${v.key}`);
+      if (cb && cb.checked) keys.push(v.key);
+    });
+    const cits = displayText(elVal("optFormVirzieniCits"));
+    return { keys, cits };
+  }
+
+  function fillVirzieniForm(measure) {
+    OPT_VIRZIENI.forEach((v) => {
+      const cb = $(`optFormVirz_${v.key}`);
+      if (cb) cb.checked = false;
+    });
+    const parsed = measure ? parseVirzieniFromRaw(measure) : { keys: [], cits: "", legacyMerkis: "" };
+    parsed.keys.forEach((k) => {
+      const cb = $(`optFormVirz_${k}`);
+      if (cb) cb.checked = true;
+    });
+    const ta = $("optFormVirzieniCits");
+    if (ta) ta.value = citsTextForForm(measure);
+    syncOptFormVirzieniFields();
+    setVirzieniPanelOpen(false);
+  }
+
+  function syncOptFormVirzieniFields() {
+    const citsOn = !!($("optFormVirz_cits") && $("optFormVirz_cits").checked);
+    const inp = $("optFormVirzieniCits");
+    if (inp) {
+      inp.required = citsOn;
+      inp.disabled = !citsOn;
+    }
+    updateVirzieniSummary();
+  }
+
+  function renderVirzieniDetailHtml(p) {
+    const parsed = parseVirzieniFromRaw(p);
+    if (parsed.keys.length) {
+      const items = parsed.keys
+        .map((k) => `<li>${esc(virziensLabelByKey(k))}</li>`)
+        .join("");
+      let html = `<ul class="opt-virz-detail-list">${items}</ul>`;
+      const citsTxt = displayText(parsed.cits);
+      if (parsed.keys.includes("cits") && citsTxt) {
+        html += `<div class="opt-virz-cits-detail"><span class="opt-virz-cits-detail-lbl">${esc(
+          OPT_CITS_TEXT_LABEL
+        )}</span>${formatMultilineHtml(citsTxt)}</div>`;
+      }
+      return html;
+    }
+    return formatMultilineHtml(parsed.legacyMerkis || p.merkis);
+  }
+
   function normalizeAtbildigieFromRaw(p) {
     const raw = p && typeof p === "object" ? p : {};
     if (Array.isArray(raw.atbildigie) && raw.atbildigie.length) {
@@ -174,10 +408,36 @@
       "endDate",
     ]);
     const ieraksta = pick(p, ["ierakstaDatums", "ieraksta_datums", "createdAt", "created_at"]) || parent.updatedAt || "";
+    const virz = parseVirzieniFromRaw(p);
+    const merkisText = merkisSummaryText(virz.keys, virz.cits, virz.legacyMerkis);
+    const klIeg = parseOptMultiFromRaw(p, KLIENT_IEG_MS);
+    const iestIeg = parseOptMultiFromRaw(p, IESTADE_IEG_MS);
+    const klIegText = optMultiSummaryText(
+      OPT_KLIENTA_IEGUVUMI,
+      klIeg.keys,
+      klIeg.cits,
+      klIeg.legacyText,
+      OPT_KLIENT_CITS_TEXT_LABEL
+    );
+    const iestIegText = optMultiSummaryText(
+      OPT_IESTADES_IEGUVUMI,
+      iestIeg.keys,
+      iestIeg.cits,
+      iestIeg.legacyText,
+      OPT_IESTADE_CITS_TEXT_LABEL
+    );
     return {
       id,
       nosaukums: pick(p, ["nosaukums", "name", "title", "pasakumaNosaukums"]),
-      merkis: pick(p, ["merkis", "Mērķis", "merkisText", "target"]),
+      optimizacijasVirzieni: virz.keys,
+      optimizacijasVirzieniCits: displayText(virz.cits),
+      merkis: merkisText,
+      klientaIeguvumi: klIeg.keys,
+      klientaIeguvumiCits: displayText(klIeg.cits),
+      klientaIeguvumiText: klIegText,
+      iestadesIeguvumi: iestIeg.keys,
+      iestadesIeguvumiCits: displayText(iestIeg.cits),
+      iestadesIeguvumiText: iestIegText,
       ierakstaDatums: ieraksta,
       apraksts: pick(p, ["apraksts", "Apraksts", "description"]),
       kpi: pick(p, ["kpi", "KPI"]),
@@ -220,10 +480,36 @@
       }))
       .filter((a) => a.parvalde || a.dala || a.vardsUzvards);
     const ieraksta = p.ierakstaDatums || p.createdAt || new Date().toISOString();
+    const vKeys = normalizeVirzieniKeys(p.optimizacijasVirzieni);
+    const vCits = vKeys.includes("cits") ? displayText(p.optimizacijasVirzieniCits) : "";
+    const merkisOut = merkisSummaryText(vKeys, vCits, p.merkis) || null;
+    const klKeys = normalizeCatalogKeys(OPT_KLIENTA_IEGUVUMI, p.klientaIeguvumi, matchKlientIegExtra);
+    const klCits = klKeys.includes("cits") ? displayText(p.klientaIeguvumiCits) : "";
+    const klTextOut =
+      optMultiSummaryText(OPT_KLIENTA_IEGUVUMI, klKeys, klCits, p.klientaIeguvumiText, OPT_KLIENT_CITS_TEXT_LABEL) ||
+      null;
+    const iestKeys = normalizeCatalogKeys(OPT_IESTADES_IEGUVUMI, p.iestadesIeguvumi, matchIestadeIegExtra);
+    const iestCits = iestKeys.includes("cits") ? displayText(p.iestadesIeguvumiCits) : "";
+    const iestTextOut =
+      optMultiSummaryText(
+        OPT_IESTADES_IEGUVUMI,
+        iestKeys,
+        iestCits,
+        p.iestadesIeguvumiText,
+        OPT_IESTADE_CITS_TEXT_LABEL
+      ) || null;
     return {
       id: p.id,
       nosaukums: p.nosaukums,
-      merkis: String(p.merkis || "").trim() || null,
+      optimizacijasVirzieni: vKeys.length ? vKeys : null,
+      optimizacijasVirzieniCits: vKeys.includes("cits") ? vCits || null : null,
+      merkis: merkisOut,
+      klientaIeguvumi: klKeys.length ? klKeys : null,
+      klientaIeguvumiCits: klKeys.includes("cits") ? klCits || null : null,
+      klientaIeguvumiText: klTextOut,
+      iestadesIeguvumi: iestKeys.length ? iestKeys : null,
+      iestadesIeguvumiCits: iestKeys.includes("cits") ? iestCits || null : null,
+      iestadesIeguvumiText: iestTextOut,
       ierakstaDatums: ieraksta,
       apraksts: String(p.apraksts || "").trim() || null,
       kpi: String(p.kpi || "").trim() || null,
@@ -423,6 +709,279 @@
     return `<div class="val opt-pre">${esc(t)}</div>`;
   }
 
+  function labelFromCatalog(catalog, key) {
+    const k = String(key || "").trim();
+    const found = (catalog || []).find((v) => v.key === k);
+    return found ? found.label : k;
+  }
+
+  function matchFromCatalog(catalog, item, extraMatch) {
+    const s = normKey(String(item || "").replace(/_/g, " "));
+    if (!s) return "";
+    for (let i = 0; i < catalog.length; i++) {
+      const v = catalog[i];
+      if (normKey(v.key) === s || normKey(v.label) === s) return v.key;
+    }
+    if (typeof extraMatch === "function") {
+      const k = extraMatch(s);
+      if (k) return k;
+    }
+    if (s === "cits" || s.includes("cits")) return "cits";
+    return "";
+  }
+
+  function normalizeCatalogKeys(catalog, rawList, extraMatch) {
+    const keys = [];
+    (Array.isArray(rawList) ? rawList : []).forEach((item) => {
+      const k = matchFromCatalog(catalog, item, extraMatch);
+      if (k && !keys.includes(k)) keys.push(k);
+    });
+    return keys;
+  }
+
+  function parseOptMultiFromRaw(p, cfg) {
+    const raw = p && typeof p === "object" ? p : {};
+    const listRaw = cfg.keysPaths.reduce((acc, k) => acc || raw[k], null);
+    let keys = normalizeCatalogKeys(cfg.catalog, listRaw, cfg.matchExtra);
+    let cits = displayText(pick(raw, cfg.citsPaths || []));
+    const legacy = displayText(pick(raw, cfg.legacyPaths || []));
+    const citsLbl = (cfg.citsTextLabel || "").toLowerCase();
+    if (keys.includes("cits") && !cits && legacy && legacy.indexOf("\n") === -1) {
+      const low = legacy.toLowerCase();
+      if (!low.startsWith("cits:") && (!citsLbl || !low.startsWith(`${citsLbl}:`))) {
+        cits = legacy;
+      }
+    }
+    if (!keys.length && legacy) {
+      return { keys: [], cits: "", legacyText: legacy };
+    }
+    return { keys, cits, legacyText: "" };
+  }
+
+  function citsTextForOptMulti(measure, cfg) {
+    const parsed = measure ? parseOptMultiFromRaw(measure, cfg) : { keys: [], cits: "", legacyText: "" };
+    if (displayText(parsed.cits)) return displayText(parsed.cits);
+    if (parsed.keys.includes("cits")) return "";
+    return displayText(parsed.legacyText);
+  }
+
+  function optMultiSummaryText(catalog, keys, cits, legacyText, citsTextLabel) {
+    const list = Array.isArray(keys) ? keys : [];
+    if (!list.length) {
+      return String(legacyText || "").trim();
+    }
+    const lines = list.map((k) => labelFromCatalog(catalog, k));
+    if (list.includes("cits")) {
+      const t = displayText(cits);
+      if (t) lines.push(`${citsTextLabel}: ${t}`);
+    }
+    return lines.join("\n");
+  }
+
+  function buildMultiSelectPanelHtml(catalog, cbIdPrefix, citsInputId, citsPlaceholderLabel) {
+    return (catalog || [])
+      .map((v) => {
+        if (v.key === "cits") {
+          return `<div class="opt-virz-row-cits">
+          <label class="opt-virz-check opt-virz-check-compact" for="${esc(cbIdPrefix)}_cits">
+            <input type="checkbox" id="${esc(cbIdPrefix)}_cits" value="cits" />
+            <span>${esc(v.label)}</span>
+          </label>
+          <input type="text" id="${esc(citsInputId)}" class="opt-virz-cits-inline" disabled placeholder="${esc(
+            citsPlaceholderLabel
+          )}" aria-label="${esc(citsPlaceholderLabel)}" title="${esc(citsPlaceholderLabel)}" autocomplete="off" />
+        </div>`;
+        }
+        return `<label class="opt-virz-check"><input type="checkbox" id="${esc(cbIdPrefix)}_${esc(
+          v.key
+        )}" value="${esc(v.key)}" /><span>${esc(v.label)}</span></label>`;
+      })
+      .join("");
+  }
+
+  function readOptMultiFromForm(catalog, cbIdPrefix, citsInputId) {
+    const keys = [];
+    (catalog || []).forEach((v) => {
+      const cb = $(`${cbIdPrefix}_${v.key}`);
+      if (cb && cb.checked) keys.push(v.key);
+    });
+    const cits = displayText(elVal(citsInputId));
+    return { keys, cits };
+  }
+
+  function updateOptMultiSummary(cfg) {
+    const el = $(cfg.summaryId);
+    if (!el) return;
+    const { keys, cits } = readOptMultiFromForm(cfg.catalog, cfg.cbIdPrefix, cfg.citsInputId);
+    if (!keys.length) {
+      el.textContent = cfg.emptySummary || "— Izvēlieties (var vairākus) —";
+      return;
+    }
+    el.textContent = keys
+      .map((k) => {
+        if (k === "cits") {
+          const t = displayText(cits);
+          return t ? `cits — ${t}` : "cits";
+        }
+        return labelFromCatalog(cfg.catalog, k);
+      })
+      .join(", ");
+  }
+
+  function setOptMultiPanelOpen(cfg, open) {
+    const panel = $(cfg.panelId);
+    const btn = $(cfg.toggleId);
+    if (!panel) return;
+    panel.classList.toggle("hidden", !open);
+    if (btn) btn.classList.toggle("opt-virz-dropdown--open", open);
+    if (btn) btn.setAttribute("aria-expanded", open ? "true" : "false");
+  }
+
+  function toggleOptMultiPanel(cfg) {
+    const panel = $(cfg.panelId);
+    if (!panel) return;
+    setOptMultiPanelOpen(cfg, panel.classList.contains("hidden"));
+  }
+
+  function syncOptMultiCitsFields(cfg) {
+    const citsOn = !!($(cfg.citsCbId) && $(cfg.citsCbId).checked);
+    const inp = $(cfg.citsInputId);
+    if (inp) {
+      inp.required = citsOn;
+      inp.disabled = !citsOn;
+    }
+    updateOptMultiSummary(cfg);
+  }
+
+  function fillOptMultiForm(measure, cfg) {
+    (cfg.catalog || []).forEach((v) => {
+      const cb = $(`${cfg.cbIdPrefix}_${v.key}`);
+      if (cb) cb.checked = false;
+    });
+    const parsed = measure ? parseOptMultiFromRaw(measure, cfg) : { keys: [], cits: "", legacyText: "" };
+    parsed.keys.forEach((k) => {
+      const cb = $(`${cfg.cbIdPrefix}_${k}`);
+      if (cb) cb.checked = true;
+    });
+    const inp = $(cfg.citsInputId);
+    if (inp) inp.value = citsTextForOptMulti(measure, cfg);
+    syncOptMultiCitsFields(cfg);
+    setOptMultiPanelOpen(cfg, false);
+  }
+
+  function renderOptMultiDetailHtml(p, cfg) {
+    const parsed = parseOptMultiFromRaw(p, cfg);
+    if (parsed.keys.length) {
+      const items = parsed.keys.map((k) => `<li>${esc(labelFromCatalog(cfg.catalog, k))}</li>`).join("");
+      let html = `<ul class="opt-virz-detail-list">${items}</ul>`;
+      const citsTxt = displayText(parsed.cits);
+      if (parsed.keys.includes("cits") && citsTxt) {
+        html += `<div class="opt-virz-cits-detail"><span class="opt-virz-cits-detail-lbl">${esc(
+          cfg.citsTextLabel
+        )}</span>${formatMultilineHtml(citsTxt)}</div>`;
+      }
+      return html;
+    }
+    return formatMultilineHtml(parsed.legacyText);
+  }
+
+  function matchKlientIegExtra(s) {
+    if (s.includes("piln") && s.includes("vajadz")) return "pilniba_atrisinata_vajadziba";
+    if (s.includes("ietaup") && s.includes("laik")) return "ietaupits_laiks";
+    if (s.includes("vēlm") || s.includes("velm")) return "pakalpojums_atbilst_velmem";
+    if (s.includes("pirm") && s.includes("reiz")) return "apmierinata_pirmaja_reize";
+    if (s.includes("lēmum") || s.includes("lemum")) return "mazak_lemumu";
+    if (s.includes("īstaj") || s.includes("istaj") || s.includes("laik") && s.includes("viet")) return "istais_laiks_vieta";
+    return "";
+  }
+
+  function matchIestadeIegExtra(s) {
+    if (s.includes("nodarbin") || s.includes("iesaist")) return "samazinati_nodarbinatie";
+    if (s.includes("izpildes") && s.includes("laik")) return "samazinats_izpildes_laiks";
+    if (s.includes("darbību") || s.includes("darbibu")) return "samazinats_darbibu_skaits";
+    if (s.includes("izmaks")) return "samazinatas_izmaksas";
+    if (s.includes("kontrol") || s.includes("īpatsvar") || s.includes("ipatsvar")) return "sabalansets_kontroles";
+    if (s.includes("apmierin")) return "klientu_apmierinatiba";
+    if (s.includes("proakt")) return "proaktiva_pieeja";
+    if (s.includes("efektiv") || s.includes("rādīt") || s.includes("radit")) return "efektivitates_raditaji";
+    return "";
+  }
+
+  const KLIENT_IEG_MS = {
+    catalog: OPT_KLIENTA_IEGUVUMI,
+    keysPaths: ["klientaIeguvumi", "klienta_ieguvumi"],
+    citsPaths: ["klientaIeguvumiCits", "klienta_ieguvumi_cits"],
+    legacyPaths: ["klientaIeguvumiText", "klienta_ieguvumi_text", "klientaIeguvumiKopsavilkums"],
+    citsTextLabel: OPT_KLIENT_CITS_TEXT_LABEL,
+    cbIdPrefix: "optFormKlIeg",
+    citsInputId: "optFormKlIegCits",
+    citsCbId: "optFormKlIeg_cits",
+    dropdownId: "optFormKlIegDropdown",
+    panelId: "optFormKlIegPanel",
+    toggleId: "optFormKlIegToggle",
+    summaryId: "optFormKlIegSummary",
+    emptySummary: "— Izvēlieties klienta ieguvumus —",
+  };
+
+  const IESTADE_IEG_MS = {
+    catalog: OPT_IESTADES_IEGUVUMI,
+    keysPaths: ["iestadesIeguvumi", "iestades_ieguvumi", "vidIeguvumi"],
+    citsPaths: ["iestadesIeguvumiCits", "iestades_ieguvumi_cits", "vidIeguvumiCits"],
+    legacyPaths: ["iestadesIeguvumiText", "iestades_ieguvumi_text", "iestadesIeguvumiKopsavilkums", "vidIeguvumiText"],
+    citsTextLabel: OPT_IESTADE_CITS_TEXT_LABEL,
+    cbIdPrefix: "optFormIestIeg",
+    citsInputId: "optFormIestIegCits",
+    citsCbId: "optFormIestIeg_cits",
+    dropdownId: "optFormIestIegDropdown",
+    panelId: "optFormIestIegPanel",
+    toggleId: "optFormIestIegToggle",
+    summaryId: "optFormIestIegSummary",
+    emptySummary: "— Izvēlieties iestādes ieguvumus —",
+    matchExtra: matchIestadeIegExtra,
+  };
+
+  KLIENT_IEG_MS.matchExtra = matchKlientIegExtra;
+
+  function bindOptMultiSelect(cfg) {
+    const panel = $(cfg.panelId);
+    if (panel && !panel.dataset.bound) {
+      panel.dataset.bound = "1";
+      panel.addEventListener("click", (ev) => ev.stopPropagation());
+    }
+    (cfg.catalog || []).forEach((v) => {
+      const cb = $(`${cfg.cbIdPrefix}_${v.key}`);
+      if (!cb || cb.dataset.bound) return;
+      cb.dataset.bound = "1";
+      const sync = () => syncOptMultiCitsFields(cfg);
+      cb.addEventListener("change", sync);
+      cb.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        sync();
+      });
+    });
+    const citsInp = $(cfg.citsInputId);
+    if (citsInp && !citsInp.dataset.bound) {
+      citsInp.dataset.bound = "1";
+      citsInp.addEventListener("click", (ev) => ev.stopPropagation());
+      citsInp.addEventListener("input", () => updateOptMultiSummary(cfg));
+    }
+    const toggle = $(cfg.toggleId);
+    if (toggle && !toggle.dataset.bound) {
+      toggle.dataset.bound = "1";
+      toggle.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        toggleOptMultiPanel(cfg);
+      });
+    }
+  }
+
+  function closeAllOptMultiPanels() {
+    setVirzieniPanelOpen(false);
+    setOptMultiPanelOpen(KLIENT_IEG_MS, false);
+    setOptMultiPanelOpen(IESTADE_IEG_MS, false);
+  }
+
   function findParentById(id) {
     return (dbRows || []).find((r) => String(r.id) === String(id)) || null;
   }
@@ -482,6 +1041,52 @@
       .opt-st-done { background:#dcfce7; color:#15803d; }
       .opt-st-cancelled { background:#fee2e2; color:#b91c1c; }
       #optimizacijaCard .opt-atcel-row.hidden { display:none; }
+      #${FORM_ID} label { text-transform:none; letter-spacing:normal; }
+      #${MODAL_ID} .opt-virz-dropdown { position:relative; width:100%; }
+      #${MODAL_ID} .opt-virz-dropdown-trigger {
+        width:100%; box-sizing:border-box; display:flex; align-items:center; justify-content:space-between; gap:10px;
+        padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px; background:#fff;
+        font-size:13px; font-weight:400; color:#0f172a; text-align:left; cursor:pointer;
+        text-transform:none; letter-spacing:normal;
+      }
+      #${MODAL_ID} .opt-virz-dropdown-trigger:hover { border-color:#93c5fd; background:#f8fafc; }
+      #${MODAL_ID} .opt-virz-dropdown--open { border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,.15); }
+      #${MODAL_ID} .opt-virz-caret { color:#64748b; font-size:12px; flex-shrink:0; }
+      #${MODAL_ID} .opt-virzieni-panel {
+        position:absolute; z-index:20; left:0; right:0; top:calc(100% + 4px);
+        display:flex; flex-direction:column; gap:6px; padding:10px 12px;
+        border:1px solid #cbd5e1; border-radius:8px; background:#fff;
+        box-shadow:0 10px 28px rgba(15,23,42,.12); max-height:240px; overflow:auto;
+      }
+      #${MODAL_ID} .opt-virzieni-panel.hidden { display:none; }
+      #${MODAL_ID} label.opt-virz-check {
+        display:flex !important; align-items:flex-start; gap:8px; width:100%;
+        font-size:13px; font-weight:400; line-height:1.4; cursor:pointer;
+        color:#0f172a; margin:0; text-transform:none; letter-spacing:normal;
+      }
+      #${MODAL_ID} .opt-virz-check input { margin:3px 0 0; flex-shrink:0; width:auto; }
+      #${MODAL_ID} .opt-virz-check span { flex:1; text-align:left; text-transform:none; }
+      #${MODAL_ID} .opt-virz-row-cits {
+        display:flex; align-items:center; gap:8px; width:100%; flex-wrap:nowrap;
+      }
+      #${MODAL_ID} .opt-virz-row-cits label.opt-virz-check {
+        width:auto !important; flex:0 0 auto !important; max-width:none;
+      }
+      #${MODAL_ID} .opt-virz-row-cits label.opt-virz-check span {
+        flex:0 0 auto; white-space:nowrap;
+      }
+      #${MODAL_ID} .opt-virz-cits-inline {
+        flex:1 1 auto; min-width:100px; width:auto !important; box-sizing:border-box; padding:7px 10px;
+        border:1px solid #cbd5e1; border-radius:6px; font-size:13px;
+      }
+      #${MODAL_ID} .opt-virz-cits-inline:disabled { background:#f1f5f9; color:#94a3b8; }
+      #${MODAL_ID} .opt-virz-cits-inline:focus { border-color:#2563eb; outline:none; box-shadow:0 0 0 2px rgba(37,99,235,.15); }
+      #optimizacijaCard .opt-virz-detail-list { margin:0; padding-left:1.2em; }
+      #optimizacijaCard .opt-virz-cits-detail { margin-top:8px; }
+      #optimizacijaCard .opt-virz-cits-detail-lbl {
+        display:block; font-size:11px; font-weight:700; color:#64748b; margin-bottom:4px;
+        text-transform:none; letter-spacing:normal;
+      }
       .opt-detail-row td { padding:0; border-top:none; background:#f8fafc; }
       .opt-detail-card {
         margin:0 12px 12px; padding:14px; border:1px solid #cbd5e1; border-radius:8px; background:#fff;
@@ -511,12 +1116,21 @@
       #${FORM_ID} .opt-form-grid {
         display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:10px;
       }
-      #${FORM_ID} label { display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px; }
+      #${FORM_ID} label {
+        display:block; font-size:12px; font-weight:600; color:#475569; margin-bottom:4px;
+        text-transform:none !important; letter-spacing:normal !important;
+      }
       #${FORM_ID} input, #${FORM_ID} select, #${FORM_ID} textarea {
         width:100%; box-sizing:border-box; padding:8px 10px; border:1px solid #cbd5e1; border-radius:6px;
         font-size:13px;
       }
       #${FORM_ID} .opt-form-span2 { grid-column:1/-1; }
+      #${FORM_ID} .opt-form-row-pair {
+        grid-column:1/-1; display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:start;
+      }
+      @media (max-width:640px) {
+        #${FORM_ID} .opt-form-row-pair { grid-template-columns:1fr; }
+      }
       #${FORM_ID} .opt-form-section {
         grid-column:1/-1; margin:8px 0 4px; padding-top:10px; border-top:1px solid #e2e8f0;
         font-size:13px; font-weight:700; color:#1e3a8a;
@@ -711,14 +1325,58 @@
               <textarea id="optFormNosaukums" rows="2" required></textarea>
             </div>
             <div class="opt-form-span2">
-              <label for="optFormMerits">Mērķis</label>
-              <textarea id="optFormMerits" rows="3"></textarea>
+              <label for="optFormVirzieniToggle">Mērķis/ optimizācijas virzieni</label>
+              <div class="opt-virz-dropdown" id="optFormVirzDropdown">
+                <button type="button" class="opt-virz-dropdown-trigger" id="optFormVirzieniToggle" aria-expanded="false" aria-haspopup="listbox">
+                  <span id="optFormVirzieniSummary">— Izvēlieties virzienus (var vairākus) —</span>
+                  <span class="opt-virz-caret" aria-hidden="true">▾</span>
+                </button>
+                <div class="opt-virzieni-panel hidden" id="optFormVirzieniPanel" role="listbox">
+                  ${buildVirzieniFormHtml()}
+                </div>
+              </div>
             </div>
-            <div>
+            <div class="opt-form-row-pair">
+              <div>
+                <label for="optFormKlIegToggle">Klientu ieguvumi</label>
+                <div class="opt-virz-dropdown" id="optFormKlIegDropdown">
+                  <button type="button" class="opt-virz-dropdown-trigger" id="optFormKlIegToggle" aria-expanded="false" aria-haspopup="listbox">
+                    <span id="optFormKlIegSummary">— Izvēlieties klienta ieguvumus —</span>
+                    <span class="opt-virz-caret" aria-hidden="true">▾</span>
+                  </button>
+                  <div class="opt-virzieni-panel hidden" id="optFormKlIegPanel" role="listbox">
+                    ${buildMultiSelectPanelHtml(
+                      OPT_KLIENTA_IEGUVUMI,
+                      "optFormKlIeg",
+                      "optFormKlIegCits",
+                      OPT_KLIENT_CITS_TEXT_LABEL
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div>
+                <label for="optFormIestIegToggle">Iestādes ieguvumi</label>
+                <div class="opt-virz-dropdown" id="optFormIestIegDropdown">
+                  <button type="button" class="opt-virz-dropdown-trigger" id="optFormIestIegToggle" aria-expanded="false" aria-haspopup="listbox">
+                    <span id="optFormIestIegSummary">— Izvēlieties iestādes ieguvumus —</span>
+                    <span class="opt-virz-caret" aria-hidden="true">▾</span>
+                  </button>
+                  <div class="opt-virzieni-panel hidden" id="optFormIestIegPanel" role="listbox">
+                    ${buildMultiSelectPanelHtml(
+                      OPT_IESTADES_IEGUVUMI,
+                      "optFormIestIeg",
+                      "optFormIestIegCits",
+                      OPT_IESTADE_CITS_TEXT_LABEL
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="opt-form-span2">
               <label for="optFormIeraksta">Ieraksta datums</label>
               <input id="optFormIeraksta" type="date" readonly tabindex="-1" style="background:#f8fafc" />
             </div>
-            <div>
+            <div class="opt-form-span2">
               <label for="optFormStatuss">Statuss</label>
               <select id="optFormStatuss">
                 <option value="nav_uzsakts">Nav uzsākts</option>
@@ -786,6 +1444,53 @@
     };
     $("optFormProc").onchange = () => populateGpSelect($("optFormProc").value);
     $("optFormStatuss").onchange = () => syncOptFormStatusFields();
+    const virzPanel = $("optFormVirzieniPanel");
+    if (virzPanel && !virzPanel.dataset.bound) {
+      virzPanel.dataset.bound = "1";
+      virzPanel.addEventListener("click", (ev) => ev.stopPropagation());
+    }
+    OPT_VIRZIENI.forEach((v) => {
+      const cb = $(`optFormVirz_${v.key}`);
+      if (!cb || cb.dataset.bound) return;
+      cb.dataset.bound = "1";
+      const sync = () => syncOptFormVirzieniFields();
+      cb.addEventListener("change", sync);
+      cb.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        sync();
+      });
+    });
+    const citsInp = $("optFormVirzieniCits");
+    if (citsInp && !citsInp.dataset.bound) {
+      citsInp.dataset.bound = "1";
+      citsInp.addEventListener("click", (ev) => ev.stopPropagation());
+      citsInp.addEventListener("input", () => updateVirzieniSummary());
+    }
+    const virzToggle = $("optFormVirzieniToggle");
+    if (virzToggle && !virzToggle.dataset.bound) {
+      virzToggle.dataset.bound = "1";
+      virzToggle.addEventListener("click", (ev) => {
+        ev.preventDefault();
+        ev.stopPropagation();
+        toggleVirzieniPanel();
+      });
+    }
+    bindOptMultiSelect(KLIENT_IEG_MS);
+    bindOptMultiSelect(IESTADE_IEG_MS);
+    if (!window.__optVirzDocCloseBound) {
+      window.__optVirzDocCloseBound = true;
+      document.addEventListener("click", (ev) => {
+        if (!$(MODAL_ID) || $(MODAL_ID).classList.contains("hidden")) return;
+        const ids = ["optFormVirzDropdown", KLIENT_IEG_MS.dropdownId, IESTADE_IEG_MS.dropdownId];
+        if (ids.some((id) => {
+          const dd = $(id);
+          return dd && dd.contains(ev.target);
+        })) {
+          return;
+        }
+        closeAllOptMultiPanels();
+      });
+    }
   }
 
   function syncOptFormStatusFields() {
@@ -881,7 +1586,9 @@
       }
       const today = new Date().toISOString().slice(0, 10);
       if ($("optFormNosaukums")) $("optFormNosaukums").value = measure ? measure.nosaukums : "";
-      if ($("optFormMerits")) $("optFormMerits").value = measure ? measure.merkis : "";
+      fillVirzieniForm(measure);
+      fillOptMultiForm(measure, KLIENT_IEG_MS);
+      fillOptMultiForm(measure, IESTADE_IEG_MS);
       if ($("optFormIeraksta")) {
         $("optFormIeraksta").value = measure ? toInputDate(measure.ierakstaDatums || measure.createdAt) : today;
       }
@@ -969,6 +1676,25 @@
       alert("Statusam «Atcelts» obligāti jānorāda atcelšanas iemesls.");
       return;
     }
+    const virzForm = readVirzieniFromForm();
+    if (virzForm.keys.includes("cits") && !virzForm.cits) {
+      alert("Ja izvēlēts optimizācijas virziens «cits», obligāti aizpildiet brīvo teksta lauku.");
+      return;
+    }
+    const klIegForm = readOptMultiFromForm(KLIENT_IEG_MS.catalog, KLIENT_IEG_MS.cbIdPrefix, KLIENT_IEG_MS.citsInputId);
+    const iestIegForm = readOptMultiFromForm(
+      IESTADE_IEG_MS.catalog,
+      IESTADE_IEG_MS.cbIdPrefix,
+      IESTADE_IEG_MS.citsInputId
+    );
+    if (klIegForm.keys.includes("cits") && !klIegForm.cits) {
+      alert("Ja izvēlēts klienta ieguvums «cits», obligāti aizpildiet brīvo teksta lauku.");
+      return;
+    }
+    if (iestIegForm.keys.includes("cits") && !iestIegForm.cits) {
+      alert("Ja izvēlēts iestādes ieguvums «cits», obligāti aizpildiet brīvo teksta lauku.");
+      return;
+    }
 
     const saveLabel = editingMeasure
       ? `optimizācijas pasākumu «${nosaukums}»`
@@ -983,7 +1709,27 @@
     const measure = {
       id: editingMeasure ? editingMeasure.id : newPasakumsId(),
       nosaukums,
-      merkis: elVal("optFormMerits"),
+      optimizacijasVirzieni: virzForm.keys,
+      optimizacijasVirzieniCits: virzForm.cits,
+      merkis: merkisSummaryText(virzForm.keys, virzForm.cits, ""),
+      klientaIeguvumi: klIegForm.keys,
+      klientaIeguvumiCits: klIegForm.cits,
+      klientaIeguvumiText: optMultiSummaryText(
+        OPT_KLIENTA_IEGUVUMI,
+        klIegForm.keys,
+        klIegForm.cits,
+        "",
+        OPT_KLIENT_CITS_TEXT_LABEL
+      ),
+      iestadesIeguvumi: iestIegForm.keys,
+      iestadesIeguvumiCits: iestIegForm.cits,
+      iestadesIeguvumiText: optMultiSummaryText(
+        OPT_IESTADES_IEGUVUMI,
+        iestIegForm.keys,
+        iestIegForm.cits,
+        "",
+        OPT_IESTADE_CITS_TEXT_LABEL
+      ),
       ierakstaDatums: ierakstaRaw,
       apraksts: elVal("optFormApraksts"),
       kpi: elVal("optFormKpi"),
@@ -1109,7 +1855,9 @@
         <div class="opt-detail-grid">
           ${renderDetailField("Optimizācijas pasākuma nosaukums", formatMultilineHtml(p.nosaukums), true)}
           ${renderDetailField("Statuss", `<div class="val">${renderStatusPillHtml(p)}</div>`)}
-          ${renderDetailField("Mērķis", formatMultilineHtml(p.merkis), true)}
+          ${renderDetailField("Mērķis/ optimizācijas virzieni", renderVirzieniDetailHtml(p), true)}
+          ${renderDetailField("Klientu ieguvumi", renderOptMultiDetailHtml(p, KLIENT_IEG_MS), true)}
+          ${renderDetailField("Iestādes ieguvumi", renderOptMultiDetailHtml(p, IESTADE_IEG_MS), true)}
           ${renderDetailField("Ieraksta datums", `<div class="val">${esc(formatDate(p.ierakstaDatums || p.createdAt))}</div>`)}
           ${atcelField}
           ${renderDetailField("Apraksts", formatMultilineHtml(p.apraksts), true)}
@@ -1220,6 +1968,45 @@
   function findMeasureByKey(key) {
     const all = flattenPasakumi(dbRows);
     return all.find((m) => measureKey(m) === key) || null;
+  }
+
+  function ensureExportTable() {
+    let table = $(EXPORT_TABLE_ID);
+    if (!table) {
+      table = document.createElement("table");
+      table.id = EXPORT_TABLE_ID;
+      table.className = "ex-export-table hidden";
+      table.setAttribute("aria-hidden", "true");
+      const card = $(CARD_ID);
+      if (card) card.appendChild(table);
+      else document.body.appendChild(table);
+    }
+    const thHtml = OPT_EXPORT_COLS.map((c) => `<th>${esc(c.label)}</th>`).join("");
+    if (!table.querySelector("thead")) {
+      table.innerHTML = `<thead><tr>${thHtml}</tr></thead><tbody></tbody>`;
+    }
+    return table;
+  }
+
+  function syncExportTable() {
+    const table = ensureExportTable();
+    const tbody = table.querySelector("tbody");
+    if (!tbody) return;
+    const measures = flattenPasakumi(dbRows);
+    tbody.innerHTML = "";
+    measures.forEach((m) => {
+      const tr = document.createElement("tr");
+      const statusLabel = statusMeta(m.statuss).label;
+      tr.innerHTML = OPT_EXPORT_COLS.map((c) => {
+        let v = m[c.key];
+        if (c.key === "statuss") v = statusLabel;
+        if (c.key === "ierakstaDatums" || c.key === "planotaisIeviesanasTermins" || c.key === "ieviesanasTermins") {
+          v = formatDate(v);
+        }
+        return `<td>${esc(String(v ?? "").trim())}</td>`;
+      }).join("");
+      tbody.appendChild(tr);
+    });
   }
 
   function paintList(root) {
@@ -1347,6 +2134,7 @@
     }
 
     paintList(root);
+    syncExportTable();
   }
 
   function boot() {
@@ -1379,6 +2167,7 @@
     normStatus,
     isInactive,
     openForm,
+    syncExportTable,
   };
 
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", boot);

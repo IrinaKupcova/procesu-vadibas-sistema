@@ -534,6 +534,7 @@
       <div class="toolbar">
         <div class="left"><div class="section-title">Uzdevumu skats</div></div>
         <div class="right">
+          <button type="button" id="exportTasksExcelBtn" class="secondary">Eksportēt uz Excel</button>
           <button type="button" id="toggleTasksBtn" class="secondary">Atvērt uzdevumu skatu</button>
           <button type="button" id="newTaskBtn">Pievienot jaunu uzdevumu</button>
         </div>
@@ -746,6 +747,9 @@
     <div class="card section-block hidden" id="processGroupsCard">
       <div class="toolbar">
         <div class="left"><div class="section-title">Procesu grupas</div></div>
+        <div class="right">
+          <button type="button" id="exportProcessGroupsExcelBtn" class="secondary">Eksportēt uz Excel</button>
+        </div>
       </div>
       <div class="process-pie-wrap">
         <div class="stat-k">Procesu grupas (skaits un īpatsvars)</div>
@@ -917,6 +921,9 @@
     <div class="card section-block hidden" id="reportsCard">
       <div class="toolbar">
         <div class="left"><div class="section-title">Statistika</div></div>
+        <div class="right">
+          <button type="button" id="exportReportsExcelBtn" class="secondary">Eksportēt uz Excel</button>
+        </div>
       </div>
       <div id="reportsBodyWrap">
         <div id="reportsGrid"></div>
@@ -931,6 +938,7 @@
       <div class="toolbar">
         <div class="left"><div class="section-title">Procesus reglamentējošie normatīvie akti</div></div>
         <div class="right">
+          <button type="button" id="exportNormActsExcelBtn" class="secondary">Eksportēt uz Excel</button>
           <button type="button" id="naNewBtn" class="secondary">Pievienot jaunu normatīvo aktu</button>
         </div>
       </div>
@@ -1004,6 +1012,9 @@
     <div class="card section-block hidden" id="plusmasShemasCard">
       <div class="toolbar">
         <div class="left"><div class="section-title">Plūsmas shēmas</div></div>
+        <div class="right">
+          <button type="button" id="exportPlusmasExcelBtn" class="secondary">Eksportēt uz Excel</button>
+        </div>
       </div>
       <p class="hint">Sadaļa tiks papildināta.</p>
     </div>
@@ -1011,12 +1022,18 @@
     <div class="card section-block hidden" id="optimizacijaCard">
       <div class="toolbar">
         <div class="left"><div class="section-title">Optimizācija</div></div>
+        <div class="right">
+          <button type="button" id="exportOptimizacijaExcelBtn" class="secondary">Eksportēt uz Excel</button>
+        </div>
       </div>
     </div>
 
     <div class="card section-block hidden" id="metricsCard">
       <div class="toolbar">
         <div class="left"><div class="section-title">Procesu rādītāji (t.sk. mērījumi)</div></div>
+        <div class="right">
+          <button type="button" id="exportMetricsExcelBtn" class="secondary">Eksportēt uz Excel</button>
+        </div>
       </div>
       <p class="hint">Nākotnē šeit būs procesu rādītāji (t.sk. mērījumi) un to ievade.</p>
     </div>
@@ -1060,6 +1077,7 @@
   <script src="DB.js?v=20260818a"></script>
   <script src="Lomas.js?v=20260930a"></script>
   <script src="PVConfirm.js"></script>
+  <script src="ExcelExport.js?v=20260930a"></script>
   <script src="Procesa%20kartina.js?v=20260731a"></script>
   <script src="GP%20kataogs.js?v=20260930d"></script>
 
@@ -2454,23 +2472,6 @@
         renderTasksView();
         rebuildMx();
       }
-      function exportTableToExcel(tableId, filePrefix){
-        const table = $(tableId);
-        if(!table){ status("Eksports nav pieejams: tabula nav atrasta.","error"); return; }
-        const clone = table.cloneNode(true);
-        clone.querySelectorAll("button").forEach((b)=>b.remove());
-        const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"></head><body>${clone.outerHTML}</body></html>`;
-        const blob = new Blob([html], { type: "application/vnd.ms-excel;charset=utf-8;" });
-        const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,"-");
-        const a = document.createElement("a");
-        a.href = URL.createObjectURL(blob);
-        a.download = `${filePrefix}_${stamp}.xls`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-        setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
-      }
-
       function applyLevel(){
         const l=Number($("levelSelect").value), extended=l>=2;
         document.querySelectorAll("th.col-extended,td.col-extended").forEach(e=>e.style.display=extended?"":"none");
@@ -4169,6 +4170,7 @@
             tb.appendChild(tr);
           });
       }
+      window.renderTasksView = renderTasksView;
       function renderReports(){
         const uniqueProcesses = new Map();
         const catalogCount = csvRows.length;
@@ -4349,16 +4351,6 @@
         refreshProcessFooterVisibility();
       };
       refreshProcessDetailToggleLabel();
-      if($("exportProcessExcelBtn")) $("exportProcessExcelBtn").onclick=()=>exportTableToExcel("processTable","procesu_registrs");
-      if($("exportCatalogExcelBtn")) $("exportCatalogExcelBtn").onclick=()=>exportTableToExcel("catalogTable","gp_katalogs");
-      if($("exportExecutorsExcelBtn")) $("exportExecutorsExcelBtn").onclick=()=>{
-        if(typeof window.renderExecutorsView === "function") window.renderExecutorsView();
-        exportTableToExcel("executorsTable","izpilditaji");
-      };
-      if($("exportJomasExcelBtn")) $("exportJomasExcelBtn").onclick=()=>{
-        if(typeof window.renderProcessJomasView === "function") window.renderProcessJomasView();
-        exportTableToExcel("processJomasTable","jomas");
-      };
       if($("toggleTasksBtn")) $("toggleTasksBtn").onclick=()=>{
         const table = $("tasksSummaryTable");
         if(!table) return;
@@ -4864,7 +4856,7 @@
     <script src="Procesu%20registrs.js"></script>
     <script src="Pievienot%20jaunu%20procesu.js"></script>
     <script src="Statistika.js"></script>
-    <script src="Optimizacija.js?v=20260930b"></script>
+    <script src="Optimizacija.js?v=20260930j"></script>
     <script src="Izmainu_pieteikums.js"></script>
     <script src="Rokasgramata.js?v=20260818b"></script>
     <script src="Skaidrojumi.js"></script>
